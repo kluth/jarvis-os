@@ -12,6 +12,8 @@ mod allocator;
 mod serial;
 mod task;
 mod apic;
+mod pci;
+mod audio;
 
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -57,6 +59,17 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         .expect("heap initialization failed");
 
     println!("Status: Memory management initialized.");
+
+    let hda_devices = pci::scan_bus();
+    for dev in hda_devices {
+        println!("Found HDA at {}:{}:{} (BAR0: 0x{:x})", 
+            dev.bus, dev.slot, dev.function, dev.read_bar(0));
+        
+        let mut controller = unsafe { 
+            audio::hda::HdaController::new(&dev, phys_mem_offset) 
+        };
+        unsafe { controller.init(); }
+    }
 
     let mut executor = Executor::new();
     executor.spawn(Task::new(example_task()));
