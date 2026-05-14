@@ -2,12 +2,17 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
+extern crate alloc;
+
 mod vga_buffer;
 mod gdt;
 mod interrupts;
+mod memory;
+mod allocator;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
+use x86_64::VirtAddr;
 
 /// Der Panic-Handler wird aufgerufen, wenn im Kernel ein fataler Fehler auftritt.
 #[panic_handler]
@@ -28,6 +33,21 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     println!("Hello JARVIS OS!");
     
     init();
+
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe {
+        memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
+    };
+
+    allocator::init_heap(&mut mapper, &mut frame_allocator)
+        .expect("heap initialization failed");
+
+    println!("Status: Memory management initialized (Heap active).");
+
+    use alloc::boxed::Box;
+    let x = Box::new(42);
+    println!("Heap test: Box value is {}", x);
 
     println!("Status: CPU Phase 1 completed (GDT/IDT initialized).");
     
