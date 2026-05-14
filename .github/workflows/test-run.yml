@@ -1,16 +1,15 @@
-name: Build JARVIS OS
+name: Test Run JARVIS OS
 
 on:
-  push:
-    branches: [ "main", "develop", "feat/*" ]
-  pull_request:
-    branches: [ "main", "develop" ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  test-run:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +28,7 @@ jobs:
     - name: Cache Rust dependencies
       uses: Swatinem/rust-cache@v2
       with:
-        prefix-key: "jarvis-os"
+        prefix-key: "jarvis-os-test"
 
     - name: Build Kernel
       run: cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
@@ -39,14 +38,17 @@ jobs:
 
     - name: Boot Test (QEMU)
       run: |
+        echo "Starting QEMU Boot Test..."
+        # Run QEMU and expect "BOOT_READY" in the first 30 seconds
         timeout 30s qemu-system-x86_64 \
           -drive format=raw,file=target/image/jarvis-os.img \
           -display none \
-          -serial stdio \
-          | grep -q "BOOT_READY"
-
-    - name: Upload Disk Image
-      uses: actions/upload-artifact@v4
-      with:
-        name: jarvis-os-image
-        path: target/image/jarvis-os.img
+          -serial stdio | tee qemu_output.log
+        
+        if grep -q "BOOT_READY" qemu_output.log; then
+          echo "Boot Test PASSED"
+        else
+          echo "Boot Test FAILED: 'BOOT_READY' not found in output"
+          cat qemu_output.log
+          exit 1
+        fi
