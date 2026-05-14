@@ -69,8 +69,30 @@ impl FramebufferWriter {
         self.y_pos += 16;
         self.x_pos = 0;
         if self.y_pos >= self.config.height {
-            self.clear(); // Primitiv: Einfach löschen statt scrollen für den Anfang
+            self.scroll();
         }
+    }
+
+    fn scroll(&mut self) {
+        let bytes_per_line = self.config.stride * self.config.bytes_per_pixel;
+        let bytes_to_scroll = 16 * bytes_per_line;
+        let total_bytes = self.config.height * bytes_per_line;
+
+        unsafe {
+            ptr::copy(
+                self.framebuffer.as_ptr().add(bytes_to_scroll),
+                self.framebuffer.as_mut_ptr(),
+                total_bytes - bytes_to_scroll,
+            );
+        }
+
+        // Letzte Zeile löschen
+        let last_line_start = total_bytes - bytes_to_scroll;
+        for i in last_line_start..total_bytes {
+            self.framebuffer[i] = 0;
+        }
+
+        self.y_pos -= 16;
     }
 
     pub fn write_string(&mut self, s: &str) {

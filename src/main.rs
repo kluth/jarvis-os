@@ -1,7 +1,10 @@
 #![no_std]
 #![no_main]
+#![feature(abi_x86_interrupt)]
 
 mod vga_buffer;
+mod gdt;
+mod interrupts;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -23,9 +26,21 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     }
 
     println!("Hello JARVIS OS!");
-    println!("Status: Bootloader Phase 1 completed.");
-    println!("System ready for further initialization...");
+    
+    init();
+
+    println!("Status: CPU Phase 1 completed (GDT/IDT initialized).");
+    
+    // Trigger a breakpoint exception to verify IDT
+    x86_64::instructions::interrupts::int3();
+
+    println!("It did not crash! Breakpoint handled.");
 
     loop {}
+}
+
+fn init() {
+    gdt::init();
+    interrupts::init_idt();
 }
 

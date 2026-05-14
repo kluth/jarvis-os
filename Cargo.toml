@@ -9,6 +9,7 @@ bootloader = "0.11"
 spinning_top = "0.3.0"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 font8x8 = "0.3.1"
+x86_64 = "0.14.2"
 
 [profile.dev]
 panic = "abort"
