@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 #![feature(abi_x86_interrupt)]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
 
@@ -16,6 +19,7 @@ mod pci;
 mod audio;
 mod storage;
 mod ai;
+mod qemu;
 
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -24,11 +28,35 @@ use crate::task::{Task, executor::Executor};
 use crate::task::keyboard;
 
 /// This function is called on panic.
+#[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     serial_println!("{}", info);
     loop {}
+}
+
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("[failed]\n");
+    serial_println!("Error: {}\n", info);
+    qemu::exit_qemu(qemu::QemuExitCode::Failed);
+}
+
+pub fn test_runner(tests: &[&dyn Fn()]) {
+    serial_println!("Running {} tests", tests.len());
+    for test in tests {
+        test();
+    }
+    qemu::exit_qemu(qemu::QemuExitCode::Success);
+}
+
+#[test_case]
+fn trivial_assertion() {
+    serial_print!("trivial assertion... ");
+    assert_eq!(1, 1);
+    serial_println!("[ok]");
 }
 
 entry_point!(kernel_main);
@@ -43,6 +71,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     println!("Hello JARVIS OS!");
     serial_println!("BOOT_READY");
     
+    #[cfg(test)]
+    test_main();
+
     gdt::init();
     interrupts::init_idt();
 

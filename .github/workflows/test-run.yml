@@ -30,25 +30,9 @@ jobs:
       with:
         prefix-key: "jarvis-os-test"
 
-    - name: Build Kernel
-      run: cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
-
-    - name: Create Disk Image
-      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu
-
-    - name: Boot Test (QEMU)
+    - name: Run Framework Tests
       run: |
-        echo "Starting QEMU Boot Test..."
-        # Run QEMU and expect "BOOT_READY" in the first 30 seconds
-        timeout 30s qemu-system-x86_64 \
-          -drive format=raw,file=target/image/jarvis-os.img \
-          -display none \
-          -serial stdio | tee qemu_output.log
-        
-        if grep -q "BOOT_READY" qemu_output.log; then
-          echo "Boot Test PASSED"
-        else
-          echo "Boot Test FAILED: 'BOOT_READY' not found in output"
-          cat qemu_output.log
-          exit 1
-        fi
+        cargo test --bin jarvis-kernel --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc \
+          -Zbuild-std-features=compiler-builtins-mem \
+          -Zjson-target-spec

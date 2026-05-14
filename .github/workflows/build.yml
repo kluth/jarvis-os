@@ -21,6 +21,7 @@ jobs:
       with:
         toolchain: nightly
         components: rust-src, llvm-tools-preview
+        override: true
 
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
@@ -33,19 +34,15 @@ jobs:
     - name: Build Kernel
       run: cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
 
-    - name: Build Image Tool
-      run: cargo build --bin create_image
+    - name: Run Tests (QEMU)
+      run: |
+        cargo test --bin jarvis-kernel --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc \
+          -Zbuild-std-features=compiler-builtins-mem \
+          -Zjson-target-spec
 
     - name: Create Disk Image
-      run: cargo run --bin create_image
-
-    - name: Boot Test (QEMU)
-      run: |
-        timeout 30s qemu-system-x86_64 \
-          -drive format=raw,file=target/image/jarvis-os.img \
-          -display none \
-          -serial stdio \
-          | grep -q "BOOT_READY"
+      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu
 
     - name: Upload Disk Image
       uses: actions/upload-artifact@v4

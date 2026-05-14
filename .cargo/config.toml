@@ -1,1 +1,7 @@
+[build]
+target = "x86_64-jarvis_os.json"
+
+[target.x86_64-jarvis_os.json]
+runner = "cargo run --bin create_image --target x86_64-unknown-linux-gnu --"
+
 # build-std is handled explicitly in CI to avoid host build conflicts
