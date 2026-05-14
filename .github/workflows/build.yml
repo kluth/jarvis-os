@@ -26,9 +26,6 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Update Dependencies
-      run: cargo update
-
     - name: Run Tests (QEMU)
       run: |
         # Build the kernel with test feature
