@@ -21,7 +21,6 @@ jobs:
       with:
         toolchain: nightly
         components: rust-src, llvm-tools-preview
-        override: true
 
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
@@ -34,8 +33,11 @@ jobs:
     - name: Build Kernel
       run: cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
 
+    - name: Build Image Tool
+      run: cargo build --bin create_image
+
     - name: Create Disk Image
-      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu
+      run: cargo run --bin create_image
 
     - name: Boot Test (QEMU)
       run: |

@@ -19,13 +19,10 @@ fn main() {
 
     println!("Creating disk image at {}...", image_path.display());
 
-    let mut bootloader_config = bootloader::BootConfig::default();
-    // In CI we might want to ensure certain offsets or configurations
+    // Use the bootloader crate to create a bootable disk image
+    let mut boot = bootloader::BiosBoot::new(kernel_path);
     
-    let mut builder = bootloader::DiskImageBuilder::new(kernel_path.to_path_buf());
-    builder.set_output_ext("img");
-    
-    if let Err(e) = builder.create(&image_path) {
+    if let Err(e) = boot.create_disk_image(&image_path) {
         eprintln!("Failed to create disk image: {}", e);
         std::process::exit(1);
     }

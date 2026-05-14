@@ -1,4 +1,1 @@
-[build]
-target = "x86_64-jarvis_os.json"
-
 # build-std is handled explicitly in CI to avoid host build conflicts
