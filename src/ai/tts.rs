@@ -1,4 +1,4 @@
-use super::vfs::Result;
+use crate::storage::vfs::Result;
 
 /// The Text-to-Speech (TTS) engine trait.
 pub trait TtsEngine {

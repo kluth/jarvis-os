@@ -83,6 +83,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     let mut executor = Executor::new();
     executor.spawn(Task::with_priority(ai::vad_task(1000), crate::task::Priority::High));
+    executor.spawn(Task::new(ai::shell::shell_task()));
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     

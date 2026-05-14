@@ -1,4 +1,4 @@
-use super::vfs::Result;
+use crate::storage::vfs::Result;
 
 /// The Speech-to-Text (STT) engine trait.
 /// Implementations can wrap local inference engines (Whisper.cpp) 
