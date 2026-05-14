@@ -53,7 +53,7 @@ fn main() {
     println!("Success: Disk image created at {}", image_path.display());
 
     if is_test {
-        println!("Running Test in QEMU...");
+        println!("Running Test in QEMU (60s timeout)...");
         let mut qemu = Command::new("qemu-system-x86_64")
             .arg("-drive")
             .arg(format!("format=raw,file={}", image_path.display()))
@@ -66,27 +66,47 @@ fn main() {
             .spawn()
             .expect("Failed to start QEMU");
 
-        let status = qemu.wait().expect("Failed to wait for QEMU");
+        // Use a simple polling loop with a timeout for the child process
+        let start_time = std::time::Instant::now();
+        let timeout = std::time::Duration::from_secs(60);
         
-        // isa-debug-exit returns (exit_code << 1) | 1.
-        // QemuExitCode::Success (0x10) -> 33
-        // QemuExitCode::Failed (0x11) -> 35
-        match status.code() {
-            Some(33) => {
-                println!("Test Passed!");
-                exit(0);
-            }
-            Some(35) => {
-                eprintln!("Test Failed!");
-                exit(1);
-            }
-            Some(code) => {
-                eprintln!("QEMU exited with unexpected code: {}", code);
-                exit(1);
-            }
-            None => {
-                eprintln!("QEMU was killed by a signal");
-                exit(1);
+        loop {
+            match qemu.try_wait() {
+                Ok(Some(status)) => {
+                    // isa-debug-exit returns (exit_code << 1) | 1.
+                    // QemuExitCode::Success (0x10) -> 33
+                    // QemuExitCode::Failed (0x11) -> 35
+                    match status.code() {
+                        Some(33) => {
+                            println!("Test Passed!");
+                            exit(0);
+                        }
+                        Some(35) => {
+                            eprintln!("Test Failed!");
+                            exit(1);
+                        }
+                        Some(code) => {
+                            eprintln!("QEMU exited with unexpected code: {}", code);
+                            exit(1);
+                        }
+                        None => {
+                            eprintln!("QEMU was killed by a signal");
+                            exit(1);
+                        }
+                    }
+                }
+                Ok(None) => {
+                    if start_time.elapsed() > timeout {
+                        println!("Test Timed Out! Killing QEMU...");
+                        let _ = qemu.kill();
+                        exit(1);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+                Err(e) => {
+                    eprintln!("Error waiting for QEMU: {}", e);
+                    exit(1);
+                }
             }
         }
     }
