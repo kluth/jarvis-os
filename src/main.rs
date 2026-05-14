@@ -42,7 +42,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
-        memory::BootInfoFrameAllocator::init(&boot_info.memory_regions)
+        memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset)
     };
 
     allocator::init_heap(&mut mapper, &mut frame_allocator)
