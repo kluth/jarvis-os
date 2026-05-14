@@ -1,9 +1,1 @@
-[build]
-target = "x86_64-jarvis_os.json"
-
-[target.x86_64-jarvis_os.json]
-runner = "cargo run --bin create_image --target x86_64-unknown-linux-gnu --"
-
-[unstable]
-build-std = ["core", "compiler_builtins", "alloc"]
-build-std-features = ["compiler-builtins-mem"]
+# build-std is handled explicitly in CI to avoid host build conflicts
