@@ -3,6 +3,10 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use std::process::{Command, exit};
 
+// Explicitly import from std to avoid prelude issues in no_std/std hybrid environments
+use std::option::Option::{Some, None};
+use std::result::Result::{Ok, Err};
+
 fn main() {
     let mut args = env::args().skip(1);
     let first_arg = args.next();
@@ -38,7 +42,9 @@ fn main() {
 
     println!("Creating disk image at {}...", image_path.display());
 
+    // Use the bootloader crate to create a bootable disk image
     let mut boot = bootloader::BiosBoot::new(kernel_path);
+    
     if let Err(e) = boot.create_disk_image(&image_path) {
         eprintln!("Failed to create disk image: {}", e);
         exit(1);

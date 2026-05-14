@@ -31,8 +31,6 @@ conquer-once = { version = "0.2.0", default-features = false }
 futures-util = { version = "0.3.28", default-features = false, features = ["alloc"] }
 pc-keyboard = "0.7.0"
 pic8259 = "0.10.1"
-
-[target.'cfg(not(target_os = "none"))'.dependencies]
 bootloader = "0.11"
 
 [dev-dependencies]
