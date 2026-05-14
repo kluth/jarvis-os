@@ -15,6 +15,7 @@ mod apic;
 mod pci;
 mod audio;
 mod storage;
+mod ai;
 
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -81,6 +82,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     }
 
     let mut executor = Executor::new();
+    executor.spawn(Task::with_priority(ai::vad_task(1000), crate::task::Priority::High));
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     
