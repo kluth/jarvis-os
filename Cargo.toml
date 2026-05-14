@@ -7,6 +7,13 @@ authors = ["JARVIS Project"]
 
 [[bin]]
 name = "jarvis-kernel"
+path = "src/main.rs"
+test = false
+harness = false
+
+[lib]
+name = "jarvis_kernel"
+path = "src/lib.rs"
 test = false
 harness = false
 

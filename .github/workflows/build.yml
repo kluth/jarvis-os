@@ -26,9 +26,9 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Run Tests (QEMU)
+    - name: Run Integration Tests (QEMU)
       run: |
-        cargo test --bin jarvis-kernel --target x86_64-jarvis_os.json \
+        cargo test --test basic_boot --target x86_64-jarvis_os.json \
           -Zbuild-std=core,alloc \
           -Zjson-target-spec
 
