@@ -27,8 +27,8 @@ test = []
 [dev-dependencies]
 
 [patch.crates-io]
-serde = { version = "=1.0.210" }
-serde_derive = { version = "=1.0.210" }
+serde = { git = "https://github.com/serde-rs/serde", tag = "v1.0.210" }
+serde_derive = { git = "https://github.com/serde-rs/serde", tag = "v1.0.210" }
 
 [profile.dev]
 panic = "abort"
