@@ -37,6 +37,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     }
 
     println!("Hello JARVIS OS!");
+    serial_println!("BOOT_READY");
     
     gdt::init();
     interrupts::init_idt();

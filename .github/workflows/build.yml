@@ -2,7 +2,7 @@ name: Build JARVIS OS
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "feat/*" ]
   pull_request:
     branches: [ "main", "develop" ]
 
@@ -21,6 +21,9 @@ jobs:
       with:
         components: rust-src, llvm-tools-preview
 
+    - name: Install QEMU
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
+
     - name: Cache dependencies
       uses: actions/cache@v4
       with:
@@ -36,8 +39,19 @@ jobs:
     - name: Build Kernel
       run: cargo build --target x86_64-unknown-none
 
-    - name: Upload Kernel Binary
+    - name: Create Disk Image
+      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu
+
+    - name: Boot Test (QEMU)
+      run: |
+        timeout 30s qemu-system-x86_64 \
+          -drive format=raw,file=target/image/jarvis-os.img \
+          -display none \
+          -serial stdio \
+          | grep -q "BOOT_READY"
+
+    - name: Upload Disk Image
       uses: actions/upload-artifact@v4
       with:
-        name: jarvis-kernel
-        path: target/x86_64-unknown-none/debug/jarvis-kernel
+        name: jarvis-os-image
+        path: target/image/jarvis-os.img
