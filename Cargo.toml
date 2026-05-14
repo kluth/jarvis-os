@@ -8,7 +8,7 @@ authors = ["JARVIS Project"]
 bootloader_api = "0.11"
 spinning_top = "0.3.0"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
-font8x8 = "0.3.1"
+font8x8 = { version = "0.3.1", default-features = false, features = ["unicode"] }
 x86_64 = "0.14.2"
 linked_list_allocator = "0.10.1"
 uart_16550 = "0.3.0"

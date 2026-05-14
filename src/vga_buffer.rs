@@ -1,21 +1,22 @@
-use bootloader_api::info::{Framebuffer, FramebufferConfig, PixelFormat};
+use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use core::{fmt, ptr};
 use spinning_top::Spinlock;
 use lazy_static::lazy_static;
+use font8x8::UnicodeFonts;
 
 /// Ein einfacher Writer für den UEFI Framebuffer.
 pub struct FramebufferWriter {
     framebuffer: &'static mut [u8],
-    config: FramebufferConfig,
+    info: FrameBufferInfo,
     x_pos: usize,
     y_pos: usize,
 }
 
 impl FramebufferWriter {
-    pub fn new(framebuffer: &'static mut [u8], config: FramebufferConfig) -> Self {
+    pub fn new(framebuffer: &'static mut [u8], info: FrameBufferInfo) -> Self {
         let mut writer = Self {
             framebuffer,
-            config,
+            info,
             x_pos: 0,
             y_pos: 0,
         };
@@ -24,14 +25,14 @@ impl FramebufferWriter {
     }
 
     fn write_pixel(&mut self, x: usize, y: usize, intensity: u8) {
-        let pixel_offset = y * self.config.stride + x;
-        let color = match self.config.pixel_format {
+        let pixel_offset = y * self.info.stride + x;
+        let color = match self.info.pixel_format {
             PixelFormat::Rgb => [intensity, intensity, intensity, 0],
             PixelFormat::Bgr => [intensity, intensity, intensity, 0],
             PixelFormat::U8 => [intensity, 0, 0, 0],
             _ => [intensity, intensity, intensity, 0],
         };
-        let bytes_per_pixel = self.config.bytes_per_pixel;
+        let bytes_per_pixel = self.info.bytes_per_pixel;
         let byte_offset = pixel_offset * bytes_per_pixel;
         self.framebuffer[byte_offset..(byte_offset + bytes_per_pixel)]
             .copy_from_slice(&color[..bytes_per_pixel]);
@@ -48,7 +49,7 @@ impl FramebufferWriter {
         match c {
             '\n' => self.newline(),
             _ => {
-                if let Some(glyph) = font8x8::BASIC_FONTS.get(c as usize) {
+                if let Some(glyph) = font8x8::BASIC_FONTS.get(c) {
                     for (y, byte) in glyph.iter().enumerate() {
                         for x in 0..8 {
                             if (byte & (1 << x)) != 0 {
@@ -58,7 +59,7 @@ impl FramebufferWriter {
                     }
                 }
                 self.x_pos += 8;
-                if self.x_pos >= self.config.width {
+                if self.x_pos >= self.info.width {
                     self.newline();
                 }
             }
@@ -68,15 +69,15 @@ impl FramebufferWriter {
     fn newline(&mut self) {
         self.y_pos += 16;
         self.x_pos = 0;
-        if self.y_pos >= self.config.height {
+        if self.y_pos >= self.info.height {
             self.scroll();
         }
     }
 
     fn scroll(&mut self) {
-        let bytes_per_line = self.config.stride * self.config.bytes_per_pixel;
+        let bytes_per_line = self.info.stride * self.info.bytes_per_pixel;
         let bytes_to_scroll = 16 * bytes_per_line;
-        let total_bytes = self.config.height * bytes_per_line;
+        let total_bytes = self.info.height * bytes_per_line;
 
         unsafe {
             ptr::copy(
@@ -114,7 +115,7 @@ lazy_static! {
 }
 
 /// Initialisiert den globalen Writer.
-pub fn init(framebuffer: &'static mut Framebuffer) {
+pub fn init(framebuffer: &'static mut FrameBuffer) {
     let info = framebuffer.info();
     let writer = FramebufferWriter::new(framebuffer.buffer_mut(), info);
     *WRITER.lock() = Some(writer);

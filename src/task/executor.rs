@@ -1,7 +1,8 @@
 use super::{Task, TaskId};
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
-use core::task::{Context, Poll, Wake, Waker};
+use alloc::task::Wake;
+use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
 
 pub struct Executor {
@@ -35,19 +36,26 @@ impl Executor {
     }
 
     fn run_ready_tasks(&mut self) {
-        while let Some(task_id) = self.task_queue.pop() {
-            let task = match self.tasks.get_mut(&task_id) {
+        // destructure self to avoid borrow checker errors
+        let Self {
+            tasks,
+            task_queue,
+            waker_cache,
+        } = self;
+
+        while let Some(task_id) = task_queue.pop() {
+            let task = match tasks.get_mut(&task_id) {
                 Some(task) => task,
                 None => continue, // task no longer exists
             };
-            let waker = self.waker_cache
+            let waker = waker_cache
                 .entry(task_id)
-                .or_insert_with(|| TaskWaker::new(task_id, self.task_queue.clone()));
+                .or_insert_with(|| TaskWaker::new(task_id, task_queue.clone()));
             let mut context = Context::from_waker(waker);
             match task.poll(&mut context) {
                 Poll::Ready(()) => {
-                    self.tasks.remove(&task_id);
-                    self.waker_cache.remove(&task_id);
+                    tasks.remove(&task_id);
+                    waker_cache.remove(&task_id);
                 }
                 Poll::Pending => {}
             }
@@ -72,11 +80,10 @@ struct TaskWaker {
 }
 
 impl TaskWaker {
-    fn new(task_id: TaskId, task_queue: Arc<Arc<ArrayQueue<TaskId>>>) -> Waker {
-        // Hier gibt es einen kleinen Fix: Wir müssen Arc<ArrayQueue> nutzen
+    fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {
         Waker::from(Arc::new(TaskWaker {
             task_id,
-            task_queue: (*task_queue).clone(),
+            task_queue,
         }))
     }
 }

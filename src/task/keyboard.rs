@@ -4,13 +4,17 @@ use core::{task::{Poll, Context}, pin::Pin};
 use futures_util::stream::{Stream, StreamExt};
 use pc_keyboard::{layouts, HandleControl, Keyboard, ScancodeSet1};
 use crate::print;
+use futures_util::task::AtomicWaker;
 
 static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
+static WAKER: AtomicWaker = AtomicWaker::new();
 
 pub(crate) fn add_scancode(scancode: u8) {
-    if let Ok(queue) = SCANCODE_QUEUE.get() {
+    if let Some(queue) = SCANCODE_QUEUE.get() {
         if let Err(_) = queue.push(scancode) {
             // println!("WARNING: scancode queue full; dropping keyboard input");
+        } else {
+            WAKER.wake();
         }
     }
 }
@@ -37,13 +41,19 @@ impl Stream for ScancodeStream {
             return Poll::Ready(Some(scancode));
         }
 
-        Poll::Pending
+        WAKER.register(cx.waker());
+        if let Some(scancode) = queue.pop() {
+            WAKER.take();
+            Poll::Ready(Some(scancode))
+        } else {
+            Poll::Pending
+        }
     }
 }
 
 pub async fn print_keypresses() {
     let mut scancodes = ScancodeStream::new();
-    let mut keyboard = Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore);
+    let mut keyboard = Keyboard::new(ScancodeSet1::new(), layouts::Us104Key, HandleControl::Ignore);
 
     while let Some(scancode) = scancodes.next().await {
         if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {

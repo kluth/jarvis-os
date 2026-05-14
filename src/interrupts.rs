@@ -34,7 +34,7 @@ lazy_static! {
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         unsafe {
             idt.double_fault.set_handler_fn(double_fault_handler)
-                .set_stack_index(gdt.DOUBLE_FAULT_IST_INDEX);
+                .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
         idt[InterruptIndex::Timer.as_usize()]
             .set_handler_fn(timer_interrupt_handler);
@@ -66,7 +66,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     // Wir quittieren den Interrupt am PIC
     unsafe {
         PICS.lock()
-            .notify_eoi(InterruptIndex::Timer.as_u8());
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
 }
 
@@ -81,6 +81,6 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
 
     unsafe {
         PICS.lock()
-            .notify_eoi(InterruptIndex::Keyboard.as_u8());
+            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }
 }

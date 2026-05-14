@@ -35,14 +35,14 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr)
     &mut *page_table_ptr
 }
 
-use x86_64::structures::paging::{FrameAllocator, PhysFrame, Size4KiB, UnusedPhysFrame};
-use bootloader_api::info::{MemoryMap, MemoryRegionKind};
+use x86_64::structures::paging::{FrameAllocator, PhysFrame, Size4KiB};
+use bootloader_api::info::{MemoryRegions, MemoryRegionKind};
 
 /// Ein FrameAllocator, der die Memory-Map des Bootloaders nutzt.
 /// Er implementiert einen einfachen Bump-Allocator, der Frames sequenziell aus
 /// den verfügbaren Speicherregionen zuweist.
 pub struct BootInfoFrameAllocator {
-    memory_map: &'static MemoryMap,
+    memory_map: &'static MemoryRegions,
     next: usize,
 }
 
@@ -53,7 +53,7 @@ impl BootInfoFrameAllocator {
     /// Diese Funktion ist unsicher, da der Aufrufer garantieren muss, dass die
     /// Memory-Map korrekt ist und dass alle als `Usable` markierten Frames
     /// tatsächlich unbenutzt sind.
-    pub unsafe fn init(memory_map: &'static MemoryMap) -> Self {
+    pub unsafe fn init(memory_map: &'static MemoryRegions) -> Self {
         BootInfoFrameAllocator {
             memory_map,
             next: 0,
@@ -61,7 +61,7 @@ impl BootInfoFrameAllocator {
     }
 
     /// Gibt einen Iterator über die nutzbaren Frames in der Memory-Map zurück.
-    fn usable_frames(&self) -> impl Iterator<Item = UnusedPhysFrame> {
+    fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
         // Nutze die Memory-Map des Bootloaders
         let regions = self.memory_map.iter();
         let usable_regions = regions
@@ -71,13 +71,13 @@ impl BootInfoFrameAllocator {
             .map(|r| r.start..r.end);
         // Transformiere die Adressbereiche in einen Iterator über 4KiB-Frames
         let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
-        // Erzeuge `UnusedPhysFrame` Objekte aus den Adressen
-        frame_addresses.map(|addr| unsafe { UnusedPhysFrame::new(PhysFrame::containing_address(PhysAddr::new(addr))) })
+        // Erzeuge `PhysFrame` Objekte aus den Adressen
+        frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
     }
 }
 
 unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
-    fn allocate_frame(&mut self) -> Option<UnusedPhysFrame> {
+    fn allocate_frame(&mut self) -> Option<PhysFrame> {
         let frame = self.usable_frames().nth(self.next);
         self.next += 1;
         frame
