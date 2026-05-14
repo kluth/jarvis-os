@@ -1,0 +1,17 @@
+[package]
+name = "jarvis-kernel"
+version = "0.1.0"
+edition = "2021"
+authors = ["JARVIS Project"]
+
+[dependencies]
+bootloader = "0.11"
+spinning_top = "0.3.0"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+font8x8 = "0.3.1"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

@@ -1,0 +1,31 @@
+name: Build JARVIS OS
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust nightly
+      uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rust-src, llvm-tools-preview
+
+    - name: Build Kernel
+      run: cargo build --target x86_64-jarvis_os.json
+
+    - name: Upload Kernel Binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: jarvis-kernel
+        path: target/x86_64-jarvis_os/debug/jarvis-kernel
