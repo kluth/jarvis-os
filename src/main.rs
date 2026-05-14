@@ -14,6 +14,7 @@ mod task;
 mod apic;
 mod pci;
 mod audio;
+mod storage;
 
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -69,6 +70,14 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
             audio::hda::HdaController::new(&dev, phys_mem_offset) 
         };
         unsafe { controller.init(); }
+    }
+
+    let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
+    {
+        use crate::storage::vfs::FileSystem;
+        let mut file = jfs.create("audio_log.raw").expect("Failed to create file");
+        file.write(b"JARVIS Audio Data Placeholder").expect("Failed to write to file");
+        println!("Status: JFS test write completed. Size: {} bytes", file.size());
     }
 
     let mut executor = Executor::new();
