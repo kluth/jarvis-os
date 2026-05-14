@@ -5,18 +5,6 @@ edition = "2021"
 resolver = "2"
 authors = ["JARVIS Project"]
 
-[[bin]]
-name = "jarvis-kernel"
-path = "src/main.rs"
-test = false
-harness = false
-
-[lib]
-name = "jarvis_kernel"
-path = "src/lib.rs"
-test = false
-harness = false
-
 [dependencies]
 bootloader_api = { version = "0.11.11", default-features = false }
 serde = { version = "1.0", default-features = false }
@@ -32,6 +20,9 @@ futures-util = { version = "0.3.28", default-features = false, features = ["allo
 pc-keyboard = "0.7.0"
 pic8259 = "0.10.1"
 bootloader = "0.11"
+
+[features]
+test = []
 
 [dev-dependencies]
 

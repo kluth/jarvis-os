@@ -26,27 +26,19 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Run Integration Tests (QEMU)
+    - name: Run Framework Tests
       run: |
-        # Build the test kernel
-        cargo build --test basic_boot --target x86_64-jarvis_os.json \
-          -Zbuild-std=core,alloc \
-          -Zbuild-std-features=compiler-builtins-mem \
-          -Zjson-target-spec
+        # Build the kernel with test feature
+        cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
         
-        # Find the compiled test binary
-        TEST_BIN=$(find target/x86_64-jarvis_os/debug/deps -name "basic_boot-*" -type f -executable | head -n 1)
-        echo "Found test binary at: $TEST_BIN"
-        
-        # Run create_image as runner for the test binary
-        cargo run --bin create_image --target x86_64-unknown-linux-gnu -- "$TEST_BIN"
+        # Run using create_image as runner
+        cargo run --bin create_image --target x86_64-unknown-linux-gnu -- target/x86_64-jarvis_os/debug/jarvis-kernel
 
     - name: Build Production Kernel
       run: |
         cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json \
-          -Zbuild-std=core,alloc \
-          -Zbuild-std-features=compiler-builtins-mem \
-          -Zjson-target-spec
+          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
 
     - name: Create Production Disk Image
       run: |

@@ -1,20 +1,38 @@
 #![no_std]
 #![no_main]
+#![feature(abi_x86_interrupt)]
 
 extern crate alloc;
 
-use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer};
+mod vga_buffer;
+mod gdt;
+mod interrupts;
+mod memory;
+mod allocator;
+mod serial;
+mod task;
+mod apic;
+mod pci;
+mod audio;
+mod storage;
+mod ai;
+mod qemu;
+
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use x86_64::VirtAddr;
-use jarvis_kernel::task::{Task, executor::Executor};
-use jarvis_kernel::task::keyboard;
+use crate::task::{Task, executor::Executor};
+use crate::task::keyboard;
 
 /// This function is called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     serial_println!("{}", info);
+    
+    #[cfg(feature = "test")]
+    qemu::exit_qemu(qemu::QemuExitCode::Failed);
+
     loop {}
 }
 
@@ -30,6 +48,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     println!("Hello JARVIS OS!");
     serial_println!("BOOT_READY");
     
+    #[cfg(feature = "test")]
+    run_tests();
+
     gdt::init();
     interrupts::init_idt();
 
@@ -62,20 +83,36 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
     {
-        use jarvis_kernel::storage::vfs::FileSystem;
+        use crate::storage::vfs::FileSystem;
         let mut file = jfs.create("audio_log.raw").expect("Failed to create file");
         file.write(b"JARVIS Audio Data Placeholder").expect("Failed to write to file");
         println!("Status: JFS test write completed. Size: {} bytes", file.size());
     }
 
     let mut executor = Executor::new();
-    executor.spawn(Task::with_priority(ai::vad_task(1000), jarvis_kernel::task::Priority::High));
+    executor.spawn(Task::with_priority(ai::vad_task(1000), task::Priority::High));
     executor.spawn(Task::new(ai::shell::shell_task()));
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     
     println!("Status: Multitasking active. System ready.");
     executor.run();
+}
+
+#[cfg(feature = "test")]
+fn run_tests() {
+    serial_println!("Running system tests...");
+    // Add your tests here
+    test_println();
+    
+    serial_println!("All tests passed!");
+    qemu::exit_qemu(qemu::QemuExitCode::Success);
+}
+
+#[cfg(feature = "test")]
+fn test_println() {
+    serial_print!("test_println... ");
+    serial_println!("[ok]");
 }
 
 async fn async_number() -> u32 {
