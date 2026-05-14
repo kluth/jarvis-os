@@ -11,6 +11,7 @@ mod memory;
 mod allocator;
 mod serial;
 mod task;
+mod apic;
 
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -37,9 +38,15 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     println!("Hello JARVIS OS!");
     
-    init();
+    gdt::init();
+    interrupts::init_idt();
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
+    
+    // Initialize APIC instead of PIC
+    unsafe { interrupts::init_apic(phys_mem_offset) };
+    x86_64::instructions::interrupts::enable();
+
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
         memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset)
@@ -56,13 +63,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     
     println!("Status: Multitasking active. System ready.");
     executor.run();
-}
-
-fn init() {
-    gdt::init();
-    interrupts::init_idt();
-    unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();
 }
 
 async fn async_number() -> u32 {

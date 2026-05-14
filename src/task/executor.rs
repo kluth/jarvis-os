@@ -1,4 +1,4 @@
-use super::{Task, TaskId};
+use super::{Task, TaskId, Priority};
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::task::Wake;
@@ -7,7 +7,8 @@ use crossbeam_queue::ArrayQueue;
 
 pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
-    task_queue: Arc<ArrayQueue<TaskId>>,
+    // MLFQ Queues: 0 = High, 1 = Normal, 2 = Low
+    queues: [Arc<ArrayQueue<TaskId>>; 3],
     waker_cache: BTreeMap<TaskId, Waker>,
 }
 
@@ -15,17 +16,22 @@ impl Executor {
     pub fn new() -> Self {
         Executor {
             tasks: BTreeMap::new(),
-            task_queue: Arc::new(ArrayQueue::new(100)),
+            queues: [
+                Arc::new(ArrayQueue::new(100)),
+                Arc::new(ArrayQueue::new(100)),
+                Arc::new(ArrayQueue::new(100)),
+            ],
             waker_cache: BTreeMap::new(),
         }
     }
 
     pub fn spawn(&mut self, task: Task) {
         let task_id = task.id;
+        let priority = task.priority as usize;
         if self.tasks.insert(task.id, task).is_some() {
             panic!("task with same ID already in tasks");
         }
-        self.task_queue.push(task_id).expect("queue full");
+        self.queues[priority].push(task_id).expect("queue full");
     }
 
     pub fn run(&mut self) -> ! {
@@ -36,28 +42,32 @@ impl Executor {
     }
 
     fn run_ready_tasks(&mut self) {
-        // destructure self to avoid borrow checker errors
-        let Self {
-            tasks,
-            task_queue,
-            waker_cache,
-        } = self;
-
-        while let Some(task_id) = task_queue.pop() {
-            let task = match tasks.get_mut(&task_id) {
-                Some(task) => task,
-                None => continue, // task no longer exists
-            };
-            let waker = waker_cache
-                .entry(task_id)
-                .or_insert_with(|| TaskWaker::new(task_id, task_queue.clone()));
-            let mut context = Context::from_waker(waker);
-            match task.poll(&mut context) {
-                Poll::Ready(()) => {
-                    tasks.remove(&task_id);
-                    waker_cache.remove(&task_id);
+        // Process queues in priority order (MLFQ)
+        for i in 0..3 {
+            while let Some(task_id) = self.queues[i].pop() {
+                let task = match self.tasks.get_mut(&task_id) {
+                    Some(task) => task,
+                    None => continue,
+                };
+                
+                let waker = self.waker_cache
+                    .entry(task_id)
+                    .or_insert_with(|| {
+                        TaskWaker::new(task_id, self.queues[task.priority as usize].clone())
+                    });
+                
+                let mut context = Context::from_waker(waker);
+                match task.poll(&mut context) {
+                    Poll::Ready(()) => {
+                        self.tasks.remove(&task_id);
+                        self.waker_cache.remove(&task_id);
+                    }
+                    Poll::Pending => {
+                        // In a real MLFQ, if a task uses its whole quantum,
+                        // it might be demoted to a lower priority queue.
+                        // Here, it stays in its queue until next wake.
+                    }
                 }
-                Poll::Pending => {}
             }
         }
     }
@@ -66,7 +76,7 @@ impl Executor {
         use x86_64::instructions::interrupts::{self, enable_and_hlt};
 
         interrupts::disable();
-        if self.task_queue.is_empty() {
+        if self.queues[0].is_empty() && self.queues[1].is_empty() && self.queues[2].is_empty() {
             enable_and_hlt();
         } else {
             interrupts::enable();
@@ -76,14 +86,14 @@ impl Executor {
 
 struct TaskWaker {
     task_id: TaskId,
-    task_queue: Arc<ArrayQueue<TaskId>>,
+    queue: Arc<ArrayQueue<TaskId>>,
 }
 
 impl TaskWaker {
-    fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {
+    fn new(task_id: TaskId, queue: Arc<ArrayQueue<TaskId>>) -> Waker {
         Waker::from(Arc::new(TaskWaker {
             task_id,
-            task_queue,
+            queue,
         }))
     }
 }
@@ -94,6 +104,6 @@ impl Wake for TaskWaker {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        self.task_queue.push(self.task_id).expect("task_queue full");
+        let _ = self.queue.push(self.task_id);
     }
 }

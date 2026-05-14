@@ -2,20 +2,22 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 use crate::println;
 use lazy_static::lazy_static;
 use crate::gdt;
-use pic8259::ChainedPics;
 use spinning_top::Spinlock;
+use crate::apic::{LocalApic, Register};
+use x86_64::VirtAddr;
 
-pub const PIC_1_OFFSET: u8 = 32;
-pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+pub const TIMER_INTERRUPT_VECTOR: u8 = 32;
 
-pub static PICS: Spinlock<ChainedPics> =
-    Spinlock::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+lazy_static! {
+    pub static ref LAPIC: Spinlock<Option<LocalApic>> = Spinlock::new(None);
+}
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum InterruptIndex {
-    Timer = PIC_1_OFFSET,
+    Timer = TIMER_INTERRUPT_VECTOR,
     Keyboard,
+    Spurious = 0xFF,
 }
 
 impl InterruptIndex {
@@ -48,6 +50,13 @@ pub fn init_idt() {
     IDT.load();
 }
 
+pub unsafe fn init_apic(physical_memory_offset: VirtAddr) {
+    crate::apic::disable_pic();
+    let mut lapic = LocalApic::new(physical_memory_offset);
+    lapic.init();
+    *LAPIC.lock() = Some(lapic);
+}
+
 extern "x86-interrupt" fn breakpoint_handler(
     stack_frame: InterruptStackFrame)
 {
@@ -63,10 +72,8 @@ extern "x86-interrupt" fn double_fault_handler(
 extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
-    // Acknowledge the interrupt at the PIC
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    if let Some(ref mut lapic) = *LAPIC.lock() {
+        unsafe { lapic.end_of_interrupt(); }
     }
 }
 
@@ -79,8 +86,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     let scancode: u8 = unsafe { port.read() };
     crate::task::keyboard::add_scancode(scancode);
 
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    if let Some(ref mut lapic) = *LAPIC.lock() {
+        unsafe { lapic.end_of_interrupt(); }
     }
 }
