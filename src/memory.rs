@@ -36,7 +36,7 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr)
 }
 
 use x86_64::structures::paging::{FrameAllocator, PhysFrame, Size4KiB, UnusedPhysFrame};
-use bootloader::boot_info::{MemoryMap, MemoryRegionKind};
+use bootloader_api::info::{MemoryMap, MemoryRegionKind};
 
 /// Ein FrameAllocator, der die Memory-Map des Bootloaders nutzt.
 /// Er implementiert einen einfachen Bump-Allocator, der Frames sequenziell aus

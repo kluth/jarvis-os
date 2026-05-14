@@ -1,4 +1,4 @@
-use bootloader::boot_info::{Framebuffer, FramebufferConfig, PixelFormat};
+use bootloader_api::info::{Framebuffer, FramebufferConfig, PixelFormat};
 use core::{fmt, ptr};
 use spinning_top::Spinlock;
 use lazy_static::lazy_static;

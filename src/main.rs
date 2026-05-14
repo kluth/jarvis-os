@@ -11,7 +11,7 @@ mod memory;
 mod allocator;
 mod serial;
 
-use bootloader::{entry_point, BootInfo};
+use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
