@@ -7,7 +7,7 @@ authors = ["JARVIS Project"]
 
 [[bin]]
 name = "jarvis-kernel"
-test = true
+test = false
 harness = false
 
 [dependencies]

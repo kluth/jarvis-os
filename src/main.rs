@@ -1,62 +1,21 @@
 #![no_std]
 #![no_main]
-#![feature(abi_x86_interrupt)]
-#![feature(custom_test_frameworks)]
-#![test_runner(crate::test_runner)]
-#![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
 
-mod vga_buffer;
-mod gdt;
-mod interrupts;
-mod memory;
-mod allocator;
-mod serial;
-mod task;
-mod apic;
-mod pci;
-mod audio;
-mod storage;
-mod ai;
-mod qemu;
-
+use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer};
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use x86_64::VirtAddr;
-use crate::task::{Task, executor::Executor};
-use crate::task::keyboard;
+use jarvis_kernel::task::{Task, executor::Executor};
+use jarvis_kernel::task::keyboard;
 
 /// This function is called on panic.
-#[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     serial_println!("{}", info);
     loop {}
-}
-
-#[cfg(test)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    serial_println!("[failed]\n");
-    serial_println!("Error: {}\n", info);
-    qemu::exit_qemu(qemu::QemuExitCode::Failed);
-}
-
-pub fn test_runner(tests: &[&dyn Fn()]) {
-    serial_println!("Running {} tests", tests.len());
-    for test in tests {
-        test();
-    }
-    qemu::exit_qemu(qemu::QemuExitCode::Success);
-}
-
-#[test_case]
-fn trivial_assertion() {
-    serial_print!("trivial assertion... ");
-    assert_eq!(1, 1);
-    serial_println!("[ok]");
 }
 
 entry_point!(kernel_main);
@@ -71,9 +30,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     println!("Hello JARVIS OS!");
     serial_println!("BOOT_READY");
     
-    #[cfg(test)]
-    test_main();
-
     gdt::init();
     interrupts::init_idt();
 
@@ -106,14 +62,14 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
     {
-        use crate::storage::vfs::FileSystem;
+        use jarvis_kernel::storage::vfs::FileSystem;
         let mut file = jfs.create("audio_log.raw").expect("Failed to create file");
         file.write(b"JARVIS Audio Data Placeholder").expect("Failed to write to file");
         println!("Status: JFS test write completed. Size: {} bytes", file.size());
     }
 
     let mut executor = Executor::new();
-    executor.spawn(Task::with_priority(ai::vad_task(1000), crate::task::Priority::High));
+    executor.spawn(Task::with_priority(ai::vad_task(1000), jarvis_kernel::task::Priority::High));
     executor.spawn(Task::new(ai::shell::shell_task()));
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
