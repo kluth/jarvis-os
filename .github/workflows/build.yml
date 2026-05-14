@@ -30,19 +30,16 @@ jobs:
       run: |
         cargo test --bin jarvis-kernel --target x86_64-jarvis_os.json \
           -Zbuild-std=core,alloc \
-          -Zbuild-std-features=compiler-builtins-mem \
           -Zjson-target-spec
 
-    - name: Create Production Disk Image
+    - name: Build Kernel (Production)
       run: |
-        # Use cargo build first to ensure we have the production binary
         cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json \
           -Zbuild-std=core,alloc \
-          -Zbuild-std-features=compiler-builtins-mem \
           -Zjson-target-spec
-        
-        # Then create the image
-        cargo run --bin create_image --target x86_64-unknown-linux-gnu
+
+    - name: Create Disk Image
+      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu
 
     - name: Upload Disk Image
       uses: actions/upload-artifact@v4

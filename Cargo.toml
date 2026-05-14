@@ -2,6 +2,7 @@
 name = "jarvis-kernel"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
 authors = ["JARVIS Project"]
 
 [[bin]]
