@@ -19,28 +19,23 @@ jobs:
     - name: Install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
       with:
+        toolchain: nightly
         components: rust-src, llvm-tools-preview
+        override: true
 
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
       with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
+        prefix-key: "jarvis-os"
 
     - name: Build Kernel
-      run: cargo build --target x86_64-unknown-none
+      run: cargo build --target x86_64-jarvis_os.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
 
     - name: Create Disk Image
-      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu
+      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu -Zjson-target-spec
 
     - name: Boot Test (QEMU)
       run: |
