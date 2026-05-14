@@ -9,6 +9,7 @@ mod gdt;
 mod interrupts;
 mod memory;
 mod allocator;
+mod serial;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -18,6 +19,7 @@ use x86_64::VirtAddr;
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
+    serial_println!("{}", info);
     loop {}
 }
 

@@ -11,6 +11,7 @@ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 font8x8 = "0.3.1"
 x86_64 = "0.14.2"
 linked_list_allocator = "0.10.1"
+uart_16550 = "0.3.0"
 
 [profile.dev]
 panic = "abort"
