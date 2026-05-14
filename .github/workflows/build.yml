@@ -26,12 +26,20 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
+    - name: Clean Workspace
+      run: cargo clean
+
     - name: Run Integration Tests (QEMU)
       run: |
-        cargo test --test basic_boot --target x86_64-jarvis_os.json \
+        # Build only the test binary
+        cargo build --test basic_boot --target x86_64-jarvis_os.json \
           -Zjson-target-spec
+        
+        # Find and run it
+        TEST_BIN=$(find target/x86_64-jarvis_os/debug/deps -name "basic_boot-*" -type f -executable | head -n 1)
+        cargo run --bin create_image --target x86_64-unknown-linux-gnu -- "$TEST_BIN"
 
-    - name: Build Kernel (Production)
+    - name: Build Production Kernel
       run: |
         cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json \
           -Zjson-target-spec
