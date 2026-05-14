@@ -5,6 +5,7 @@ use x86_64::{
 
 /// Initialisiert eine neue OffsetPageTable.
 ///
+/// # Sicherheit
 /// Diese Funktion ist unsicher, da der Aufrufer garantieren muss, dass der
 /// gesamte physische Speicher unter dem übergebenen `physical_memory_offset`
 /// gemappt ist. Außerdem darf diese Funktion nur einmal aufgerufen werden,
@@ -16,6 +17,7 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
 
 /// Gibt eine mutable Referenz auf die aktive Level-4-Seitentabelle zurück.
 ///
+/// # Sicherheit
 /// Diese Funktion ist unsicher, da der Aufrufer garantieren muss, dass der
 /// gesamte physische Speicher unter dem übergebenen `physical_memory_offset`
 /// gemappt ist.
@@ -30,13 +32,15 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr)
     let virt = physical_memory_offset + phys.as_u64();
     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
 
-    &mut *page_table_ptr // unsicher
+    &mut *page_table_ptr
 }
 
 use x86_64::structures::paging::{FrameAllocator, PhysFrame, Size4KiB, UnusedPhysFrame};
 use bootloader::boot_info::{MemoryMap, MemoryRegionKind};
 
 /// Ein FrameAllocator, der die Memory-Map des Bootloaders nutzt.
+/// Er implementiert einen einfachen Bump-Allocator, der Frames sequenziell aus
+/// den verfügbaren Speicherregionen zuweist.
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryMap,
     next: usize,
@@ -45,6 +49,7 @@ pub struct BootInfoFrameAllocator {
 impl BootInfoFrameAllocator {
     /// Erstellt einen neuen FrameAllocator aus der übergebenen Memory-Map.
     ///
+    /// # Sicherheit
     /// Diese Funktion ist unsicher, da der Aufrufer garantieren muss, dass die
     /// Memory-Map korrekt ist und dass alle als `Usable` markierten Frames
     /// tatsächlich unbenutzt sind.

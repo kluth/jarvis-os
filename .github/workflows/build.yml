@@ -22,7 +22,7 @@ jobs:
         components: rust-src, llvm-tools-preview
 
     - name: Build Kernel
-      run: cargo build --target x86_64-jarvis_os.json -Zjson-target-spec -Zbuild-std=core,compiler_builtins -Zbuild-std-features=compiler-builtins-mem
+      run: cargo build --target x86_64-unknown-none -Zbuild-std=core,compiler_builtins -Zbuild-std-features=compiler-builtins-mem
 
     - name: Upload Kernel Binary
       uses: actions/upload-artifact@v4
