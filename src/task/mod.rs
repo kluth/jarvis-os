@@ -9,7 +9,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 pub mod executor;
 pub mod keyboard;
 
-/// Ein Task ist ein Wrapper um ein Future, das ein `()` zurückgibt.
+/// A Task is a wrapper around a Future that returns `()`.
 pub struct Task {
     id: TaskId,
     future: Pin<Box<dyn Future<Output = ()>>>,

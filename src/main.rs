@@ -18,7 +18,7 @@ use x86_64::VirtAddr;
 use crate::task::{Task, executor::Executor};
 use crate::task::keyboard;
 
-/// Der Panic-Handler wird aufgerufen, wenn im Kernel ein fataler Fehler auftritt.
+/// This function is called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
@@ -28,8 +28,8 @@ fn panic(info: &PanicInfo) -> ! {
 
 entry_point!(kernel_main);
 
-/// Der Einstiegspunkt für den Kernel.
-/// Der Bootloader ruft diese Funktion auf, sobald das System im 64-Bit Modus ist.
+/// Kernel entry point.
+/// The bootloader calls this function once the system is in 64-bit mode.
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
         vga_buffer::init(framebuffer);

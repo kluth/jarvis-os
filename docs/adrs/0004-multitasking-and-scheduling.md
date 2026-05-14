@@ -1,22 +1,22 @@
-# ADR 0004: Multitasking und Scheduling-Strategie
+# ADR 0004: Multitasking and Scheduling Strategy
 
 ## Status
-Vorgeschlagen
+Proposed
 
-## Kontext
-JARVIS OS muss in der Lage sein, mehrere Aufgaben (Tasks) quasi-gleichzeitig auszuführen. Dies ist die Voraussetzung für Hintergrundprozesse wie die Hardware-Erkennung und die KI-Kommunikation. Wir müssen entscheiden, wie Tasks repräsentiert werden und welcher Scheduling-Algorithmus zum Einsatz kommt.
+## Context
+JARVIS OS must be able to execute multiple tasks quasi-simultaneously. This is a prerequisite for background processes such as hardware detection and AI communication. We must decide how tasks are represented and which scheduling algorithm will be used.
 
-## Entscheidung
-1.  **Kooperatives vs. Präemptives Multitasking:** Wir implementieren initial **kooperatives Multitasking** unter Nutzung von Rusts `async/await` Infrastruktur. Dies ermöglicht eine effiziente Verwaltung vieler Tasks ohne die Komplexität voller Thread-Kontext-Switches (präemptiv) in der frühen Phase.
-2.  **Task Repräsentation:** Ein Task wird durch ein `Future` repräsentiert, das eine atomare Einheit von Arbeit beschreibt.
-3.  **Executor:** Wir implementieren einen einfachen `Executor`, der eine Warteschlange von Tasks (Futures) verwaltet und diese abarbeitet (pollt), bis sie bereit sind.
-4.  **Waker-Mechanismus:** Um CPU-Zyklen zu sparen, nutzen wir einen `Waker`-Mechanismus, der Tasks nur dann pollt, wenn ein Ereignis (z.B. ein Timer-Interrupt oder Daten auf dem Bus) eingetreten ist.
-5.  **Vorbereitung auf Präemption:** Langfristig wird ein präemptiver Scheduler (Multilevel Feedback Queue) hinzugefügt, der auf Hardware-Timern (APIC) basiert.
+## Decision
+1.  **Cooperative vs. Preemptive Multitasking:** We initially implement **cooperative multitasking** using Rust's `async/await` infrastructure. This allows for efficient management of many tasks without the complexity of full thread context switches (preemptive) in the early phase.
+2.  **Task Representation:** A task is represented by a `Future` that describes an atomic unit of work.
+3.  **Executor:** We implement a simple `Executor` that manages a queue of tasks (futures) and processes (polls) them until they are ready.
+4.  **Waker Mechanism:** To save CPU cycles, we use a `Waker` mechanism that polls tasks only when an event (e.g., a timer interrupt or data on the bus) has occurred.
+5.  **Preparation for Preemption:** In the long term, a preemptive scheduler (Multilevel Feedback Queue) based on hardware timers (APIC) will be added.
 
 ## Design Patterns
-*   **Strategy Pattern:** Abstraktion des Executors, um später zwischen kooperativem und präemptivem Scheduling wechseln zu können.
-*   **State Pattern:** Verwaltung des Task-Status (Pending, Ready, Completed).
+*   **Strategy Pattern:** Abstraction of the executor to allow switching between cooperative and preemptive scheduling later.
+*   **State Pattern:** Management of task status (Pending, Ready, Completed).
 
-## Konsequenzen
-*   **Vorteile:** Geringer Overhead, nutzt Rusts Typsicherheit für asynchrone Programmierung, ideal für I/O-lastige JARVIS-Module.
-*   **Nachteile:** Tasks müssen aktiv `yield`en (bzw. `.await` nutzen), um andere Tasks nicht zu blockieren.
+## Consequences
+*   **Advantages:** Low overhead, utilizes Rust's type safety for asynchronous programming, ideal for I/O-heavy JARVIS modules.
+*   **Disadvantages:** Tasks must actively `yield` (or use `.await`) to avoid blocking other tasks.

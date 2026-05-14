@@ -15,13 +15,13 @@ pub fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    // Wir deaktivieren Interrupts während des Schreibens, um Deadlocks zu vermeiden
+    // We disable interrupts while writing to the serial port to avoid deadlocks
     interrupts::without_interrupts(|| {
         SERIAL1.lock().write_fmt(args).expect("Printing to serial failed");
     });
 }
 
-/// Druckt auf die serielle Schnittstelle.
+/// Prints to the host through the serial interface.
 #[macro_export]
 macro_rules! serial_print {
     ($($arg:tt)*) => {
@@ -29,7 +29,7 @@ macro_rules! serial_print {
     };
 }
 
-/// Druckt auf die serielle Schnittstelle mit Newline.
+/// Prints to the host through the serial interface, appending a newline.
 #[macro_export]
 macro_rules! serial_println {
     () => ($crate::serial_print!("\n"));

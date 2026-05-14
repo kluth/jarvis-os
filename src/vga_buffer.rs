@@ -4,7 +4,7 @@ use spinning_top::Spinlock;
 use lazy_static::lazy_static;
 use font8x8::UnicodeFonts;
 
-/// Ein einfacher Writer für den UEFI Framebuffer.
+/// A simple writer for the UEFI Framebuffer.
 pub struct FramebufferWriter {
     framebuffer: &'static mut [u8],
     info: FrameBufferInfo,
@@ -44,7 +44,7 @@ impl FramebufferWriter {
         self.framebuffer.fill(0);
     }
 
-    /// Schreibt ein einzelnes Zeichen unter Verwendung von font8x8.
+    /// Writes a single character using font8x8.
     pub fn write_char(&mut self, c: char) {
         match c {
             '\n' => self.newline(),
@@ -87,7 +87,7 @@ impl FramebufferWriter {
             );
         }
 
-        // Letzte Zeile löschen
+        // Clear the last line
         let last_line_start = total_bytes - bytes_to_scroll;
         for i in last_line_start..total_bytes {
             self.framebuffer[i] = 0;
@@ -114,7 +114,7 @@ lazy_static! {
     pub static ref WRITER: Spinlock<Option<FramebufferWriter>> = Spinlock::new(None);
 }
 
-/// Initialisiert den globalen Writer.
+/// Initializes the global writer.
 pub fn init(framebuffer: &'static mut FrameBuffer) {
     let info = framebuffer.info();
     let writer = FramebufferWriter::new(framebuffer.buffer_mut(), info);

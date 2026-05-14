@@ -1,17 +1,17 @@
 # JARVIS OS
 
-Das allumfassende Betriebssystem-Projekt.
+The all-encompassing operating system project.
 
 ## CI/CD Status
-Die Kompilierung findet automatisiert auf GitHub statt, um lokale Ressourcen zu schonen.
+Compilation is automated on GitHub to save local resources.
 
 [![Build JARVIS OS](https://github.com/kluth/jarvis-os/actions/workflows/build.yml/badge.svg)](https://github.com/kluth/jarvis-os/actions/workflows/build.yml)
 
-## Lokale Entwicklung
-Da der Build-Prozess sehr ressourcenintensiv ist, wird empfohlen, die Artefakte aus den GitHub Actions herunterzuladen.
+## Local Development
+Since the build process is highly resource-intensive, it is recommended to download artifacts from GitHub Actions.
 
-Zum Testen in QEMU (lokal):
-1. Artefakt `jarvis-kernel` herunterladen.
-2. `qemu-system-x86_64 -drive format=raw,file=target/x86_64-jarvis_os/debug/jarvis-kernel` (Pfad anpassen).
+To test in QEMU (locally):
+1. Download the `jarvis-kernel` artifact.
+2. `qemu-system-x86_64 -drive format=raw,file=target/x86_64-jarvis_os/debug/jarvis-kernel` (adjust path).
 
-*Hinweis: Ein vollständiges Disk-Image-Tooling wird in Phase 1 noch finalisiert.*
+*Note: Full disk image tooling will be finalized in Phase 1.*

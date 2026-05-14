@@ -1,24 +1,24 @@
-# ADR 0002: Framebuffer Output und Provider Pattern
+# ADR 0002: Framebuffer Output and Provider Pattern
 
 ## Status
-Vorgeschlagen
+Proposed
 
-## Kontext
-Der Kernel benötigt eine Möglichkeit, Informationen visuell auszugeben. Da wir UEFI verwenden, stellt uns der Bootloader einen Framebuffer (Linear Buffer) zur Verfügung. Wir müssen entscheiden, wie wir den Zugriff auf diesen Framebuffer strukturieren, um Thread-Sicherheit (auch vor Einführung von Scheduler/Mutexes) und Abstraktion zu gewährleisten.
+## Context
+The kernel needs a way to output information visually. Since we are using UEFI, the bootloader provides a framebuffer (linear buffer). We must decide how to structure access to this framebuffer to ensure thread safety (even before introducing scheduler/mutexes) and abstraction.
 
-## Entscheidung
-1.  **Framebuffer-Abstraktion:** Wir implementieren einen `Writer`, der auf dem vom Bootloader bereitgestellten Framebuffer operiert.
-2.  **Provider Pattern:** Wir nutzen das Provider Pattern, um eine globale Instanz des Writers bereitzustellen. Da wir noch keine Mutexes haben, nutzen wir initial eine `Locked` Abstraktion (z.B. ein einfacher Spinlock oder `lazy_static` mit Spinlock, falls verfügbar, sonst eine eigene minimalistische Implementierung).
-3.  **Schriftart:** Für die erste Version nutzen wir eine einfache, eingebettete Bitmap-Schriftart (z.B. 8x16), um Text auf den Framebuffer zu zeichnen.
-4.  **Scrolling:** Wir implementieren einen linearen Puffer-Scroll-Algorithmus, der den Speicherinhalt nach oben verschiebt, wenn der Bildschirm voll ist.
+## Decision
+1.  **Framebuffer Abstraction:** We implement a `Writer` that operates on the framebuffer provided by the bootloader.
+2.  **Provider Pattern:** We use the Provider Pattern to provide a global instance of the writer. Since we don't have mutexes yet, we initially use a `Locked` abstraction (e.g., a simple spinlock or `lazy_static` with spinlock, if available, otherwise our own minimalist implementation).
+3.  **Font:** For the first version, we use a simple, embedded bitmap font (e.g., 8x16) to draw text on the framebuffer.
+4.  **Scrolling:** We implement a linear buffer scroll algorithm that shifts the memory content upwards when the screen is full.
 
 ## Bounded Context
-**DisplayContext**: Verantwortlich für die Ansteuerung der Grafik-Hardware (Framebuffer) und die Darstellung von Glyphen.
+**DisplayContext**: Responsible for controlling the graphics hardware (framebuffer) and rendering glyphs.
 
 ## Design Patterns
-*   **Provider Pattern:** Globaler Zugriff auf den Display-Treiber.
-*   **Strategy Pattern (Vorbereitung):** Abstraktion der Zeichenoperationen, um später zwischen verschiedenen Grafikmodi oder Architekturen wechseln zu können.
+*   **Provider Pattern:** Global access to the display driver.
+*   **Strategy Pattern (Preparation):** Abstraction of drawing operations to allow switching between different graphics modes or architectures later.
 
-## Konsequenzen
-*   **Vorteile:** Frühes visuelles Feedback für Debugging. Klare Trennung zwischen Text-Logik und Pixel-Logik.
-*   **Nachteile:** Zusätzlicher Overhead für das Zeichnen von Pixeln im Vergleich zum VGA-Textmodus (der in UEFI nicht garantiert ist).
+## Consequences
+*   **Advantages:** Early visual feedback for debugging. Clear separation between text logic and pixel logic.
+*   **Disadvantages:** Additional overhead for drawing pixels compared to VGA text mode (which is not guaranteed in UEFI).
