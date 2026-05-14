@@ -25,14 +25,12 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        prefix-key: "jarvis-os-test"
-
     - name: Run Framework Tests
       run: |
-        cargo test --bin jarvis-kernel --target x86_64-jarvis_os.json \
-          -Zbuild-std=core,alloc \
-          -Zbuild-std-features=compiler-builtins-mem \
-          -Zjson-target-spec
+        # Build the kernel with test feature
+        cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
+        
+        # Run using image-builder as runner
+        cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu -- \
+          target/x86_64-jarvis_os/debug/jarvis-kernel
