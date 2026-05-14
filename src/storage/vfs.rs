@@ -1,5 +1,6 @@
 use alloc::boxed::Box;
 
+#[derive(Debug)]
 pub enum Error {
     NotFound,
     AlreadyExists,
