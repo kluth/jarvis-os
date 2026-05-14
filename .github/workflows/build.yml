@@ -35,7 +35,7 @@ jobs:
       run: cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
 
     - name: Create Disk Image
-      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu -Zjson-target-spec
+      run: cargo run --bin create_image --target x86_64-unknown-linux-gnu
 
     - name: Boot Test (QEMU)
       run: |
