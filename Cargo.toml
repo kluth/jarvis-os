@@ -6,7 +6,7 @@ resolver = "2"
 authors = ["JARVIS Project"]
 
 [dependencies]
-bootloader_api = { version = "0.11.2", default-features = false }
+bootloader_api = "=0.11.2"
 spinning_top = "0.3.0"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 font8x8 = { version = "0.3.1", default-features = false, features = ["unicode"] }
@@ -18,7 +18,7 @@ conquer-once = { version = "0.2.0", default-features = false }
 futures-util = { version = "0.3.28", default-features = false, features = ["alloc"] }
 pc-keyboard = "0.7.0"
 pic8259 = "0.10.1"
-bootloader = "0.11"
+bootloader = "=0.11.2"
 
 [features]
 test = []
