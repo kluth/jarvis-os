@@ -10,10 +10,13 @@ mod interrupts;
 mod memory;
 mod allocator;
 mod serial;
+mod task;
 
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use x86_64::VirtAddr;
+use crate::task::{Task, executor::Executor};
+use crate::task::keyboard;
 
 /// Der Panic-Handler wird aufgerufen, wenn im Kernel ein fataler Fehler auftritt.
 #[panic_handler]
@@ -45,24 +48,29 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
-    println!("Status: Memory management initialized (Heap active).");
+    println!("Status: Memory management initialized.");
 
-    use alloc::boxed::Box;
-    let x = Box::new(42);
-    println!("Heap test: Box value is {}", x);
-
-    println!("Status: CPU Phase 1 completed (GDT/IDT initialized).");
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
     
-    // Trigger a breakpoint exception to verify IDT
-    x86_64::instructions::interrupts::int3();
-
-    println!("It did not crash! Breakpoint handled.");
-
-    loop {}
+    println!("Status: Multitasking active. System ready.");
+    executor.run();
 }
 
 fn init() {
     gdt::init();
     interrupts::init_idt();
+    unsafe { interrupts::PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
+}
+
+async fn async_number() -> u32 {
+    42
+}
+
+async fn example_task() {
+    let number = async_number().await;
+    println!("Async task says hello! The number is {}", number);
 }
 
