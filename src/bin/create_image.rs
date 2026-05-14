@@ -2,7 +2,7 @@ use std::path::Path;
 use std::fs;
 
 fn main() {
-    let kernel_path = Path::new("target/x86_64-unknown-none/debug/jarvis-kernel");
+    let kernel_path = Path::new("target/x86_64-jarvis_os/debug/jarvis-kernel");
     let out_dir = Path::new("target/image");
     let image_path = out_dir.join("jarvis-os.img");
 
