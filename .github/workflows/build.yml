@@ -26,7 +26,10 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Run Framework Tests
+    - name: Update Dependencies
+      run: cargo update
+
+    - name: Run Tests (QEMU)
       run: |
         # Build the kernel with test feature
         cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
