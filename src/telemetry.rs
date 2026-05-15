@@ -1,12 +1,15 @@
-use spinning_top::Spinlock;
 use lazy_static::lazy_static;
+use spinning_top::Spinlock;
 
 #[derive(Debug, Clone, Copy)]
 pub enum TelemetryData {
     CpuLoad(u8),
     MemoryUsed(usize),
     MemoryFree(usize),
-    HardwareEvent { device: &'static str, event: &'static str },
+    HardwareEvent {
+        device: &'static str,
+        event: &'static str,
+    },
     SystemStatus(&'static str),
     AIIntentDetected(&'static str),
 }
@@ -29,7 +32,7 @@ impl TelemetryHub {
     pub fn get_latest(&self, count: usize) -> alloc::vec::Vec<TelemetryData> {
         let mut result = alloc::vec::Vec::new();
         let actual_count = core::cmp::min(count, BUFFER_SIZE);
-        
+
         for i in 0..actual_count {
             let idx = (self.index + BUFFER_SIZE - 1 - i) % BUFFER_SIZE;
             if let Some(data) = self.buffer[idx] {
@@ -64,7 +67,7 @@ pub async fn telemetry_task() {
             // In a real JARVIS OS, this would be analyzed by the AI layer
             last_total_logs = current_total;
         }
-        
+
         // Yield to other tasks
         core::future::ready(()).await;
     }

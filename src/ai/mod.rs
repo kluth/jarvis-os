@@ -1,5 +1,5 @@
-mod vad;
+pub mod shell;
 pub mod stt;
 pub mod tts;
-pub mod shell;
+mod vad;
 pub use vad::vad_task;

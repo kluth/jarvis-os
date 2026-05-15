@@ -26,6 +26,12 @@ impl DmaBuffer {
         self.size
     }
 
+    /// Writes data to the DMA buffer at the specified offset.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `offset + data.len()` does not exceed the
+    /// buffer's actual physical capacity.
     pub unsafe fn write(&mut self, offset: usize, data: &[u8]) {
         let len = data.len();
         let target = self.virt_addr.add(offset % self.size);

@@ -1,9 +1,9 @@
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
+use crate::apic::LocalApic;
+use crate::gdt;
 use crate::println;
 use lazy_static::lazy_static;
-use crate::gdt;
 use spinning_top::Spinlock;
-use crate::apic::LocalApic;
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::VirtAddr;
 
 pub const TIMER_INTERRUPT_VECTOR: u8 = 32;
@@ -35,14 +35,13 @@ lazy_static! {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         unsafe {
-            idt.double_fault.set_handler_fn(double_fault_handler)
+            idt.double_fault
+                .set_handler_fn(double_fault_handler)
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
         idt.page_fault.set_handler_fn(page_fault_handler);
-        idt[InterruptIndex::Timer.as_usize()]
-            .set_handler_fn(timer_interrupt_handler);
-        idt[InterruptIndex::Keyboard.as_usize()]
-            .set_handler_fn(keyboard_interrupt_handler);
+        idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
+        idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
         idt
     };
 }
@@ -51,6 +50,13 @@ pub fn init_idt() {
     IDT.load();
 }
 
+/// Initializes the Local APIC.
+///
+/// # Safety
+///
+/// This function is unsafe because the caller must ensure that the
+/// `physical_memory_offset` is correct and that the APIC base address
+/// is mapped to the corresponding virtual address.
 pub unsafe fn init_apic(physical_memory_offset: VirtAddr) {
     crate::apic::disable_pic();
     let mut lapic = LocalApic::new(physical_memory_offset);
@@ -58,15 +64,14 @@ pub unsafe fn init_apic(physical_memory_offset: VirtAddr) {
     *LAPIC.lock() = Some(lapic);
 }
 
-extern "x86-interrupt" fn breakpoint_handler(
-    stack_frame: InterruptStackFrame)
-{
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
-    stack_frame: InterruptStackFrame, _error_code: u64) -> !
-{
+    stack_frame: InterruptStackFrame,
+    _error_code: u64,
+) -> ! {
     panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
 }
 
@@ -83,17 +88,15 @@ extern "x86-interrupt" fn page_fault_handler(
     panic!("PAGE FAULT");
 }
 
-extern "x86-interrupt" fn timer_interrupt_handler(
-    _stack_frame: InterruptStackFrame)
-{
+extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     if let Some(ref mut lapic) = *LAPIC.lock() {
-        unsafe { lapic.end_of_interrupt(); }
+        unsafe {
+            lapic.end_of_interrupt();
+        }
     }
 }
 
-extern "x86-interrupt" fn keyboard_interrupt_handler(
-    _stack_frame: InterruptStackFrame)
-{
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     use x86_64::instructions::port::Port;
 
     let mut port = Port::new(0x60);
@@ -101,6 +104,8 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     crate::task::keyboard::add_scancode(scancode);
 
     if let Some(ref mut lapic) = *LAPIC.lock() {
-        unsafe { lapic.end_of_interrupt(); }
+        unsafe {
+            lapic.end_of_interrupt();
+        }
     }
 }

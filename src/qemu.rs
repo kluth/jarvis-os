@@ -12,5 +12,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
         let mut port = Port::new(0xf4);
         port.write(exit_code as u32);
     }
-    loop {}
+    loop {
+        core::hint::spin_loop();
+    }
 }

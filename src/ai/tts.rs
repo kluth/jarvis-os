@@ -8,17 +8,18 @@ pub trait TtsEngine {
 
 /// JARVIS OS TTS Strategy:
 /// 1. Low Footprint: Focus on embedded-friendly engines (Flite, MaryTTS).
-/// 2. Audio Pipeline Integration: The output of speak() is fed directly into 
+/// 2. Audio Pipeline Integration: The output of speak() is fed directly into
 ///    the Output AudioStream.
-/// 3. Async Synthesis: TTS generation should happen in a background task 
+/// 3. Async Synthesis: TTS generation should happen in a background task
 ///    to avoid stuttering during playback.
+#[derive(Default)]
 pub struct TtsManager {
     _engine: Option<alloc::boxed::Box<dyn TtsEngine>>,
 }
 
 impl TtsManager {
     pub fn new() -> Self {
-        TtsManager { _engine: None }
+        Self::default()
     }
 
     pub fn set_engine(&mut self, engine: alloc::boxed::Box<dyn TtsEngine>) {

@@ -1,8 +1,11 @@
-use x86_64::{structures::paging::{
-    mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
-}, VirtAddr};
-use spinning_top::Spinlock;
 use linked_list_allocator::LockedHeap;
+use spinning_top::Spinlock;
+use x86_64::{
+    structures::paging::{
+        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
+    },
+    VirtAddr,
+};
 
 pub mod slab;
 

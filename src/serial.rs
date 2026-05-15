@@ -1,6 +1,6 @@
-use uart_16550::SerialPort;
-use spinning_top::Spinlock;
 use lazy_static::lazy_static;
+use spinning_top::Spinlock;
+use uart_16550::SerialPort;
 
 lazy_static! {
     pub static ref SERIAL1: Spinlock<SerialPort> = {
@@ -17,7 +17,10 @@ pub fn _print(args: core::fmt::Arguments) {
 
     // We disable interrupts while writing to the serial port to avoid deadlocks
     interrupts::without_interrupts(|| {
-        SERIAL1.lock().write_fmt(args).expect("Printing to serial failed");
+        SERIAL1
+            .lock()
+            .write_fmt(args)
+            .expect("Printing to serial failed");
     });
 }
 

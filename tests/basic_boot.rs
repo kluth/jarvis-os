@@ -4,9 +4,9 @@
 #![test_runner(jarvis_kernel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use jarvis_kernel::{serial_print, serial_println};
-use bootloader_api::{entry_point, BootInfo};
 
 entry_point!(main);
 

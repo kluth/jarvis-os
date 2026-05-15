@@ -1,2 +1,2 @@
-pub mod vfs;
 pub mod jfs;
+pub mod vfs;

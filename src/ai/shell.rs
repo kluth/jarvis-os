@@ -1,12 +1,15 @@
 use super::stt::SttEngine;
 use super::tts::TtsEngine;
-use crate::{println, telemetry, device_manager};
+use crate::{device_manager, println, telemetry};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Intent {
     SystemStatus,
     InitializeDiagnostics,
-    ControlHardware { device: &'static str, action: &'static str },
+    ControlHardware {
+        device: &'static str,
+        action: &'static str,
+    },
     ListDevices,
     ScanNetwork,
     Greeting,
@@ -28,6 +31,7 @@ impl Intent {
 }
 
 /// The Jarvis Voice Shell: The primary interaction model.
+#[derive(Default)]
 pub struct VoiceShell {
     _stt: Option<alloc::boxed::Box<dyn SttEngine>>,
     tts: Option<alloc::boxed::Box<dyn TtsEngine>>,
@@ -35,13 +39,15 @@ pub struct VoiceShell {
 
 impl VoiceShell {
     pub fn new() -> Self {
-        VoiceShell { _stt: None, tts: None }
+        Self::default()
     }
+}
 
+impl VoiceShell {
     /// Processes a recognized command string and maps it to an Intent.
     pub fn handle_command(&mut self, text: &str) {
         println!("Voice Shell: Handling command -> {}", text);
-        
+
         let intent = self.map_text_to_intent(text);
         // Log the intent type (static str) instead of the dynamic input text
         telemetry::log(telemetry::TelemetryData::AIIntentDetected(intent.as_str()));
@@ -76,7 +82,7 @@ impl VoiceShell {
 
     fn map_text_to_intent(&self, text: &str) -> Intent {
         let normalized = text.to_lowercase();
-        
+
         if normalized.contains("status") || normalized.contains("how are you") {
             Intent::SystemStatus
         } else if normalized.contains("diagnostic") || normalized.contains("check up") {
@@ -88,7 +94,10 @@ impl VoiceShell {
         } else if normalized.contains("network") || normalized.contains("scan") {
             Intent::ScanNetwork
         } else if normalized.contains("turn on") {
-            Intent::ControlHardware { device: "lights", action: "on" }
+            Intent::ControlHardware {
+                device: "lights",
+                action: "on",
+            }
         } else {
             Intent::Unknown
         }
@@ -105,14 +114,14 @@ impl VoiceShell {
 /// The 'Always-Listening' loop task.
 pub async fn shell_task() {
     let mut _shell = VoiceShell::new();
-    
+
     loop {
         // Here we would check the 'Voice Detected' signal from VAD
         // if voice_detected {
         //    let text = stt.transcribe(buffer);
         //    shell.handle_command(&text);
         // }
-        
+
         core::future::ready(()).await;
     }
 }

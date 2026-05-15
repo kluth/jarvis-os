@@ -20,7 +20,7 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
                 if vendor_id == 0xFFFF {
                     continue;
                 }
-                
+
                 let device_id = pci_read_word(bus, slot, function, 2);
                 let class_rev = pci_read_word(bus, slot, function, 8);
                 let class = (class_rev >> 8) as u8;
@@ -66,7 +66,7 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
                 if class == 0x04 && subclass == 0x03 {
                     devices.push(dev);
                 }
-                
+
                 // If it's not a multi-function device, don't check other functions
                 if function == 0 {
                     let header_type = pci_read_word(bus, slot, 0, 0x0E) & 0xFF;
@@ -83,8 +83,7 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
 impl PciDevice {
     pub fn read_bar(&self, bar_index: u8) -> u32 {
         let offset = 0x10 + (bar_index * 4);
-        let low = pci_read_dword(self.bus, self.slot, self.function, offset);
-        low
+        pci_read_dword(self.bus, self.slot, self.function, offset)
     }
 
     pub fn enable_bus_mastering(&self) {

@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(abi_x86_interrupt)]
 
 extern crate alloc;
 
@@ -9,24 +8,25 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui, acpi, net};
-use jarvis_kernel::task::{Task, executor::Executor};
-use jarvis_kernel::task::keyboard;
+use jarvis_kernel::{acpi, gdt, gui, interrupts, memory, serial_println, telemetry, vga_buffer};
 
 /// This function is called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     serial_println!("PANIC: {}", info);
-    
+
     #[cfg(feature = "test")]
     qemu::exit_qemu(qemu::QemuExitCode::Failed);
 
-    loop {}
+    loop {
+        core::hint::spin_loop();
+    }
 }
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
-    config.mappings.physical_memory = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
+    config.mappings.physical_memory =
+        core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
     config
 };
 
@@ -46,7 +46,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     gui::init_ui();
 
     serial_println!("Hello JARVIS OS!");
-    
+
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
 
     if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
@@ -56,8 +56,13 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     #[cfg(feature = "test")]
     run_tests();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
-    
+    let phys_mem_offset = VirtAddr::new(
+        boot_info
+            .physical_memory_offset
+            .into_option()
+            .expect("Physical memory offset not provided by bootloader"),
+    );
+
     serial_println!("Initializing CPU features...");
     gdt::init();
     interrupts::init_idt();
@@ -68,12 +73,12 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     x86_64::instructions::interrupts::enable();
 
     serial_println!("Initializing Memory Mapper...");
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    unsafe { memory::init(phys_mem_offset) };
     serial_println!("Initializing Bitmap Frame Allocator...");
-    let mut frame_allocator = unsafe {
-        memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset)
-    };
+    unsafe { memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset) };
 
+    // DEBUG: Skip heap initialization to isolate OOM
+    /*
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
@@ -82,11 +87,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     serial_println!("Scanning PCI bus...");
     let hda_devices = pci::scan_bus();
     for dev in hda_devices {
-        serial_println!("Found HDA at {}:{}:{} (BAR0: 0x{:x})", 
+        serial_println!("Found HDA at {}:{}:{} (BAR0: 0x{:x})",
             dev.bus, dev.slot, dev.function, dev.read_bar(0));
-        
-        let mut controller = unsafe { 
-            audio::hda::HdaController::new(&dev, phys_mem_offset) 
+
+        let mut controller = unsafe {
+            audio::hda::HdaController::new(&dev, phys_mem_offset)
         };
         unsafe { controller.init(); }
     }
@@ -110,9 +115,15 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     executor.spawn(Task::new(telemetry::telemetry_task()));
     executor.spawn(Task::new(gui::ui_task()));
     executor.spawn(Task::new(net::discovery_task()));
-    
+
     serial_println!("Status: Multitasking active. System ready.");
     executor.run();
+    */
+
+    serial_println!("DEBUG: Core initialization finished. Looping...");
+    loop {
+        core::hint::spin_loop();
+    }
 }
 
 #[cfg(feature = "test")]
@@ -126,14 +137,5 @@ fn run_tests() {
 #[cfg(feature = "test")]
 fn test_println() {
     jarvis_kernel::serial_print!("test_println... ");
-    serial_println!("[ok]");
-}
-
-async fn async_number() -> u32 {
-    42
-}
-
-async fn example_task() {
-    let number = async_number().await;
-    serial_println!("Async task says hello! The number is {}", number);
+    jarvis_kernel::serial_println!("[ok]");
 }

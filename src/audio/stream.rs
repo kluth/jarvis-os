@@ -6,19 +6,19 @@ pub enum StreamDirection {
 }
 
 pub struct AudioStream {
-    buffer: DmaBuffer,
-    direction: StreamDirection,
-    sample_rate: u32,
-    channels: u8,
+    _buffer: DmaBuffer,
+    _direction: StreamDirection,
+    _sample_rate: u32,
+    _channels: u8,
 }
 
 impl AudioStream {
     pub fn new(buffer: DmaBuffer, direction: StreamDirection) -> Self {
         AudioStream {
-            buffer,
-            direction,
-            sample_rate: 44100,
-            channels: 2,
+            _buffer: buffer,
+            _direction: direction,
+            _sample_rate: 44100,
+            _channels: 2,
         }
     }
 

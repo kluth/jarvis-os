@@ -1,8 +1,10 @@
+use bootloader_api::info::{MemoryRegionKind, MemoryRegions};
 use x86_64::{
-    structures::paging::{PageTable, OffsetPageTable, FrameAllocator, PhysFrame, Size4KiB, FrameDeallocator},
-    VirtAddr, PhysAddr,
+    structures::paging::{
+        FrameAllocator, FrameDeallocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB,
+    },
+    PhysAddr, VirtAddr,
 };
-use bootloader_api::info::{MemoryRegions, MemoryRegionKind};
 
 /// Initializes a new OffsetPageTable.
 ///
@@ -21,9 +23,7 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
 /// # Safety
 /// This function is unsafe because the caller must guarantee that the
 /// complete physical memory is mapped to the specified `physical_memory_offset`.
-unsafe fn active_level_4_table(physical_memory_offset: VirtAddr)
-    -> &'static mut PageTable
-{
+unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
     use x86_64::registers::control::Cr3;
 
     let (level_4_table_frame, _) = Cr3::read();
@@ -47,7 +47,10 @@ impl BitmapFrameAllocator {
     /// # Safety
     /// This function is unsafe because the caller must guarantee that the passed
     /// memory map is valid and that the physical memory offset is correct.
-    pub unsafe fn init(memory_map: &'static MemoryRegions, physical_memory_offset: VirtAddr) -> Self {
+    pub unsafe fn init(
+        memory_map: &'static MemoryRegions,
+        physical_memory_offset: VirtAddr,
+    ) -> Self {
         let mut max_addr = 0;
         for region in memory_map.iter() {
             if region.end > max_addr {
@@ -56,12 +59,14 @@ impl BitmapFrameAllocator {
         }
 
         let total_frames = (max_addr / 4096) as usize;
-        let bitmap_size = (total_frames + 7) / 8;
+        let bitmap_size = total_frames.div_ceil(8);
 
         // Find a usable region large enough for the bitmap
         let mut bitmap_addr = 0;
         for region in memory_map.iter() {
-            if region.kind == MemoryRegionKind::Usable && (region.end - region.start) as usize >= bitmap_size {
+            if region.kind == MemoryRegionKind::Usable
+                && (region.end - region.start) as usize >= bitmap_size
+            {
                 bitmap_addr = region.start;
                 break;
             }
@@ -71,7 +76,7 @@ impl BitmapFrameAllocator {
             panic!("Could not find a usable memory region for the frame allocator bitmap");
         }
 
-        let bitmap_ptr = (physical_memory_offset + bitmap_addr).as_mut_ptr() as *mut u8;
+        let bitmap_ptr = (physical_memory_offset + bitmap_addr).as_mut_ptr();
         let bitmap = core::slice::from_raw_parts_mut(bitmap_ptr, bitmap_size);
 
         // Initialize bitmap: all frames used
@@ -96,7 +101,7 @@ impl BitmapFrameAllocator {
 
         // Mark the bitmap itself as used
         let bitmap_start_frame = (bitmap_addr / 4096) as usize;
-        let bitmap_end_frame = ((bitmap_addr + bitmap_size as u64 + 4095) / 4096) as usize;
+        let bitmap_end_frame = (bitmap_addr + bitmap_size as u64).div_ceil(4096) as usize;
         for i in bitmap_start_frame..bitmap_end_frame {
             allocator.set_used(i);
         }
@@ -135,7 +140,9 @@ unsafe impl FrameAllocator<Size4KiB> for BitmapFrameAllocator {
             if !self.is_used(index) {
                 self.set_used(index);
                 self.next_search_index = (index + 1) % self.max_frame_index;
-                return Some(PhysFrame::containing_address(PhysAddr::new((index as u64) * 4096)));
+                return Some(PhysFrame::containing_address(PhysAddr::new(
+                    (index as u64) * 4096,
+                )));
             }
         }
         None

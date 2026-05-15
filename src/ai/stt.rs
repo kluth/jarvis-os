@@ -1,7 +1,7 @@
 use crate::storage::vfs::Result;
 
 /// The Speech-to-Text (STT) engine trait.
-/// Implementations can wrap local inference engines (Whisper.cpp) 
+/// Implementations can wrap local inference engines (Whisper.cpp)
 /// or hardware accelerators.
 pub trait SttEngine {
     /// Translates raw PCM audio data into a string.
@@ -12,13 +12,14 @@ pub trait SttEngine {
 /// 1. Local-First: Priority on low-latency local inference.
 /// 2. Modular: Support for multiple backends via the SttEngine trait.
 /// 3. Streaming: Transcription should happen in chunks to provide immediate feedback.
+#[derive(Default)]
 pub struct SttManager {
     engine: Option<alloc::boxed::Box<dyn SttEngine>>,
 }
 
 impl SttManager {
     pub fn new() -> Self {
-        SttManager { engine: None }
+        Self::default()
     }
 
     pub fn set_engine(&mut self, engine: alloc::boxed::Box<dyn SttEngine>) {

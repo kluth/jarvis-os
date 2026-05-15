@@ -31,11 +31,25 @@ To keep the `main` branch stable, all development must occur in dedicated branch
 - **Fix Branches (`fix/<bug-name>`)**: For bug fixes.
 - **Refactor Branches (`refactor/<name>`)**: For code refactoring.
 
+## Quality Standards & Pipeline
+
+- **Zero Pipeline Failures**: A feature, fix, or task is **NEVER** considered finished if the CI pipeline fails. Stability is our highest priority.
+- **Mandatory Local Validation**: Before pushing any changes, you MUST run the local validation script (`scripts/validate.sh`).
+- **Resource Constraints**: Due to hardware limitations (Chromebook), `scripts/validate.sh` focuses on `cargo check` and `clippy`. Full `cargo build` is offloaded to the CI pipeline to preserve local resources.
+- **Error Diagnostics**: When encountering compiler errors, always use `rustc --explain <error_code>` if suggested by the compiler. This ensures we follow Rust's best practices and deeply understand the root causes.
+
+### Validation Framework
+The project includes a multi-layer validation framework:
+1. **`scripts/validate.sh`**: Central script for formatting, type-checking, and linting.
+2. **Git Hook (`pre-push`)**: Automatically prevents pushing code that fails the validation script.
+3. **CI Pipeline**: Conducts the final exhaustive build and test run in a specialized environment (QEMU).
+
 ### Workflow
 1. Create a new branch from `main`: `git checkout -b feat/my-new-feature`
 2. Implement and test your changes.
-3. Commit using Conventional Commits.
-4. Open a Pull Request to merge back into `main`.
+3. Run `scripts/validate.sh` locally (automatically triggered on `git push`).
+4. Commit using Conventional Commits.
+5. Open a Pull Request to merge back into `main`.
 
 ## Voice-First Principles
 

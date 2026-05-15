@@ -7,24 +7,24 @@
 
 extern crate alloc;
 
-pub mod vga_buffer;
+pub mod acpi;
+pub mod ai;
+pub mod allocator;
+pub mod apic;
+pub mod audio;
+pub mod device_manager;
 pub mod gdt;
+pub mod gui;
 pub mod interrupts;
 pub mod memory;
-pub mod allocator;
-pub mod serial;
-pub mod task;
-pub mod apic;
-pub mod pci;
-pub mod audio;
-pub mod storage;
-pub mod ai;
-pub mod qemu;
-pub mod telemetry;
-pub mod gui;
-pub mod device_manager;
-pub mod acpi;
 pub mod net;
+pub mod pci;
+pub mod qemu;
+pub mod serial;
+pub mod storage;
+pub mod task;
+pub mod telemetry;
+pub mod vga_buffer;
 
 use core::panic::PanicInfo;
 

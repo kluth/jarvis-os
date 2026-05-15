@@ -1,14 +1,16 @@
 pub mod ethernet;
 
-use crate::{println, device_manager};
+use crate::{device_manager, println};
 
 pub fn init() {
     println!("Net: Initializing networking stack...");
-    
+
     // Check if any network device was discovered
     let devices = device_manager::MANAGER.lock().get_devices().clone();
-    let has_net = devices.iter().any(|d| matches!(d.dev_type, device_manager::DeviceType::Network));
-    
+    let has_net = devices
+        .iter()
+        .any(|d| matches!(d.dev_type, device_manager::DeviceType::Network));
+
     if has_net {
         println!("Net: Network hardware detected. Starting discovery...");
         ethernet::init();

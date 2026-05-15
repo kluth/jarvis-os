@@ -1,7 +1,7 @@
-use alloc::vec::Vec;
 use alloc::string::String;
-use spinning_top::Spinlock;
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
+use spinning_top::Spinlock;
 
 #[derive(Debug, Clone)]
 pub enum DeviceType {
@@ -20,19 +20,22 @@ pub struct DeviceInfo {
     pub status: &'static str,
 }
 
+#[derive(Default)]
 pub struct DeviceManager {
     devices: Vec<DeviceInfo>,
 }
 
 impl DeviceManager {
     pub fn new() -> Self {
-        DeviceManager {
-            devices: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn register_device(&mut self, device: DeviceInfo) {
-        crate::println!("Device Manager: Registering -> {:?} ({:?})", device.name, device.dev_type);
+        crate::println!(
+            "Device Manager: Registering -> {:?} ({:?})",
+            device.name,
+            device.dev_type
+        );
         self.devices.push(device);
     }
 

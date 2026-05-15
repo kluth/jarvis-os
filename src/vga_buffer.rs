@@ -1,8 +1,23 @@
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use core::{fmt, ptr};
-use spinning_top::Spinlock;
-use lazy_static::lazy_static;
 use font8x8::UnicodeFonts;
+use lazy_static::lazy_static;
+use spinning_top::Spinlock;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Rect {
+    pub x: usize,
+    pub y: usize,
+    pub width: usize,
+    pub height: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Color {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
 
 /// A simple writer for the UEFI Framebuffer.
 pub struct FramebufferWriter {
@@ -24,36 +39,43 @@ impl FramebufferWriter {
         writer
     }
 
-    pub fn write_pixel(&mut self, x: usize, y: usize, r: u8, g: u8, b: u8) {
-        if x >= self.info.width || y >= self.info.height { return; }
+    pub fn write_pixel(&mut self, x: usize, y: usize, color: Color) {
+        if x >= self.info.width || y >= self.info.height {
+            return;
+        }
         let pixel_offset = y * self.info.stride + x;
-        let color = match self.info.pixel_format {
-            PixelFormat::Rgb => [r, g, b, 0],
-            PixelFormat::Bgr => [b, g, r, 0],
-            PixelFormat::U8 => [((r as u16 + g as u16 + b as u16) / 3) as u8, 0, 0, 0],
-            _ => [r, g, b, 0],
+        let c = match self.info.pixel_format {
+            PixelFormat::Rgb => [color.r, color.g, color.b, 0],
+            PixelFormat::Bgr => [color.b, color.g, color.r, 0],
+            PixelFormat::U8 => [
+                ((color.r as u16 + color.g as u16 + color.b as u16) / 3) as u8,
+                0,
+                0,
+                0,
+            ],
+            _ => [color.r, color.g, color.b, 0],
         };
         let bytes_per_pixel = self.info.bytes_per_pixel;
         let byte_offset = pixel_offset * bytes_per_pixel;
         self.framebuffer[byte_offset..(byte_offset + bytes_per_pixel)]
-            .copy_from_slice(&color[..bytes_per_pixel]);
+            .copy_from_slice(&c[..bytes_per_pixel]);
     }
 
-    pub fn draw_rect(&mut self, x: usize, y: usize, width: usize, height: usize, r: u8, g: u8, b: u8) {
-        for i in 0..width {
-            self.write_pixel(x + i, y, r, g, b);
-            self.write_pixel(x + i, y + height - 1, r, g, b);
+    pub fn draw_rect(&mut self, rect: Rect, color: Color) {
+        for i in 0..rect.width {
+            self.write_pixel(rect.x + i, rect.y, color);
+            self.write_pixel(rect.x + i, rect.y + rect.height - 1, color);
         }
-        for i in 0..height {
-            self.write_pixel(x, y + i, r, g, b);
-            self.write_pixel(x + width - 1, y + i, r, g, b);
+        for i in 0..rect.height {
+            self.write_pixel(rect.x, rect.y + i, color);
+            self.write_pixel(rect.x + rect.width - 1, rect.y + i, color);
         }
     }
 
-    pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, r: u8, g: u8, b: u8) {
-        for i in 0..width {
-            for j in 0..height {
-                self.write_pixel(x + i, y + j, r, g, b);
+    pub fn fill_rect(&mut self, rect: Rect, color: Color) {
+        for i in 0..rect.width {
+            for j in 0..rect.height {
+                self.write_pixel(rect.x + i, rect.y + j, color);
             }
         }
     }
@@ -75,7 +97,16 @@ impl FramebufferWriter {
                     for (y, byte) in glyph.iter().enumerate() {
                         for x in 0..8 {
                             if (byte & (1 << x)) != 0 {
-                                self.write_pixel(self.x_pos + x, self.y_pos + y, 0, 255, 255); // Cyan text for JARVIS
+                                self.write_pixel(
+                                    self.x_pos + x,
+                                    self.y_pos + y,
+                                    Color {
+                                        r: 0,
+                                        g: 255,
+                                        b: 255,
+                                    },
+                                );
+                                // Cyan text for JARVIS
                             }
                         }
                     }
@@ -88,22 +119,22 @@ impl FramebufferWriter {
         }
     }
 
-    pub fn write_char_at(&mut self, x: usize, y: usize, c: char, r: u8, g: u8, b: u8) {
+    pub fn write_char_at(&mut self, x: usize, y: usize, c: char, color: Color) {
         if let Some(glyph) = font8x8::BASIC_FONTS.get(c) {
             for (dy, byte) in glyph.iter().enumerate() {
                 for dx in 0..8 {
                     if (byte & (1 << dx)) != 0 {
-                        self.write_pixel(x + dx, y + dy, r, g, b);
+                        self.write_pixel(x + dx, y + dy, color);
                     }
                 }
             }
         }
     }
 
-    pub fn write_string_at(&mut self, x: usize, y: usize, s: &str, r: u8, g: u8, b: u8) {
+    pub fn write_string_at(&mut self, x: usize, y: usize, s: &str, color: Color) {
         let mut curr_x = x;
         for c in s.chars() {
-            self.write_char_at(curr_x, y, c, r, g, b);
+            self.write_char_at(curr_x, y, c, color);
             curr_x += 8;
         }
     }
