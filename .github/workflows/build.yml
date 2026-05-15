@@ -68,3 +68,10 @@ jobs:
       with:
         name: jarvis-os-image-${{ matrix.machine }}
         path: target/image/jarvis-os.img
+
+    - name: Upload Screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: qemu-screenshot-${{ matrix.machine }}
+        path: target/screenshot.ppm
