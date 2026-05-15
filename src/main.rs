@@ -8,7 +8,7 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{acpi, gdt, gui, interrupts, memory, serial_println, telemetry};
+use jarvis_kernel::{acpi, gdt, gui, interrupts, memory, serial_println, telemetry, vga_buffer};
 
 #[cfg(feature = "test")]
 use jarvis_kernel::qemu;
@@ -45,20 +45,17 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     use jarvis_kernel::storage;
     use jarvis_kernel::task::{executor::Executor, Task};
 
-    // Initialize UI first to show progress
+    // 1. Initialize Framebuffer as early as possible
+    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
+        vga_buffer::init(framebuffer);
+    }
+
+    // 2. Initialize UI
     gui::init_ui();
 
     serial_println!("Hello JARVIS OS!");
 
-    telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
-
-    if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
-        acpi::init(x86_64::PhysAddr::new(rsdp_addr));
-    }
-
-    #[cfg(feature = "test")]
-    run_tests();
-
+    // 3. Initialize CPU & Memory infrastructure
     let phys_mem_offset = VirtAddr::new(
         boot_info
             .physical_memory_offset
@@ -70,20 +67,30 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     gdt::init();
     interrupts::init_idt();
 
-    // Initialize APIC instead of PIC
-    serial_println!("Initializing APIC...");
-    unsafe { interrupts::init_apic(phys_mem_offset) };
-    x86_64::instructions::interrupts::enable();
-
     serial_println!("Initializing Memory Mapper...");
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     serial_println!("Initializing Bitmap Frame Allocator...");
     let mut frame_allocator =
         unsafe { memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset) };
 
+    // 4. Initialize Heap (CRITICAL: must be before any telemetry or complex logging)
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
-
     serial_println!("Status: Memory management initialized.");
+
+    // 5. Initialize APIC and Interrupts
+    serial_println!("Initializing APIC...");
+    unsafe { interrupts::init_apic(phys_mem_offset) };
+    x86_64::instructions::interrupts::enable();
+
+    // Now we can use telemetry and other heap-dependent systems
+    telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
+
+    if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
+        acpi::init(x86_64::PhysAddr::new(rsdp_addr));
+    }
+
+    #[cfg(feature = "test")]
+    run_tests();
 
     serial_println!("Scanning PCI bus...");
     let hda_devices = pci::scan_bus();
@@ -108,8 +115,8 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
     {
         use jarvis_kernel::storage::vfs::FileSystem;
-        let mut file = jfs.create("audio_log.raw").expect("Failed to create file");
-        let _ = file.write(b"JARVIS Audio Data Placeholder");
+        let mut _file = jfs.create("audio_log.raw").expect("Failed to create file");
+        // let _ = _file.write(b"JARVIS Audio Data Placeholder");
     }
 
     let mut executor = Executor::new();
