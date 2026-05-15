@@ -1,5 +1,4 @@
 use x86_64::PhysAddr;
-use alloc::vec::Vec;
 
 /// A DMA-safe circular buffer for audio data.
 /// It uses physically contiguous memory.

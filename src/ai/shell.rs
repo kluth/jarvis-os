@@ -11,6 +11,18 @@ pub enum Intent {
     Unknown,
 }
 
+impl Intent {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Intent::SystemStatus => "SystemStatus",
+            Intent::InitializeDiagnostics => "InitializeDiagnostics",
+            Intent::ControlHardware { .. } => "ControlHardware",
+            Intent::Greeting => "Greeting",
+            Intent::Unknown => "Unknown",
+        }
+    }
+}
+
 /// The Jarvis Voice Shell: The primary interaction model.
 pub struct VoiceShell {
     stt: Option<alloc::boxed::Box<dyn SttEngine>>,
@@ -27,7 +39,8 @@ impl VoiceShell {
         println!("Voice Shell: Handling command -> {}", text);
         
         let intent = self.map_text_to_intent(text);
-        telemetry::log(telemetry::TelemetryData::AIIntentDetected(text));
+        // Log the intent type (static str) instead of the dynamic input text
+        telemetry::log(telemetry::TelemetryData::AIIntentDetected(intent.as_str()));
 
         match intent {
             Intent::SystemStatus => {

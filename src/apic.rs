@@ -1,4 +1,4 @@
-use x86_64::{VirtAddr, PhysAddr};
+use x86_64::VirtAddr;
 use x86_64::instructions::port::Port;
 
 /// Local APIC registers offsets

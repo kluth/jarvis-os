@@ -3,7 +3,7 @@ use crate::println;
 use lazy_static::lazy_static;
 use crate::gdt;
 use spinning_top::Spinlock;
-use crate::apic::{LocalApic, Register};
+use crate::apic::LocalApic;
 use x86_64::VirtAddr;
 
 pub const TIMER_INTERRUPT_VECTOR: u8 = 32;

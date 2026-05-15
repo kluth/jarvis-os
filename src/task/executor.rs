@@ -1,4 +1,4 @@
-use super::{Task, TaskId, Priority};
+use super::{Task, TaskId};
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::task::Wake;
