@@ -5,8 +5,21 @@ edition = "2021"
 resolver = "2"
 authors = ["JARVIS Project"]
 
+[lib]
+name = "jarvis_kernel"
+path = "src/lib.rs"
+test = false
+harness = false
+
+[[bin]]
+name = "jarvis-kernel"
+path = "src/main.rs"
+test = false
+harness = false
+
 [dependencies]
-bootloader_api = { version = "0.11", default-features = false }
+bootloader_api = { version = "0.11.11", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 spinning_top = "0.3.0"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 font8x8 = { version = "0.3.1", default-features = false, features = ["unicode"] }
@@ -18,6 +31,7 @@ conquer-once = { version = "0.2.0", default-features = false }
 futures-util = { version = "0.3.28", default-features = false, features = ["alloc"] }
 pc-keyboard = "0.7.0"
 pic8259 = "0.10.1"
+bootloader = "0.11"
 
 [features]
 test = []
