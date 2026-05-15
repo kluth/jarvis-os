@@ -1,0 +1,258 @@
+[32maqemu[0m/stable 0.9.2-5 arm64
+  Qt5 front-end for QEMU and KVM
+
+[32mbox64[0m/stable 0.3.4+dfsg-1 arm64
+  run amd64 binaries on arm64 without emulating library calls
+
+[32mbox64-rk3588[0m/stable 0.3.4+dfsg-1 arm64
+  run amd64 binaries on RK3588 without emulating library calls
+
+[32mbox64-rpi4[0m/stable 0.3.4+dfsg-1 arm64
+  run amd64 binaries on RPI4 without emulating library calls
+
+[32mdebvm[0m/stable 0.4.5+deb13u1 all
+  create and run virtual machines for various Debian releases and architectures
+
+[32mgolang-github-containers-gvisor-tap-vsocks-dev[0m/stable 0.8.1-3 all
+  Secure networking stack for container runtimes (program)
+
+[32mgolang-github-digitalocean-go-qemu-dev[0m/stable 0.0~git20250212.ee9b066-1 all
+  Go packages to interact with QEMU using the QEMU Machine Protocol
+
+[32mgolang-github-kata-containers-govmm-dev[0m/stable 0.0~git20211108.e438cc5-1 all
+  Provide Go APIs for creating and managing virtual machines
+
+[32mgolang-github-libvirt-libvirt-go-dev[0m/stable 6.0.0+git20200210.224cad8-2 all
+  Go bindings for libvirt
+
+[32mgvproxy[0m/stable 0.8.1-3 arm64
+  Secure networking stack for container runtimes (program)
+
+[32mimvirt[0m/stable 0.9.6-13 all
+  detects several virtualizations
+
+[32mimvirt-helper[0m/stable 0.9.6-13 arm64
+  helper programs to detect several virtualizations
+
+[32mipxe-qemu[0m/stable 1.21.1+git20250501.dad20602+dfsg-1 all
+  PXE boot firmware - ROM images for qemu
+
+[32mksmtuned[0m/stable 4.20150326+nmu1+b1 arm64
+  enables and tunes Kernel Samepage Merging
+
+[32mlibguestfs0t64[0m/stable 1:1.54.1-2+deb13u1 arm64
+  guest disk image management system - shared library
+
+[32mlibimvirt-perl[0m/stable 0.9.6-13 all
+  Perl module for detecting several virtualizations
+
+[32mlibqcow-dev[0m/stable 20240308-1+b1 arm64
+  QEMU Copy-On-Write image format access library -- development files
+
+[32mlibqcow-utils[0m/stable 20240308-1+b1 arm64
+  QEMU Copy-On-Write image format access library -- Utilities
+
+[32mlibqcow1t64[0m/stable 20240308-1+b1 arm64
+  QEMU Copy-On-Write image format access library
+
+[32mlibunicorn-dev[0m/stable 2.1.1-2+b2 arm64
+  Lightweight CPU emulator framework (development headers)
+
+[32mlibunicorn2t64[0m/stable 2.1.1-2+b2 arm64
+  Lightweight CPU emulator framework
+
+[32mlibvirglrenderer-dev[0m/stable 1.1.0-2 arm64
+  virtual GPU for KVM virtualization - headers
+
+[32mlibvirglrenderer1[0m/stable 1.1.0-2 arm64
+  virtual GPU for KVM virtualization
+
+[32mlibvirt-clients-qemu[0m/stable 11.3.0-3+deb13u2 all
+  virtualization library - clients (QEMU specific)
+
+[32mlibvirt-daemon[0m/stable 11.3.0-3+deb13u2 arm64
+  virtualization daemon
+
+[32mlibvirt-daemon-driver-qemu[0m/stable 11.3.0-3+deb13u2 arm64
+  virtualization daemon - QEMU connection driver
+
+[32mlibvirt-daemon-system[0m/stable 11.3.0-3+deb13u2 arm64
+  virtualization daemon - typical QEMU-based deployment
+
+[32mlibvirt-dbus[0m/stable 1.4.1-4 arm64
+  libvirt D-Bus API bindings
+
+[32mlibvirt-ocaml[0m/stable 0.6.1.5-2+b4 arm64
+  OCaml bindings for libvirt (runtime)
+
+[32mlibvirt-ocaml-dev[0m/stable 0.6.1.5-2+b4 arm64
+  OCaml bindings for libvirt (development files)
+
+[32mmmdebstrap[0m/stable 1.5.7-1+deb13u1 all
+  create a Debian chroot
+
+[32mnova-compute-qemu[0m/stable 2:31.0.0-6+deb13u2 all
+  OpenStack Compute - compute node (QEmu)
+
+[32mopenstack-tempest-ci[0m/stable 0.39 all
+  validate OpenStack Debian packages using tempest and openstack-deploy
+
+[32mopenstack-tempest-ci-live-booter[0m/stable 0.39 all
+  configures a server to boot a custom live image to test OpenStack
+
+[32moptee-test-qemu[0m/stable 4.5.0-1 arm64
+  OP-TEE sanity testsuite
+
+[32mproot[0m/stable 5.1.0-1.3+b1 arm64
+  emulate chroot, bind mount and binfmt_misc for non-root users
+
+[32mpython3-libqcow[0m/stable 20240308-1+b1 arm64
+  QEMU Copy-On-Write image format access library -- Python 3 bindings
+
+[32mpython3-libvirt[0m/stable 11.3.0-1 arm64
+  libvirt Python 3 bindings
+
+[32mpython3-unicorn[0m/stable 2.1.1-2 all
+  Lightweight CPU emulator framework (Python 3 bindings)
+
+[32mpython3-virt-firmware[0m/stable 24.11-2 all
+  Tools for manipulating edk2 (ovmf/qemu-efi) firmware images
+
+[32mqemu-block-extra[0m/stable,now 1:10.0.8+ds-0+deb13u1+b1 arm64 [installed,automatic]
+  extra block backend modules for qemu-system and qemu-utils
+
+[32mqemu-efi-aarch64[0m/stable 2025.02-8+deb13u1 all
+  UEFI firmware for 64-bit ARM virtual machines
+
+[32mqemu-efi-arm[0m/stable 2025.02-8+deb13u1 all
+  UEFI firmware for 32-bit ARM virtual machines
+
+[32mqemu-efi-loongarch64[0m/stable 2025.02-8+deb13u1 all
+  UEFI firmware for LoongArch64 virtual machines
+
+[32mqemu-efi-riscv64[0m/stable 2025.02-8+deb13u1 all
+  UEFI firmware for RISCV64 virtual machines
+
+[32mqemu-guest-agent[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  Guest-side qemu-system agent
+
+[32mqemu-system[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries
+
+[32mqemu-system-arm[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (arm)
+
+[32mqemu-system-common[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (common files)
+
+[32mqemu-system-data[0m/stable 1:10.0.8+ds-0+deb13u1 all
+  QEMU full system emulation (data files)
+
+[32mqemu-system-gui[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (graphical display and audio modules)
+
+[32mqemu-system-mips[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (mips)
+
+[32mqemu-system-misc[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (miscellaneous)
+
+[32mqemu-system-modules-opengl[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (OpenGL display modules)
+
+[32mqemu-system-modules-spice[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (spice display modules)
+
+[32mqemu-system-ppc[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (ppc)
+
+[32mqemu-system-riscv[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (riscv)
+
+[32mqemu-system-s390x[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (s390x)
+
+[32mqemu-system-sparc[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (sparc)
+
+[32mqemu-system-x86[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU full system emulation binaries (x86)
+
+[32mqemu-user[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU user mode emulation (static binaries)
+
+[32mqemu-user-binfmt[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU user mode binfmt registration for qemu-user
+
+[32mqemu-user-static[0m/stable 1:10.0.8+ds-0+deb13u1+b1 arm64
+  QEMU user mode emulation (compat/transitional package)
+
+[32mqemu-utils[0m/stable,now 1:10.0.8+ds-0+deb13u1+b1 arm64 [installed,automatic]
+  QEMU utilities
+
+[32mqemu-web-desktop[0m/stable 25.04.05+ds1-1 arm64
+  Remote desktop service with virtual machines in a browser (DARTS).
+
+[32mqemubuilder[0m/stable 0.90+b1 arm64
+  pbuilder using QEMU as backend
+
+[32mquickemu[0m/stable 4.9.7-4 arm64
+  quickly create and run optimised virtual machines
+
+[32mrandmac[0m/stable 0.2-1+b1 arm64
+  generate random MAC addresses
+
+[32mreprotest[0m/stable 0.7.30 all
+  Build software and check it for reproducibility
+
+[32mrocm-podman-support[0m/stable 0.8.2 all
+  Utilities for working with ROCm inside podman containers
+
+[32mrocm-qemu-support[0m/stable 0.8.2 all
+  Utilities for working with ROCm inside QEMU VMs
+
+[32mruby-libvirt[0m/stable 0.8.4-1+b2 arm64
+  Ruby bindings for libvirt
+
+[32mruby-unicorn-engine[0m/stable 2.1.1-2+b2 arm64
+  Lightweight CPU emulator framework (Ruby bindings)
+
+[32msbuild-qemu[0m/stable 0.89.3+deb13u4 all
+  Utilities for using sbuild with QEMU images
+
+[32mseabios[0m/stable 1.16.3-2 all
+  Legacy BIOS implementation
+
+[32msimple-cdd[0m/stable 0.6.9 all
+  create customized debian-installer CDs
+
+[32mu-boot-qemu[0m/stable 2025.01-3 all
+  A boot loader for qemu
+
+[32mvde2[0m/stable 2.3.2+r586-11 arm64
+  Virtual Distributed Ethernet
+
+[32mvirt-top[0m/stable 1.1.1-1 arm64
+  show stats of virtualized domains
+
+[32mvirtiofsd[0m/stable 1.13.2-1+deb13u1 arm64
+  Virtio-fs vhost-user device daemon
+
+[32mvirtme[0m/stable 0.1.1+git20211118.3dfc002-3 all
+  Helper scripts to test kernel code on qemu
+
+[32mvirtme-ng[0m/stable 1.35-1 all
+  Helper scripts to test kernel code on qemu
+
+[32mvirtnbdbackup[0m/stable 2.28-1 arm64
+  Backup utility for libvirt
+
+[32mxen-utils-4.20[0m/stable 4.20.2+37-g61ff35323e-0+deb13u1 arm64
+  Xen administrative tools
+
+[32mxmount[0m/stable 1.2.0+ds-1+b1 arm64
+  tool for crossmounting between disk image formats
+
+[32mxserver-xorg-video-qxl[0m/stable 0.1.6-1.1 arm64
+  X.Org X server -- QXL display driver
+
