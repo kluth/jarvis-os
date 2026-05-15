@@ -1,9 +1,6 @@
-use x86_64::{
-    structures::paging::{
-        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
-    },
-    VirtAddr,
-};
+use x86_64::structures::paging::{
+    mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
+}, VirtAddr};
 use spinning_top::Spinlock;
 use linked_list_allocator::LockedHeap;
 
@@ -21,7 +18,7 @@ impl<A> Locked<A> {
         }
     }
 
-    pub fn lock(&self) -> spinning_top::guard::SpinlockGuard<A> {
+    pub fn lock(&self) -> spinning_top::guard::SpinlockGuard<'_, A> {
         self.inner.lock()
     }
 }

@@ -9,7 +9,7 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui, acpi, net, device_manager};
+use jarvis_kernel::{serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui, acpi, net};
 use jarvis_kernel::task::{Task, executor::Executor};
 use jarvis_kernel::task::keyboard;
 
@@ -26,7 +26,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
-    config.mappings.physical_memory_offset = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
+    config.mappings.physical_memory = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
     config
 };
 
@@ -35,22 +35,18 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 /// Kernel entry point.
 /// The bootloader calls this function once the system is in 64-bit mode.
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    // ALWAYS print BOOT_READY first for CI detection
+    serial_println!("BOOT_READY");
+
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
         vga_buffer::init(framebuffer);
     }
 
-    // ALWAYS print BOOT_READY first for CI detection
-    serial_println!("BOOT_READY");
-    serial_println!("Hello JARVIS OS!");
-    
-    serial_println!("Initializing CPU features...");
-    gdt::init();
-    interrupts::init_idt();
-
-    // Now that IDT is ready, we can try UI
-    serial_println!("Initializing JARVIS HUD...");
+    // Initialize the JARVIS HUD
     gui::init_ui();
 
+    serial_println!("Hello JARVIS OS!");
+    
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
 
     if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
@@ -62,6 +58,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
     
+    serial_println!("Initializing CPU features...");
+    gdt::init();
+    interrupts::init_idt();
+
     // Initialize APIC instead of PIC
     serial_println!("Initializing APIC...");
     unsafe { interrupts::init_apic(phys_mem_offset) };
