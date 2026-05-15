@@ -25,18 +25,6 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Force Stable Dependencies
-      run: |
-        # Fix serde for both projects
-        cargo generate-lockfile
-        cargo update -p serde --precise 1.0.227 || true
-        
-        cd image-builder
-        cargo generate-lockfile
-        cargo update -p serde --precise 1.0.227 || true
-        # Fix rustix for the host tools
-        cargo update -p rustix --precise 0.38.31 || true
-
     - name: Run Framework Tests
       run: |
         # Build the kernel with test feature

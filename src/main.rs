@@ -9,7 +9,7 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry};
+use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu};
 use jarvis_kernel::task::{Task, executor::Executor};
 use jarvis_kernel::task::keyboard;
 
@@ -45,33 +45,26 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     #[cfg(feature = "test")]
     run_tests();
 
-    serial_println!("Initializing GDT...");
+    serial_println!("Initializing CPU features...");
     gdt::init();
-    serial_println!("Initializing IDT...");
     interrupts::init_idt();
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
     
     // Initialize APIC instead of PIC
-    serial_println!("Initializing APIC...");
     unsafe { interrupts::init_apic(phys_mem_offset) };
     x86_64::instructions::interrupts::enable();
 
-    serial_println!("Initializing Memory Mapper...");
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    serial_println!("Initializing Bitmap Frame Allocator...");
     let mut frame_allocator = unsafe {
         memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset)
     };
 
-    serial_println!("Initializing Heap...");
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
     serial_println!("Status: Memory management initialized.");
-    telemetry::log(telemetry::TelemetryData::SystemStatus("Memory initialized"));
 
-    serial_println!("Scanning PCI bus for HDA...");
     let hda_devices = pci::scan_bus();
     for dev in hda_devices {
         serial_println!("Found HDA at {}:{}:{} (BAR0: 0x{:x})", 
@@ -83,7 +76,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         unsafe { controller.init(); }
     }
 
-    serial_println!("Initializing JFS...");
     let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
     {
         use jarvis_kernel::storage::vfs::FileSystem;
@@ -92,13 +84,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         serial_println!("Status: JFS test write completed. Size: {} bytes", file.size());
     }
 
-    serial_println!("Spawning tasks...");
     let mut executor = Executor::new();
     executor.spawn(Task::with_priority(ai::vad_task(1000), jarvis_kernel::task::Priority::High));
     executor.spawn(Task::new(ai::shell::shell_task()));
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.spawn(Task::new(telemetry::telemetry_task()));
     
     serial_println!("Status: Multitasking active. System ready.");
     executor.run();
