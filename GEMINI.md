@@ -22,14 +22,22 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/). This ena
 **Example:**
 `feat(audio): implement HDA controller initialization`
 
-## Branching Strategy
+## Strict Git & Branching Strategy
 
-To keep the `main` branch stable, all development must occur in dedicated branches.
+To maintain a pristine, easily reviewable, and perfectly linear history, we enforce the following strict Git workflow. **"One-for-all" branches are strictly prohibited.**
 
-- **Main Branch (`main`)**: Always stable and bootable.
-- **Feature Branches (`feat/<feature-name>`)**: For new features.
-- **Fix Branches (`fix/<bug-name>`)**: For bug fixes.
-- **Refactor Branches (`refactor/<name>`)**: For code refactoring.
+- **Main Branch (`main`)**: The single source of truth. Always stable, always perfectly clean, and heavily protected.
+- **Granular Feature Branches (`feat/<specific-scope>`)**: Branches MUST be hyper-focused (e.g., `feat/audio-hda-driver`, not `feat/jarvis-capabilities`).
+- **Atomic Commits**: Every commit MUST represent a single, isolated, logical change. Do not mix refactoring with new features or CI fixes in the same commit.
+- **Mandatory Pull Requests**: All changes into `main` must be merged via a Pull Request. Direct pushes to `main` are strictly forbidden.
+- **Linear History & Cleanup**: Merge commits are forbidden. Branches must be rebased against `main` and merged using "Squash and Merge". Branches must be deleted immediately after merging.
+
+### Workflow
+1. Create a granular branch: `git checkout -b feat/my-specific-feature`
+2. Implement and test your changes.
+3. Run `scripts/validate.sh` locally.
+4. Commit using Conventional Commits.
+5. Open a Pull Request for review and merge.
 
 ## Quality Standards & Pipeline
 
@@ -45,13 +53,6 @@ The project includes a multi-layer validation framework:
 1. **`scripts/validate.sh`**: Central script for formatting, type-checking, and linting.
 2. **Git Hook (`pre-push`)**: Automatically prevents pushing code that fails the validation script.
 3. **CI Pipeline**: Conducts the final exhaustive build and test run in a specialized environment (QEMU).
-
-### Workflow
-1. Create a new branch from `main`: `git checkout -b feat/my-new-feature`
-2. Implement and test your changes.
-3. Run `scripts/validate.sh` locally (automatically triggered on `git push`).
-4. Commit using Conventional Commits.
-5. Open a Pull Request to merge back into `main`.
 
 ## Voice-First Principles
 
