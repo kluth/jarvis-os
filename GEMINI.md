@@ -36,6 +36,8 @@ To keep the `main` branch stable, all development must occur in dedicated branch
 - **Zero Pipeline Failures**: A feature, fix, or task is **NEVER** considered finished if the CI pipeline fails. Stability is our highest priority.
 - **Mandatory Local Validation**: Before pushing any changes, you MUST run the local validation script (`scripts/validate.sh`).
 - **Resource Constraints**: Due to hardware limitations (Chromebook), `scripts/validate.sh` focuses on `cargo check` and `clippy`. Full `cargo build` is offloaded to the CI pipeline to preserve local resources.
+- **Workflow Integrity**: ALWAYS test the run of the workflow and fix issues if they occur! ALWAYS! There are no exceptions.
+- **Engineering Excellence**: NEVER use shortcuts. Every change must be super professional, perfectly clean, and well-structured.
 - **Error Diagnostics**: When encountering compiler errors, always use `rustc --explain <error_code>` if suggested by the compiler. This ensures we follow Rust's best practices and deeply understand the root causes.
 
 ### Validation Framework
