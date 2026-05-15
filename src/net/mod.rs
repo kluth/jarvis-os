@@ -1,7 +1,6 @@
 pub mod ethernet;
 
 use crate::{println, device_manager};
-use alloc::string::ToString;
 
 pub fn init() {
     println!("Net: Initializing networking stack...");

@@ -21,7 +21,7 @@ impl<A> Locked<A> {
         }
     }
 
-    pub fn lock(&self) -> spinning_top::SpinlockGuard<A> {
+    pub fn lock(&self) -> spinning_top::guard::SpinlockGuard<A> {
         self.inner.lock()
     }
 }

@@ -1,6 +1,6 @@
 use core::{
     mem,
-    ptr::{self, NonNull},
+    ptr::NonNull,
 };
 use super::Locked;
 
