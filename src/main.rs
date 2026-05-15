@@ -54,7 +54,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     gdt::init();
     interrupts::init_idt();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory.into_option().expect("Physical memory offset not provided by bootloader"));
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
     
     // Initialize APIC instead of PIC
     serial_println!("Initializing APIC...");
