@@ -153,44 +153,57 @@ fn main() {
 
         let start_time = std::time::Instant::now();
         let timeout = Duration::from_secs(120);
+        let mut test_result = None;
 
         loop {
             match qemu.try_wait() {
-                Ok(Some(status)) => match status.code() {
-                    Some(33) => {
-                        println!("Test Passed!");
-                        exit(0);
+                Ok(Some(status)) => {
+                    if test_result.is_none() {
+                        test_result = Some(status.code());
+                        println!("OS finished execution. Waiting for screenshot window...");
                     }
-                    Some(35) => {
-                        eprintln!("Test Failed!");
-                        exit(1);
-                    }
-                    Some(code) => {
-                        if code == 33 {
-                            println!("Test Passed (raw code 33)!");
-                            exit(0);
-                        }
-                        eprintln!("QEMU exited with unexpected code: {}", code);
-                        exit(1);
-                    }
-                    None => {
-                        eprintln!("QEMU was killed by a signal");
-                        exit(1);
-                    }
-                },
+                }
                 Ok(None) => {
                     if start_time.elapsed() > timeout {
                         println!("Test Timed Out! Killing QEMU...");
                         let _ = qemu.kill();
                         exit(1);
                     }
-                    thread::sleep(Duration::from_millis(100));
                 }
                 Err(e) => {
                     eprintln!("Error waiting for QEMU: {}", e);
                     exit(1);
                 }
             }
+
+            // Keep QEMU alive for at least 40 seconds to allow for the screenshot
+            if start_time.elapsed() > Duration::from_secs(40) {
+                if let Some(code_opt) = test_result {
+                    match code_opt {
+                        Some(33) => {
+                            println!("Test Passed!");
+                            exit(0);
+                        }
+                        Some(35) => {
+                            eprintln!("Test Failed!");
+                            exit(1);
+                        }
+                        Some(code) => {
+                            if code == 33 {
+                                println!("Test Passed (raw code 33)!");
+                                exit(0);
+                            }
+                            eprintln!("QEMU exited with unexpected code: {}", code);
+                            exit(1);
+                        }
+                        None => {
+                            eprintln!("QEMU was killed by a signal");
+                            exit(1);
+                        }
+                    }
+                }
+            }
+            thread::sleep(Duration::from_millis(100));
         }
     }
 }
