@@ -30,16 +30,11 @@ conquer-once = { version = "0.2.0", default-features = false }
 futures-util = { version = "0.3.28", default-features = false, features = ["alloc"] }
 pc-keyboard = "0.7.0"
 pic8259 = "0.10.1"
-bootloader = "=0.11.2"
 
 [features]
 test = []
 
 [dev-dependencies]
-
-[patch.crates-io]
-serde = { git = "https://github.com/serde-rs/serde", tag = "v1.0.210" }
-serde_derive = { git = "https://github.com/serde-rs/serde", tag = "v1.0.210" }
 
 [profile.dev]
 panic = "abort"
