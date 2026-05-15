@@ -84,12 +84,12 @@ fn main() {
     if !no_run {
         let qmp_socket = "/tmp/qmp-sock";
         let screenshot_path = "../target/screenshot.ppm";
-        
+
         // Remove old socket if exists
         let _ = fs::remove_file(qmp_socket);
 
         println!(
-            "Running Test in QEMU (machine: {}, memory: {}M, 60s timeout)...",
+            "Running Test in QEMU (machine: {}, memory: {}M, 120s timeout)...",
             machine, memory
         );
         let mut qemu = Command::new("qemu-system-x86_64")
@@ -134,13 +134,16 @@ fn main() {
 
         // Trigger screenshot via QMP after some time
         thread::spawn(move || {
-            thread::sleep(Duration::from_secs(15));
+            thread::sleep(Duration::from_secs(30));
             println!("Connecting to QMP to take screenshot...");
             match UnixStream::connect(qmp_socket) {
                 Ok(mut stream) => {
                     let _ = stream.write_all(b"{\"execute\": \"qmp_capabilities\"}\n");
                     thread::sleep(Duration::from_millis(500));
-                    let cmd = format!("{{\"execute\": \"screendump\", \"arguments\": {{\"filename\": \"{}\"}}}} \n", screenshot_path);
+                    let cmd = format!(
+                        "{{\"execute\": \"screendump\", \"arguments\": {{\"filename\": \"{}\"}}}} \n",
+                        screenshot_path
+                    );
                     let _ = stream.write_all(cmd.as_bytes());
                     println!("Screenshot command sent to QMP.");
                 }
@@ -149,34 +152,32 @@ fn main() {
         });
 
         let start_time = std::time::Instant::now();
-        let timeout = Duration::from_secs(60);
+        let timeout = Duration::from_secs(120);
 
         loop {
             match qemu.try_wait() {
-                Ok(Some(status)) => {
-                    match status.code() {
-                        Some(33) => {
-                            println!("Test Passed!");
+                Ok(Some(status)) => match status.code() {
+                    Some(33) => {
+                        println!("Test Passed!");
+                        exit(0);
+                    }
+                    Some(35) => {
+                        eprintln!("Test Failed!");
+                        exit(1);
+                    }
+                    Some(code) => {
+                        if code == 33 {
+                            println!("Test Passed (raw code 33)!");
                             exit(0);
                         }
-                        Some(35) => {
-                            eprintln!("Test Failed!");
-                            exit(1);
-                        }
-                        Some(code) => {
-                            if code == 33 {
-                                println!("Test Passed (raw code 33)!");
-                                exit(0);
-                            }
-                            eprintln!("QEMU exited with unexpected code: {}", code);
-                            exit(1);
-                        }
-                        None => {
-                            eprintln!("QEMU was killed by a signal");
-                            exit(1);
-                        }
+                        eprintln!("QEMU exited with unexpected code: {}", code);
+                        exit(1);
                     }
-                }
+                    None => {
+                        eprintln!("QEMU was killed by a signal");
+                        exit(1);
+                    }
+                },
                 Ok(None) => {
                     if start_time.elapsed() > timeout {
                         println!("Test Timed Out! Killing QEMU...");

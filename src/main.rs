@@ -94,16 +94,12 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
     serial_println!("Status: Memory management initialized.");
 
-    // 4. Initialize UI (after heap is safe)
-    #[cfg(feature = "gui")]
-    gui::init_ui();
-
-    // 5. Initialize APIC and Interrupts
+    // 4. Initialize APIC and Interrupts
     serial_println!("Initializing APIC...");
     unsafe { interrupts::init_apic(phys_mem_offset) };
     x86_64::instructions::interrupts::enable();
 
-    // Now we can use telemetry and other heap-dependent systems
+    // 5. Initialize Subsystems
     #[cfg(feature = "telemetry")]
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
 
@@ -134,7 +130,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         }
     }
 
-    // Initialize networking after PCI scan
     #[cfg(feature = "network")]
     net::init();
 
@@ -145,6 +140,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         let mut _file = jfs.create("audio_log.raw").expect("Failed to create file");
     }
 
+    // 6. Start Multitasking
     let mut executor = Executor::new();
 
     #[cfg(feature = "ai")]
@@ -164,6 +160,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     #[cfg(feature = "network")]
     executor.spawn(Task::new(net::discovery_task()));
+
+    // 7. Initialize UI (last, just before yielding control)
+    #[cfg(feature = "gui")]
+    gui::init_ui();
 
     serial_println!("Status: Multitasking active. System ready.");
     executor.run();

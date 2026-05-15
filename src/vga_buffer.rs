@@ -83,9 +83,7 @@ impl FramebufferWriter {
     pub fn clear(&mut self) {
         self.x_pos = 0;
         self.y_pos = 0;
-        for i in 0..self.framebuffer.len() {
-            self.framebuffer[i] = 0;
-        }
+        self.framebuffer.fill(0);
     }
 
     /// Writes a single character using font8x8.
