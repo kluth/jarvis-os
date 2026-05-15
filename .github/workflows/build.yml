@@ -50,7 +50,7 @@ jobs:
         # Build and run image-builder separately
         cd image-builder
         cargo run --target x86_64-unknown-linux-gnu -- \
-          ../target/x86_64-jarvis_os/debug/jarvis-kernel --machine ${{ matrix.machine }}
+          ../target/x86_64-jarvis_os/debug/jarvis-kernel --machine ${{ matrix.machine }} --memory 512
 
     - name: Build Production Kernel
       run: |

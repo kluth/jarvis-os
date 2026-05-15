@@ -12,6 +12,7 @@ fn main() {
     let mut args = env::args().skip(1).collect::<Vec<String>>();
     let mut kernel_arg = None;
     let mut machine = "q35".to_string();
+    let mut memory = "512".to_string();
     let mut no_run = false;
 
     let mut i = 0;
@@ -23,6 +24,15 @@ fn main() {
                     i += 2;
                 } else {
                     eprintln!("Missing value for --machine");
+                    exit(1);
+                }
+            }
+            "--memory" => {
+                if i + 1 < args.len() {
+                    memory = args[i + 1].clone();
+                    i += 2;
+                } else {
+                    eprintln!("Missing value for --memory");
                     exit(1);
                 }
             }
@@ -76,7 +86,7 @@ fn main() {
     println!("Success: Disk image created at {}", image_path.display());
 
     if !no_run {
-        println!("Running Test in QEMU (machine: {}, 60s timeout)...", machine);
+        println!("Running Test in QEMU (machine: {}, memory: {}M, 60s timeout)...", machine, memory);
         let mut qemu = Command::new("qemu-system-x86_64")
             .arg("-drive")
             .arg(format!("format=raw,file={}", image_path.display()))
@@ -84,6 +94,8 @@ fn main() {
             .arg("isa-debug-exit,iobase=0xf4,iosize=0x04")
             .arg("-machine")
             .arg(machine)
+            .arg("-m")
+            .arg(memory)
             .arg("-nographic")
             .arg("-serial")
             .arg("mon:stdio")
@@ -121,6 +133,9 @@ fn main() {
         loop {
             match qemu.try_wait() {
                 Ok(Some(status)) => {
+                    // isa-debug-exit returns (exit_code << 1) | 1.
+                    // QemuExitCode::Success (0x10) -> 33
+                    // QemuExitCode::Failed (0x11) -> 35
                     match status.code() {
                         Some(33) => {
                             println!("Test Passed!");
