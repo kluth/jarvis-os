@@ -26,7 +26,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
-    config.mappings.physical_memory = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
+    config.mappings.physical_memory_offset = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
     config
 };
 
@@ -35,26 +35,25 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 /// Kernel entry point.
 /// The bootloader calls this function once the system is in 64-bit mode.
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    // ALWAYS print BOOT_READY first for CI detection
-    serial_println!("BOOT_READY");
-
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
         vga_buffer::init(framebuffer);
     }
 
-    // Initialize the JARVIS HUD
-    gui::init_ui();
-
+    serial_println!("BOOT_READY");
     serial_println!("Hello JARVIS OS!");
     
+    serial_println!("Initializing CPU features...");
+    gdt::init();
+    interrupts::init_idt();
+
+    // Now that IDT is ready, we can try UI
+    serial_println!("Initializing JARVIS HUD...");
+    gui::init_ui();
+
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
 
     #[cfg(feature = "test")]
     run_tests();
-
-    serial_println!("Initializing CPU features...");
-    gdt::init();
-    interrupts::init_idt();
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
     
