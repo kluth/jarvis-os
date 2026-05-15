@@ -61,3 +61,26 @@ impl Task {
         self.future.as_mut().poll(context)
     }
 }
+
+/// A future that yields execution back to the executor.
+pub struct YieldNow {
+    yielded: bool,
+}
+
+impl Future for YieldNow {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        if self.yielded {
+            Poll::Ready(())
+        } else {
+            self.yielded = true;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        }
+    }
+}
+
+pub fn yield_now() -> YieldNow {
+    YieldNow { yielded: false }
+}

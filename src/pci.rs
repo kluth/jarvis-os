@@ -57,7 +57,7 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
                 };
 
                 crate::device_manager::register(crate::device_manager::DeviceInfo {
-                    name: alloc::string::String::from(name),
+                    name,
                     dev_type,
                     status: "Discovered",
                 });
