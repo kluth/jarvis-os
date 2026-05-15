@@ -55,6 +55,7 @@ fn main() {
 
     if is_test {
         println!("Running Test in QEMU (60s timeout)...");
+        // We use -serial file:/dev/stdout or similar if we can, but let's stick to piped
         let mut qemu = Command::new("qemu-system-x86_64")
             .arg("-drive")
             .arg(format!("format=raw,file={}", image_path.display()))
@@ -65,18 +66,28 @@ fn main() {
             .arg("-serial")
             .arg("stdio")
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("Failed to start QEMU");
 
         let stdout = qemu.stdout.take().expect("Failed to open QEMU stdout");
-        let reader = BufReader::new(stdout);
+        let stderr = qemu.stderr.take().expect("Failed to open QEMU stderr");
 
-        // Spawn a thread to read and print QEMU output in real-time
+        // Real-time output handling
         std::thread::spawn(move || {
+            let reader = BufReader::new(stdout);
             for line in reader.lines() {
                 if let Ok(l) = line {
-                    println!("[QEMU] {}", l);
+                    println!("[QEMU STDOUT] {}", l);
+                }
+            }
+        });
+
+        std::thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    eprintln!("[QEMU STDERR] {}", l);
                 }
             }
         });

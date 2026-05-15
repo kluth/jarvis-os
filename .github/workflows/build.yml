@@ -25,15 +25,6 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
-    - name: Force Stable Dependencies
-      run: |
-        cargo generate-lockfile
-        # 1.0.227 is the last version before the problematic core-split
-        cargo update -p serde --precise 1.0.227
-        # Fix rustix for the host tools by using a more recent version if possible, 
-        # or pinning to a known working one for nightly.
-        cargo update -p rustix --precise 0.38.31 || true
-
     - name: Run Framework Tests
       run: |
         # Build the kernel with test feature
