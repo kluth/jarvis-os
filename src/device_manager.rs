@@ -1,4 +1,3 @@
-use alloc::string::String;
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spinning_top::Spinlock;
@@ -15,7 +14,7 @@ pub enum DeviceType {
 
 #[derive(Debug, Clone)]
 pub struct DeviceInfo {
-    pub name: String,
+    pub name: &'static str,
     pub dev_type: DeviceType,
     pub status: &'static str,
 }

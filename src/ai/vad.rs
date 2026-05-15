@@ -39,7 +39,6 @@ pub async fn vad_task(threshold: u32) {
             crate::println!("Voice detected!");
         }
 
-        core::future::ready(()).await;
-        // Yield to other tasks
+        crate::task::yield_now().await;
     }
 }

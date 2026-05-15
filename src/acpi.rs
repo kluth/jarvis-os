@@ -1,5 +1,4 @@
 use crate::{device_manager, println};
-use alloc::string::ToString;
 use x86_64::PhysAddr;
 
 pub fn init(rsdp_addr: PhysAddr) {
@@ -9,14 +8,14 @@ pub fn init(rsdp_addr: PhysAddr) {
     // For now, we simulate the discovery of system capabilities.
 
     device_manager::register(device_manager::DeviceInfo {
-        name: "ACPI Power Controller".to_string(),
+        name: "ACPI Power Controller",
         dev_type: device_manager::DeviceType::System,
-        status: "Active",
+        status: "Enabled",
     });
 
     device_manager::register(device_manager::DeviceInfo {
-        name: "IO APIC".to_string(),
+        name: "IO APIC",
         dev_type: device_manager::DeviceType::System,
-        status: "Enumerated",
+        status: "Enabled",
     });
 }
