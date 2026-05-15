@@ -1,9 +1,3 @@
-[workspace]
-members = [
-    ".",
-    "image-builder",
-]
-
 [package]
 name = "jarvis-kernel"
 version = "0.1.0"

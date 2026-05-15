@@ -10,25 +10,22 @@ use std::result::Result::{Ok, Err};
 
 fn main() {
     let mut args = env::args().skip(1);
-    let first_arg = args.next();
-    let is_test = first_arg.is_some();
+    let kernel_arg = args.next();
     
-    let kernel_path_buf = if let Some(arg) = first_arg {
+    let kernel_path_buf = if let Some(arg) = kernel_arg {
         PathBuf::from(arg)
     } else {
         // Default kernel path for standard builds
-        PathBuf::from("target/x86_64-jarvis_os/debug/jarvis-kernel")
+        PathBuf::from("../target/x86_64-jarvis_os/debug/jarvis-kernel")
     };
+    
+    let no_run = args.any(|arg| arg == "--no-run");
+    let is_test = !no_run && kernel_path_buf.to_str().map(|s| s.contains("debug")).unwrap_or(false);
     
     let kernel_path = kernel_path_buf.as_path();
-    let out_dir = Path::new("target/image");
+    let out_dir = Path::new("../target/image");
     
-    // Use a unique name for test images to avoid conflicts
-    let image_name = if is_test {
-        format!("test-{}.img", kernel_path.file_name().unwrap().to_str().unwrap())
-    } else {
-        "jarvis-os.img".to_string()
-    };
+    let image_name = if no_run { "jarvis-os.img" } else { "test-os.img" };
     let image_path = out_dir.join(image_name);
 
     if let Err(e) = fs::create_dir_all(out_dir) {
@@ -53,18 +50,16 @@ fn main() {
 
     println!("Success: Disk image created at {}", image_path.display());
 
-    if is_test {
+    if !no_run {
         println!("Running Test in QEMU (60s timeout)...");
-        // We use -serial file:/dev/stdout or similar if we can, but let's stick to piped
         let mut qemu = Command::new("qemu-system-x86_64")
             .arg("-drive")
             .arg(format!("format=raw,file={}", image_path.display()))
             .arg("-device")
             .arg("isa-debug-exit,iobase=0xf4,iosize=0x04")
-            .arg("-display")
-            .arg("none")
+            .arg("-nographic")
             .arg("-serial")
-            .arg("stdio")
+            .arg("mon:stdio")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -73,7 +68,6 @@ fn main() {
         let stdout = qemu.stdout.take().expect("Failed to open QEMU stdout");
         let stderr = qemu.stderr.take().expect("Failed to open QEMU stderr");
 
-        // Real-time output handling
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
@@ -92,16 +86,12 @@ fn main() {
             }
         });
 
-        // Use a simple polling loop with a timeout for the child process
         let start_time = std::time::Instant::now();
         let timeout = std::time::Duration::from_secs(60);
         
         loop {
             match qemu.try_wait() {
                 Ok(Some(status)) => {
-                    // isa-debug-exit returns (exit_code << 1) | 1.
-                    // QemuExitCode::Success (0x10) -> 33
-                    // QemuExitCode::Failed (0x11) -> 35
                     match status.code() {
                         Some(33) => {
                             println!("Test Passed!");
@@ -112,6 +102,10 @@ fn main() {
                             exit(1);
                         }
                         Some(code) => {
+                            if code == 33 {
+                                println!("Test Passed (raw code 33)!");
+                                exit(0);
+                            }
                             eprintln!("QEMU exited with unexpected code: {}", code);
                             exit(1);
                         }

@@ -25,15 +25,28 @@ jobs:
     - name: Install QEMU
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
+    - name: Force Stable Dependencies
+      run: |
+        # Fix serde for both projects
+        cargo generate-lockfile
+        cargo update -p serde --precise 1.0.227 || true
+        
+        cd image-builder
+        cargo generate-lockfile
+        cargo update -p serde --precise 1.0.227 || true
+        # Fix rustix for the host tools
+        cargo update -p rustix --precise 0.38.31 || true
+
     - name: Run Framework Tests
       run: |
         # Build the kernel with test feature
         cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
           -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
         
-        # Run using image-builder as runner
-        cargo run -p image-builder --target x86_64-unknown-linux-gnu -- \
-          target/x86_64-jarvis_os/debug/jarvis-kernel
+        # Build and run image-builder separately
+        cd image-builder
+        cargo run --target x86_64-unknown-linux-gnu -- \
+          ../target/x86_64-jarvis_os/debug/jarvis-kernel
 
     - name: Build Production Kernel
       run: |
@@ -42,7 +55,9 @@ jobs:
 
     - name: Create Production Disk Image
       run: |
-        cargo run -p image-builder --target x86_64-unknown-linux-gnu
+        cd image-builder
+        cargo run --target x86_64-unknown-linux-gnu -- \
+          ../target/x86_64-jarvis_os/debug/jarvis-kernel --no-run
 
     - name: Upload Disk Image
       uses: actions/upload-artifact@v4
