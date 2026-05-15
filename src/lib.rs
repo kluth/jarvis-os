@@ -22,6 +22,9 @@ pub mod ai;
 pub mod qemu;
 pub mod telemetry;
 pub mod gui;
+pub mod device_manager;
+pub mod acpi;
+pub mod net;
 
 use core::panic::PanicInfo;
 

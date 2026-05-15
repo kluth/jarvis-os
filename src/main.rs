@@ -9,7 +9,7 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui};
+use jarvis_kernel::{serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui, acpi, net, device_manager};
 use jarvis_kernel::task::{Task, executor::Executor};
 use jarvis_kernel::task::keyboard;
 
@@ -26,7 +26,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
-    config.mappings.physical_memory = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
+    config.mappings.physical_memory_offset = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
     config
 };
 
@@ -39,6 +39,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         vga_buffer::init(framebuffer);
     }
 
+    // ALWAYS print BOOT_READY first for CI detection
     serial_println!("BOOT_READY");
     serial_println!("Hello JARVIS OS!");
     
@@ -51,6 +52,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     gui::init_ui();
 
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
+
+    if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
+        acpi::init(x86_64::PhysAddr::new(rsdp_addr));
+    }
 
     #[cfg(feature = "test")]
     run_tests();
@@ -74,6 +79,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     serial_println!("Status: Memory management initialized.");
 
+    serial_println!("Scanning PCI bus...");
     let hda_devices = pci::scan_bus();
     for dev in hda_devices {
         serial_println!("Found HDA at {}:{}:{} (BAR0: 0x{:x})", 
@@ -84,6 +90,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         };
         unsafe { controller.init(); }
     }
+
+    // Initialize networking after PCI scan
+    net::init();
 
     let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
     {
@@ -100,6 +109,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     executor.spawn(Task::new(keyboard::print_keypresses()));
     executor.spawn(Task::new(telemetry::telemetry_task()));
     executor.spawn(Task::new(gui::ui_task()));
+    executor.spawn(Task::new(net::discovery_task()));
     
     serial_println!("Status: Multitasking active. System ready.");
     executor.run();

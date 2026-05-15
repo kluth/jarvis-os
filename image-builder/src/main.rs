@@ -9,8 +9,34 @@ use std::option::Option::{Some, None};
 use std::result::Result::{Ok, Err};
 
 fn main() {
-    let mut args = env::args().skip(1);
-    let kernel_arg = args.next();
+    let mut args = env::args().skip(1).collect::<Vec<String>>();
+    let mut kernel_arg = None;
+    let mut machine = "q35".to_string();
+    let mut no_run = false;
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--machine" => {
+                if i + 1 < args.len() {
+                    machine = args[i + 1].clone();
+                    i += 2;
+                } else {
+                    eprintln!("Missing value for --machine");
+                    exit(1);
+                }
+            }
+            "--no-run" => {
+                no_run = true;
+                i += 1;
+            }
+            arg if !arg.starts_with("--") && kernel_arg.is_none() => {
+                kernel_arg = Some(arg.to_string());
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
     
     let kernel_path_buf = if let Some(arg) = kernel_arg {
         PathBuf::from(arg)
@@ -19,7 +45,6 @@ fn main() {
         PathBuf::from("../target/x86_64-jarvis_os/debug/jarvis-kernel")
     };
     
-    let no_run = args.any(|arg| arg == "--no-run");
     let is_test = !no_run && kernel_path_buf.to_str().map(|s| s.contains("debug")).unwrap_or(false);
     
     let kernel_path = kernel_path_buf.as_path();
@@ -51,12 +76,14 @@ fn main() {
     println!("Success: Disk image created at {}", image_path.display());
 
     if !no_run {
-        println!("Running Test in QEMU (60s timeout)...");
+        println!("Running Test in QEMU (machine: {}, 60s timeout)...", machine);
         let mut qemu = Command::new("qemu-system-x86_64")
             .arg("-drive")
             .arg(format!("format=raw,file={}", image_path.display()))
             .arg("-device")
             .arg("isa-debug-exit,iobase=0xf4,iosize=0x04")
+            .arg("-machine")
+            .arg(machine)
             .arg("-nographic")
             .arg("-serial")
             .arg("mon:stdio")
@@ -68,6 +95,7 @@ fn main() {
         let stdout = qemu.stdout.take().expect("Failed to open QEMU stdout");
         let stderr = qemu.stderr.take().expect("Failed to open QEMU stderr");
 
+        // Real-time output handling
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
@@ -86,6 +114,7 @@ fn main() {
             }
         });
 
+        // Use a simple polling loop with a timeout for the child process
         let start_time = std::time::Instant::now();
         let timeout = std::time::Duration::from_secs(60);
         

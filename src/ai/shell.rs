@@ -1,12 +1,14 @@
 use super::stt::SttEngine;
 use super::tts::TtsEngine;
-use crate::{println, telemetry};
+use crate::{println, telemetry, device_manager};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Intent {
     SystemStatus,
     InitializeDiagnostics,
     ControlHardware { device: &'static str, action: &'static str },
+    ListDevices,
+    ScanNetwork,
     Greeting,
     Unknown,
 }
@@ -17,6 +19,8 @@ impl Intent {
             Intent::SystemStatus => "SystemStatus",
             Intent::InitializeDiagnostics => "InitializeDiagnostics",
             Intent::ControlHardware { .. } => "ControlHardware",
+            Intent::ListDevices => "ListDevices",
+            Intent::ScanNetwork => "ScanNetwork",
             Intent::Greeting => "Greeting",
             Intent::Unknown => "Unknown",
         }
@@ -52,6 +56,14 @@ impl VoiceShell {
             Intent::Greeting => {
                 self.respond("Hello. I am JARVIS. How can I help you?");
             }
+            Intent::ListDevices => {
+                let count = device_manager::MANAGER.lock().get_devices().len();
+                println!("JARVIS: Found {} devices in registry.", count);
+                self.respond("Displaying all discovered hardware on the HUD.");
+            }
+            Intent::ScanNetwork => {
+                self.respond("Scanning local subnet for active nodes.");
+            }
             Intent::ControlHardware { device, action } => {
                 println!("Action: {} on device: {}", action, device);
                 self.respond("Command processed.");
@@ -71,6 +83,10 @@ impl VoiceShell {
             Intent::InitializeDiagnostics
         } else if normalized.contains("hello") || normalized.contains("hi") {
             Intent::Greeting
+        } else if normalized.contains("device") || normalized.contains("hardware") {
+            Intent::ListDevices
+        } else if normalized.contains("network") || normalized.contains("scan") {
+            Intent::ScanNetwork
         } else if normalized.contains("turn on") {
             Intent::ControlHardware { device: "lights", action: "on" }
         } else {

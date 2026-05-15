@@ -4,7 +4,27 @@ use x86_64::{
     },
     VirtAddr,
 };
+use spinning_top::Spinlock;
 use linked_list_allocator::LockedHeap;
+
+pub mod slab;
+
+/// A wrapper around spinning_top::Spinlock to permit trait implementations.
+pub struct Locked<A> {
+    inner: Spinlock<A>,
+}
+
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: Spinlock::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spinning_top::SpinlockGuard<A> {
+        self.inner.lock()
+    }
+}
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();

@@ -26,19 +26,44 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
                 let class = (class_rev >> 8) as u8;
                 let subclass = (class_rev & 0xFF) as u8;
 
+                let dev = PciDevice {
+                    bus,
+                    slot,
+                    function,
+                    vendor_id,
+                    device_id,
+                    class,
+                    subclass,
+                };
+
+                // Register with Device Manager
+                let name = match (class, subclass) {
+                    (0x01, 0x01) => "IDE Controller",
+                    (0x01, 0x06) => "SATA Controller",
+                    (0x02, 0x00) => "Ethernet Controller",
+                    (0x03, 0x00) => "VGA Display Controller",
+                    (0x04, 0x03) => "High Definition Audio",
+                    (0x06, 0x00) => "Host Bridge",
+                    (0x06, 0x01) => "ISA Bridge",
+                    _ => "Unknown PCI Device",
+                };
+
+                let dev_type = match class {
+                    0x01 => crate::device_manager::DeviceType::Storage,
+                    0x02 => crate::device_manager::DeviceType::Network,
+                    0x03 => crate::device_manager::DeviceType::Graphics,
+                    0x04 => crate::device_manager::DeviceType::Audio,
+                    _ => crate::device_manager::DeviceType::System,
+                };
+
+                crate::device_manager::register(crate::device_manager::DeviceInfo {
+                    name: alloc::string::String::from(name),
+                    dev_type,
+                    status: "Discovered",
+                });
+
                 // Intel HDA: Class 04, Subclass 03
                 if class == 0x04 && subclass == 0x03 {
-                    crate::println!("Detected PCI Device: [0x{:x}:0x{:x}] Class: 0x{:x}.0x{:x} at {}:{}:{}", 
-                        vendor_id, device_id, class, subclass, bus, slot, function);
-                    let dev = PciDevice {
-                        bus,
-                        slot,
-                        function,
-                        vendor_id,
-                        device_id,
-                        class,
-                        subclass,
-                    };
                     devices.push(dev);
                 }
                 
