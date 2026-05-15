@@ -1,38 +1,49 @@
 use crate::vga_buffer::WRITER;
 use crate::telemetry;
+use crate::serial_println;
 
 pub fn init_ui() {
+    serial_println!("GUI: Locking writer...");
     if let Some(writer) = WRITER.lock().as_mut() {
-        writer.clear();
-        draw_static_elements();
+        serial_println!("GUI: Clearing screen...");
+        // writer.clear(); // Temporarily disabled to isolate crash
+        serial_println!("GUI: Drawing static elements...");
+        draw_static_elements(writer);
+        serial_println!("GUI: UI initialized.");
+    } else {
+        serial_println!("GUI: Writer not found!");
     }
 }
 
-fn draw_static_elements() {
-    if let Some(writer) = WRITER.lock().as_mut() {
-        let info = writer.get_info();
-        let width = info.width;
-        let height = info.height;
+fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
+    let info = writer.get_info();
+    let width = info.width;
+    let height = info.height;
 
-        // Main Border
-        writer.draw_rect(5, 5, width - 10, height - 10, 0, 180, 255);
-        writer.draw_rect(10, 10, width - 20, height - 20, 0, 100, 200);
+    serial_println!("GUI: Screen size: {}x{}", width, height);
 
-        // Header
-        writer.fill_rect(20, 20, 200, 30, 0, 80, 150);
-        writer.write_string_at(30, 30, "J.A.R.V.I.S. OS v0.1.0", 255, 255, 255);
+    // Main Border
+    serial_println!("GUI: Drawing border...");
+    writer.draw_rect(5, 5, width - 10, height - 10, 0, 180, 255);
+    
+    // Header
+    serial_println!("GUI: Drawing header...");
+    writer.fill_rect(20, 20, 200, 30, 0, 80, 150);
+    writer.write_string_at(30, 30, "J.A.R.V.I.S. OS v0.1.0", 255, 255, 255);
 
-        // Telemetry Box
-        writer.draw_rect(20, 70, 300, 200, 0, 180, 255);
-        writer.write_string_at(30, 80, "[ SYSTEM TELEMETRY ]", 0, 255, 255);
+    // Telemetry Box
+    serial_println!("GUI: Drawing telemetry box...");
+    writer.draw_rect(20, 70, 300, 200, 0, 180, 255);
+    writer.write_string_at(30, 80, "[ SYSTEM TELEMETRY ]", 0, 255, 255);
 
-        // AI Shell Box
-        writer.draw_rect(340, 70, width - 360, height - 150, 0, 180, 255);
-        writer.write_string_at(350, 80, "[ VOICE SHELL TRANSCRIPT ]", 0, 255, 255);
+    // AI Shell Box
+    serial_println!("GUI: Drawing AI shell box...");
+    writer.draw_rect(340, 70, width - 360, height - 150, 0, 180, 255);
+    writer.write_string_at(350, 80, "[ VOICE SHELL TRANSCRIPT ]", 0, 255, 255);
 
-        // Footer
-        writer.write_string_at(20, height - 40, "STATUS: SYSTEM CORE ONLINE | ENCRYPTION: ACTIVE | CONNECTION: SECURE", 0, 200, 200);
-    }
+    // Footer
+    serial_println!("GUI: Drawing footer...");
+    writer.write_string_at(20, height - 40, "STATUS: SYSTEM CORE ONLINE | ENCRYPTION: ACTIVE | CONNECTION: SECURE", 0, 200, 200);
 }
 
 pub async fn ui_task() {
