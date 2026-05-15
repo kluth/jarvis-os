@@ -21,7 +21,7 @@ harness = false
 bootloader_api = { version = "0.11.15", default-features = false }
 spinning_top = "=0.3.0"
 lazy_static = { version = "=1.4.0", features = ["spin_no_std"] }
-font8x8 = { version = "=0.3.1", default-features = false, features = ["unicode"] }
+font8x8 = { version = "=0.3.1", default-features = false, features = ["unicode"], optional = true }
 x86_64 = "=0.14.13"
 linked_list_allocator = "=0.10.6"
 uart_16550 = "=0.3.2"
@@ -32,7 +32,14 @@ pc-keyboard = "=0.7.0"
 pic8259 = "=0.10.4"
 
 [features]
-test = []
+default = ["gui", "audio", "network", "ai", "storage", "telemetry"]
+gui = ["font8x8"]
+audio = []
+network = []
+ai = []
+storage = []
+telemetry = []
+test = ["default"]
 
 [dev-dependencies]
 

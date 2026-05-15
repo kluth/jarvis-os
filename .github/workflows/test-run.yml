@@ -33,3 +33,10 @@ jobs:
         # Run using image-builder as runner
         cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu -- \
           target/x86_64-jarvis_os/debug/jarvis-kernel
+
+    - name: Upload Screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: qemu-screenshot
+        path: target/screenshot.ppm

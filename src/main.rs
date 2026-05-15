@@ -8,10 +8,16 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{acpi, gdt, gui, interrupts, memory, serial_println, telemetry, vga_buffer};
+use jarvis_kernel::{acpi, gdt, interrupts, memory, serial_println};
+
+#[cfg(feature = "gui")]
+use jarvis_kernel::{gui, vga_buffer};
+
+#[cfg(feature = "telemetry")]
+use jarvis_kernel::telemetry;
 
 #[cfg(feature = "test")]
-use jarvis_kernel::qemu;
+use jarvis_kernel::{qemu, serial_print};
 
 /// This function is called on panic.
 #[panic_handler]
@@ -37,20 +43,35 @@ pub static BOOTLOADER_CONFIG: BootloaderConfig = {
 entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    use jarvis_kernel::ai;
     use jarvis_kernel::allocator;
-    use jarvis_kernel::audio;
-    use jarvis_kernel::net;
     use jarvis_kernel::pci;
+    use jarvis_kernel::task::executor::Executor;
+
+    #[cfg(any(
+        feature = "ai",
+        feature = "telemetry",
+        feature = "gui",
+        feature = "network"
+    ))]
+    use jarvis_kernel::task::Task;
+
+    #[cfg(feature = "ai")]
+    use jarvis_kernel::ai;
+    #[cfg(feature = "audio")]
+    use jarvis_kernel::audio;
+    #[cfg(feature = "network")]
+    use jarvis_kernel::net;
+    #[cfg(feature = "storage")]
     use jarvis_kernel::storage;
-    use jarvis_kernel::task::{executor::Executor, Task};
 
     // 1. Initialize Framebuffer as early as possible
+    #[cfg(feature = "gui")]
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
         vga_buffer::init(framebuffer);
     }
 
     // 2. Initialize UI
+    #[cfg(feature = "gui")]
     gui::init_ui();
 
     serial_println!("Hello JARVIS OS!");
@@ -83,6 +104,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     x86_64::instructions::interrupts::enable();
 
     // Now we can use telemetry and other heap-dependent systems
+    #[cfg(feature = "telemetry")]
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
 
     if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
@@ -103,30 +125,44 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
             dev.read_bar(0)
         );
 
-        let mut controller = unsafe { audio::hda::HdaController::new(&dev, phys_mem_offset) };
-        unsafe {
-            controller.init();
+        #[cfg(feature = "audio")]
+        {
+            let mut controller = unsafe { audio::hda::HdaController::new(&dev, phys_mem_offset) };
+            unsafe {
+                controller.init();
+            }
         }
     }
 
     // Initialize networking after PCI scan
+    #[cfg(feature = "network")]
     net::init();
 
-    let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
+    #[cfg(feature = "storage")]
     {
+        let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
         use jarvis_kernel::storage::vfs::FileSystem;
         let mut _file = jfs.create("audio_log.raw").expect("Failed to create file");
-        // let _ = _file.write(b"JARVIS Audio Data Placeholder");
     }
 
     let mut executor = Executor::new();
-    executor.spawn(Task::with_priority(
-        ai::vad_task(1000),
-        jarvis_kernel::task::Priority::High,
-    ));
-    executor.spawn(Task::new(ai::shell::shell_task()));
+
+    #[cfg(feature = "ai")]
+    {
+        executor.spawn(Task::with_priority(
+            ai::vad_task(1000),
+            jarvis_kernel::task::Priority::High,
+        ));
+        executor.spawn(Task::new(ai::shell::shell_task()));
+    }
+
+    #[cfg(feature = "telemetry")]
     executor.spawn(Task::new(telemetry::telemetry_task()));
+
+    #[cfg(feature = "gui")]
     executor.spawn(Task::new(gui::ui_task()));
+
+    #[cfg(feature = "network")]
     executor.spawn(Task::new(net::discovery_task()));
 
     serial_println!("Status: Multitasking active. System ready.");
@@ -137,8 +173,17 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 fn run_tests() {
     serial_println!("Running system tests...");
     test_println();
+    test_pci_discovery();
     serial_println!("All tests passed!");
     qemu::exit_qemu(qemu::QemuExitCode::Success);
+}
+
+#[cfg(feature = "test")]
+fn test_pci_discovery() {
+    serial_print!("test_pci_discovery... ");
+    let devices = jarvis_kernel::pci::scan_bus();
+    assert!(!devices.is_empty(), "PCI bus scan returned no devices");
+    serial_println!("[ok] (found {} devices)", devices.len());
 }
 
 #[cfg(feature = "test")]

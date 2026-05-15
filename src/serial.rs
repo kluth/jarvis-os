@@ -15,20 +15,28 @@ pub fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    // We disable interrupts while writing to the serial port to avoid deadlocks
+    // 1. Print to Serial (Always)
     interrupts::without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)
             .expect("Printing to serial failed");
     });
+
+    // 2. Print to VGA Buffer (If enabled)
+    #[cfg(feature = "gui")]
+    {
+        if let Some(writer) = crate::vga_buffer::WRITER.lock().as_mut() {
+            writer.write_fmt(args).unwrap();
+        }
+    }
 }
 
 /// Prints to the host through the serial interface.
 #[macro_export]
 macro_rules! serial_print {
     ($($arg:tt)*) => {
-        $crate::serial::_print(format_args!($($arg)*));
+        $crate::serial::_print(format_args!($($arg)*))
     };
 }
 
@@ -39,4 +47,17 @@ macro_rules! serial_println {
     ($fmt:expr) => ($crate::serial_print!(concat!($fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
         concat!($fmt, "\n"), $($arg)*));
+}
+
+/// Standard print macro, maps to hardware-aware serial_print.
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::serial_print!($($arg)*));
+}
+
+/// Standard println macro, maps to hardware-aware serial_println.
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }

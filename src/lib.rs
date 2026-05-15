@@ -8,22 +8,29 @@
 extern crate alloc;
 
 pub mod acpi;
+#[cfg(feature = "ai")]
 pub mod ai;
 pub mod allocator;
 pub mod apic;
+#[cfg(feature = "audio")]
 pub mod audio;
 pub mod device_manager;
 pub mod gdt;
+#[cfg(feature = "gui")]
 pub mod gui;
 pub mod interrupts;
 pub mod memory;
+#[cfg(feature = "network")]
 pub mod net;
 pub mod pci;
 pub mod qemu;
 pub mod serial;
+#[cfg(feature = "storage")]
 pub mod storage;
 pub mod task;
+#[cfg(feature = "telemetry")]
 pub mod telemetry;
+#[cfg(feature = "gui")]
 pub mod vga_buffer;
 
 use core::panic::PanicInfo;
