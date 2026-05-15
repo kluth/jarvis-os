@@ -47,14 +47,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     use jarvis_kernel::pci;
     use jarvis_kernel::task::executor::Executor;
 
-    #[cfg(any(
-        feature = "ai",
-        feature = "telemetry",
-        feature = "gui",
-        feature = "network"
-    ))]
-    use jarvis_kernel::task::Task;
-
     #[cfg(feature = "ai")]
     use jarvis_kernel::ai;
     #[cfg(feature = "audio")]
@@ -64,19 +56,23 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     #[cfg(feature = "storage")]
     use jarvis_kernel::storage;
 
+    #[cfg(any(
+        feature = "ai",
+        feature = "telemetry",
+        feature = "gui",
+        feature = "network"
+    ))]
+    use jarvis_kernel::task::Task;
+
+    serial_println!("Hello JARVIS OS!");
+
     // 1. Initialize Framebuffer as early as possible
     #[cfg(feature = "gui")]
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
         vga_buffer::init(framebuffer);
     }
 
-    // 2. Initialize UI
-    #[cfg(feature = "gui")]
-    gui::init_ui();
-
-    serial_println!("Hello JARVIS OS!");
-
-    // 3. Initialize CPU & Memory infrastructure
+    // 2. Initialize CPU & Memory infrastructure
     let phys_mem_offset = VirtAddr::new(
         boot_info
             .physical_memory_offset
@@ -94,9 +90,13 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     let mut frame_allocator =
         unsafe { memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset) };
 
-    // 4. Initialize Heap (CRITICAL: must be before any telemetry or complex logging)
+    // 3. Initialize Heap
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
     serial_println!("Status: Memory management initialized.");
+
+    // 4. Initialize UI (after heap is safe)
+    #[cfg(feature = "gui")]
+    gui::init_ui();
 
     // 5. Initialize APIC and Interrupts
     serial_println!("Initializing APIC...");

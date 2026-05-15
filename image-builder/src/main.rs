@@ -134,7 +134,7 @@ fn main() {
 
         // Trigger screenshot via QMP after some time
         thread::spawn(move || {
-            thread::sleep(Duration::from_secs(5));
+            thread::sleep(Duration::from_secs(15));
             println!("Connecting to QMP to take screenshot...");
             match UnixStream::connect(qmp_socket) {
                 Ok(mut stream) => {
