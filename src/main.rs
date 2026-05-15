@@ -25,7 +25,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
-    config.mappings.physical_memory = bootloader_api::config::Mapping::Dynamic;
+    config.mappings.physical_memory = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
     config
 };
 
@@ -47,7 +47,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     gdt::init();
     interrupts::init_idt();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory.into_option().expect("Physical memory offset not provided by bootloader"));
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
     
     // Initialize APIC instead of PIC
     unsafe { interrupts::init_apic(phys_mem_offset) };
