@@ -48,8 +48,11 @@ impl Executor {
     }
 
     fn run_ready_tasks(&mut self) {
-        // Process queues in priority order (MLFQ)
-        for i in 0..3 {
+        // Simple starvation prevention: process up to N tasks per queue per cycle
+        let limits = [10, 5, 2];
+
+        for (i, &limit) in limits.iter().enumerate() {
+            let mut count = 0;
             while let Some(task_id) = self.queues[i].pop() {
                 let task = match self.tasks.get_mut(&task_id) {
                     Some(task) => task,
@@ -71,6 +74,11 @@ impl Executor {
                         // it might be demoted to a lower priority queue.
                         // Here, it stays in its queue until next wake.
                     }
+                }
+
+                count += 1;
+                if count >= limit {
+                    break;
                 }
             }
         }
@@ -105,6 +113,11 @@ impl Wake for TaskWaker {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        let _ = self.queue.push(self.task_id);
+        if self.queue.push(self.task_id).is_err() {
+            crate::println!(
+                "WARNING: Task queue full, dropping wake signal for task {:?}",
+                self.task_id
+            );
+        }
     }
 }

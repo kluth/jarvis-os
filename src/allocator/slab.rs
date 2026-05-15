@@ -36,6 +36,15 @@ impl<T> Slab<T> {
     /// and large enough to hold `count` objects of type `T`. The memory must not be
     /// used by any other part of the system.
     pub unsafe fn init(&mut self, start_addr: usize, count: usize) {
+        let align = core::mem::align_of::<T>();
+        assert_eq!(
+            start_addr % align,
+            0,
+            "Slab start_addr 0x{:x} is not aligned to {}",
+            start_addr,
+            align
+        );
+
         for i in 0..count {
             let ptr = (start_addr + i * self.size) as *mut SlabEntry;
             self.free_node(NonNull::new_unchecked(ptr));

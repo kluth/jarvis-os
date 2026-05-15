@@ -34,6 +34,13 @@ impl DmaBuffer {
     /// buffer's actual physical capacity.
     pub unsafe fn write(&mut self, offset: usize, data: &[u8]) {
         let len = data.len();
+        assert!(
+            offset + len <= self.size,
+            "DMA Buffer overflow: offset {} + len {} exceeds size {}",
+            offset,
+            len,
+            self.size
+        );
         let target = self.virt_addr.add(offset % self.size);
         // Simple copy, doesn't handle wrap-around in one call yet
         core::ptr::copy_nonoverlapping(data.as_ptr(), target, len);
