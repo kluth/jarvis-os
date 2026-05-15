@@ -10,6 +10,9 @@ use x86_64::VirtAddr;
 // Import library components
 use jarvis_kernel::{acpi, gdt, gui, interrupts, memory, serial_println, telemetry, vga_buffer};
 
+#[cfg(feature = "test")]
+use jarvis_kernel::qemu;
+
 /// This function is called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -18,6 +21,7 @@ fn panic(info: &PanicInfo) -> ! {
     #[cfg(feature = "test")]
     qemu::exit_qemu(qemu::QemuExitCode::Failed);
 
+    #[cfg(not(feature = "test"))]
     loop {
         core::hint::spin_loop();
     }
