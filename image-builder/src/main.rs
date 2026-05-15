@@ -1,7 +1,8 @@
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::process::{Command, exit};
+use std::process::{Command, exit, Stdio};
+use std::io::{BufRead, BufReader};
 
 // Explicitly import from std to avoid prelude issues in no_std/std hybrid environments
 use std::option::Option::{Some, None};
@@ -43,7 +44,7 @@ fn main() {
     println!("Creating disk image at {}...", image_path.display());
 
     // Use the bootloader crate to create a bootable disk image
-    let mut boot = bootloader::BiosBoot::new(kernel_path);
+    let boot = bootloader::BiosBoot::new(kernel_path);
     
     if let Err(e) = boot.create_disk_image(&image_path) {
         eprintln!("Failed to create disk image: {}", e);
@@ -63,8 +64,22 @@ fn main() {
             .arg("none")
             .arg("-serial")
             .arg("stdio")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
             .spawn()
             .expect("Failed to start QEMU");
+
+        let stdout = qemu.stdout.take().expect("Failed to open QEMU stdout");
+        let reader = BufReader::new(stdout);
+
+        // Spawn a thread to read and print QEMU output in real-time
+        std::thread::spawn(move || {
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    println!("[QEMU] {}", l);
+                }
+            }
+        });
 
         // Use a simple polling loop with a timeout for the child process
         let start_time = std::time::Instant::now();
