@@ -1,6 +1,5 @@
 use crate::vga_buffer::WRITER;
 use crate::telemetry;
-use core::fmt::Write;
 
 pub fn init_ui() {
     if let Some(writer) = WRITER.lock().as_mut() {
@@ -54,13 +53,8 @@ fn update_dynamic_elements() {
         let latest = telemetry::HUB.lock().get_latest(5);
         let mut y = 110;
         for data in latest {
-            let mut label = [0u8; 64];
-            let mut cursor = core::io::Cursor::new(&mut label[..]);
-            // Since we don't have easy string formatting without std/alloc in a simple way here,
-            // we just use simple indicators for now or fixed strings.
-            
             let text = match data {
-                telemetry::TelemetryData::CpuLoad(load) => "CPU Load: ACTIVE",
+                telemetry::TelemetryData::CpuLoad(_) => "CPU Load: ACTIVE",
                 telemetry::TelemetryData::MemoryUsed(_) => "Memory: ALLOCATED",
                 telemetry::TelemetryData::MemoryFree(_) => "Memory: AVAILABLE",
                 telemetry::TelemetryData::HardwareEvent { .. } => "HW Event: DETECTED",
