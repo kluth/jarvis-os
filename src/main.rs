@@ -3,10 +3,12 @@
 
 extern crate alloc;
 
-use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, telemetry};
 use bootloader_api::{entry_point, BootInfo, BootloaderConfig};
 use core::panic::PanicInfo;
 use x86_64::VirtAddr;
+
+// Import library components
+use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry};
 use jarvis_kernel::task::{Task, executor::Executor};
 use jarvis_kernel::task::keyboard;
 
@@ -38,10 +40,13 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
 
+    #[cfg(feature = "test")]
+    run_tests();
+
     gdt::init();
     interrupts::init_idt();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory.into_option().expect("Physical memory offset not provided by bootloader"));
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
     
     // Initialize APIC instead of PIC
     unsafe { interrupts::init_apic(phys_mem_offset) };
@@ -91,6 +96,20 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     println!("Status: Multitasking active. System ready.");
     telemetry::log(telemetry::TelemetryData::SystemStatus("System Ready"));
     executor.run();
+}
+
+#[cfg(feature = "test")]
+fn run_tests() {
+    serial_println!("Running system tests...");
+    test_println();
+    serial_println!("All tests passed!");
+    qemu::exit_qemu(qemu::QemuExitCode::Success);
+}
+
+#[cfg(feature = "test")]
+fn test_println() {
+    jarvis_kernel::serial_print!("test_println... ");
+    serial_println!("[ok]");
 }
 
 async fn async_number() -> u32 {
