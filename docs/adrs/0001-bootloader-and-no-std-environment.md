@@ -1,28 +1,28 @@
-# ADR 0001: Bootloader und Rust no_std Umgebung
+# ADR 0001: Bootloader and Rust no_std Environment
 
 ## Status
-Akzeptiert
+Accepted
 
-## Kontext
-Für die Entwicklung von JARVIS OS "von Grund auf" benötigen wir eine Umgebung, die ohne ein bestehendes Betriebssystem (Bare Metal) lauffähig ist. Die Zielarchitektur ist initial x86_64, da diese eine breite Hardware-Basis bietet und in QEMU exzellent emuliert werden kann. Wir müssen entscheiden, wie das System startet (Bootloader) und wie wir Rust in dieser Umgebung konfigurieren.
+## Context
+For the development of JARVIS OS "from scratch", we need an environment that can run without an existing operating system (bare metal). The initial target architecture is x86_64, as it provides a broad hardware base and can be excellently emulated in QEMU. We must decide how the system starts (bootloader) and how to configure Rust in this environment.
 
-## Entscheidung
-1.  **Programmiersprache:** Wir verwenden **Rust** mit dem Attribut `#![no_std]`, um die Standardbibliothek (die ein OS voraussetzt) auszuschließen. Wir nutzen die `core`-Library.
-2.  **Bootloader:** Wir verwenden **UEFI (Unified Extensible Firmware Interface)** anstelle des veralteten BIOS. UEFI bietet moderne Features wie Speicher-Mapping und Grafik-Initialisierung (GOP) bereits vor dem Kernel-Start.
-3.  **Bootloader-Implementierung:** Wir nutzen das `bootloader` Crate (v0.11 oder höher), da es eine nahtlose Integration in den Rust-Build-Prozess bietet und den Kernel direkt in den 64-Bit Long Mode versetzt.
-4.  **Architektur-Muster:**
-    *   **Abstract Factory:** Wir definieren Traits für grundlegende Hardware-Interaktionen (z.B. `Writer`, `Hal`), um den Kernel später leicht auf andere Architekturen (ARM, RISC-V) portieren zu können.
-    *   **Chain of Responsibility:** Der Boot-Prozess wird in klar definierte Stufen unterteilt (UEFI -> Bootloader -> Kernel Init -> Module Init).
+## Decision
+1.  **Programming Language:** We use **Rust** with the `#![no_std]` attribute to exclude the standard library (which assumes an OS). We utilize the `core` library.
+2.  **Bootloader:** We use **UEFI (Unified Extensible Firmware Interface)** instead of the outdated BIOS. UEFI provides modern features such as memory mapping and graphics initialization (GOP) even before the kernel starts.
+3.  **Bootloader Implementation:** We use the `bootloader` crate (v0.11 or higher) because it offers seamless integration into the Rust build process and puts the kernel directly into 64-bit Long Mode.
+4.  **Architecture Patterns:**
+    *   **Abstract Factory:** We define traits for basic hardware interactions (e.g., `Writer`, `Hal`) to facilitate porting the kernel to other architectures (ARM, RISC-V) later.
+    *   **Chain of Responsibility:** The boot process is divided into clearly defined stages (UEFI -> Bootloader -> Kernel Init -> Module Init).
 
-## Konsequenzen
-*   **Vorteile:** 
-    *   Volle Kontrolle über die Hardware von der ersten Instruktion an.
-    *   Typsicherheit und Speichersicherheit durch Rust auch im Kernel.
-    *   Zukunftssicheres Boot-Verfahren durch UEFI.
-*   **Nachteile:**
-    *   Hoher initialer Aufwand für die Einrichtung (Cross-Compilation, JSON-Targets).
-    *   Keine Nutzung von Standard-Rust-Features wie `std::vec` oder `std::string` ohne eigenen Allocator.
+## Consequences
+*   **Advantages:** 
+    *   Full control over the hardware from the first instruction.
+    *   Type safety and memory safety through Rust even in the kernel.
+    *   Future-proof booting process through UEFI.
+*   **Disadvantages:**
+    *   High initial overhead for setup (cross-compilation, JSON targets).
+    *   No use of standard Rust features like `std::vec` or `std::string` without a custom allocator.
 
-## Verifizierung
-*   Kompilierung mit `cargo build --target x86_64-unknown-none`.
-*   Erfolgreicher Boot-Vorgang in **QEMU**, erkennbar an einem Framebuffer-Output.
+## Verification
+*   Compilation with `cargo build --target x86_64-unknown-none`.
+*   Successful boot process in **QEMU**, indicated by framebuffer output.

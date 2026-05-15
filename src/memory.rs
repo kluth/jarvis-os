@@ -1,29 +1,29 @@
+use bootloader_api::info::{MemoryRegionKind, MemoryRegions};
 use x86_64::{
-    structures::paging::{PageTable, OffsetPageTable},
-    VirtAddr, PhysAddr,
+    structures::paging::{
+        FrameAllocator, FrameDeallocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB,
+    },
+    PhysAddr, VirtAddr,
 };
 
-/// Initialisiert eine neue OffsetPageTable.
+/// Initializes a new OffsetPageTable.
 ///
-/// # Sicherheit
-/// Diese Funktion ist unsicher, da der Aufrufer garantieren muss, dass der
-/// gesamte physische Speicher unter dem übergebenen `physical_memory_offset`
-/// gemappt ist. Außerdem darf diese Funktion nur einmal aufgerufen werden,
-/// um mehrere mutable Aliase auf die Level-4-Tabelle zu verhindern.
+/// # Safety
+/// This function is unsafe because the caller must guarantee that the
+/// complete physical memory is mapped to the specified `physical_memory_offset`.
+/// Also, this function must be only called once to avoid aliasing mutable
+/// references to the level 4 table.
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
     let level_4_table = active_level_4_table(physical_memory_offset);
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
-/// Gibt eine mutable Referenz auf die aktive Level-4-Seitentabelle zurück.
+/// Returns a mutable reference to the active level 4 page table.
 ///
-/// # Sicherheit
-/// Diese Funktion ist unsicher, da der Aufrufer garantieren muss, dass der
-/// gesamte physische Speicher unter dem übergebenen `physical_memory_offset`
-/// gemappt ist.
-unsafe fn active_level_4_table(physical_memory_offset: VirtAddr)
-    -> &'static mut PageTable
-{
+/// # Safety
+/// This function is unsafe because the caller must guarantee that the
+/// complete physical memory is mapped to the specified `physical_memory_offset`.
+unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
     use x86_64::registers::control::Cr3;
 
     let (level_4_table_frame, _) = Cr3::read();
@@ -35,51 +35,123 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr)
     &mut *page_table_ptr
 }
 
-use x86_64::structures::paging::{FrameAllocator, PhysFrame, Size4KiB};
-use bootloader_api::info::{MemoryRegions, MemoryRegionKind};
-
-/// Ein FrameAllocator, der die Memory-Map des Bootloaders nutzt.
-/// Er implementiert einen einfachen Bump-Allocator, der Frames sequenziell aus
-/// den verfügbaren Speicherregionen zuweist.
-pub struct BootInfoFrameAllocator {
-    memory_map: &'static MemoryRegions,
-    next: usize,
+pub struct BitmapFrameAllocator {
+    bitmap: &'static mut [u8],
+    max_frame_index: usize,
+    next_search_index: usize,
 }
 
-impl BootInfoFrameAllocator {
-    /// Erstellt einen neuen FrameAllocator aus der übergebenen Memory-Map.
+impl BitmapFrameAllocator {
+    /// Create a BitmapFrameAllocator from the passed memory map.
     ///
-    /// # Sicherheit
-    /// Diese Funktion ist unsicher, da der Aufrufer garantieren muss, dass die
-    /// Memory-Map korrekt ist und dass alle als `Usable` markierten Frames
-    /// tatsächlich unbenutzt sind.
-    pub unsafe fn init(memory_map: &'static MemoryRegions) -> Self {
-        BootInfoFrameAllocator {
-            memory_map,
-            next: 0,
+    /// # Safety
+    /// This function is unsafe because the caller must guarantee that the passed
+    /// memory map is valid and that the physical memory offset is correct.
+    pub unsafe fn init(
+        memory_map: &'static MemoryRegions,
+        physical_memory_offset: VirtAddr,
+    ) -> Self {
+        let mut max_addr = 0;
+        for region in memory_map.iter() {
+            if region.end > max_addr {
+                max_addr = region.end;
+            }
+        }
+
+        let total_frames = (max_addr / 4096) as usize;
+        let bitmap_size = total_frames.div_ceil(8);
+
+        // Find a usable region large enough for the bitmap
+        let mut bitmap_addr = 0;
+        for region in memory_map.iter() {
+            if region.kind == MemoryRegionKind::Usable
+                && (region.end - region.start) as usize >= bitmap_size
+            {
+                bitmap_addr = region.start;
+                break;
+            }
+        }
+
+        if bitmap_addr == 0 {
+            panic!("Could not find a usable memory region for the frame allocator bitmap");
+        }
+
+        let bitmap_ptr = (physical_memory_offset + bitmap_addr).as_mut_ptr();
+        let bitmap = core::slice::from_raw_parts_mut(bitmap_ptr, bitmap_size);
+
+        // Initialize bitmap: all frames used
+        bitmap.fill(0xFF);
+
+        let mut allocator = BitmapFrameAllocator {
+            bitmap,
+            max_frame_index: total_frames,
+            next_search_index: 0,
+        };
+
+        // Mark usable regions as free in the bitmap
+        for region in memory_map.iter() {
+            if region.kind == MemoryRegionKind::Usable {
+                let start_frame = (region.start / 4096) as usize;
+                let end_frame = (region.end / 4096) as usize;
+                for i in start_frame..end_frame {
+                    allocator.set_free(i);
+                }
+            }
+        }
+
+        // Mark the bitmap itself as used
+        let bitmap_start_frame = (bitmap_addr / 4096) as usize;
+        let bitmap_end_frame = (bitmap_addr + bitmap_size as u64).div_ceil(4096) as usize;
+        for i in bitmap_start_frame..bitmap_end_frame {
+            allocator.set_used(i);
+        }
+
+        // Frame 0 is usually special/reserved, mark it used just in case
+        allocator.set_used(0);
+
+        allocator
+    }
+
+    fn set_free(&mut self, frame_index: usize) {
+        if frame_index < self.max_frame_index {
+            self.bitmap[frame_index / 8] &= !(1 << (frame_index % 8));
         }
     }
 
-    /// Gibt einen Iterator über die nutzbaren Frames in der Memory-Map zurück.
-    fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
-        // Nutze die Memory-Map des Bootloaders
-        let regions = self.memory_map.iter();
-        let usable_regions = regions
-            .filter(|r| r.kind == MemoryRegionKind::Usable);
-        // Transformiere die Regionen in einen Iterator über die Frame-Startadressen
-        let addr_ranges = usable_regions
-            .map(|r| r.start..r.end);
-        // Transformiere die Adressbereiche in einen Iterator über 4KiB-Frames
-        let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
-        // Erzeuge `PhysFrame` Objekte aus den Adressen
-        frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
+    fn set_used(&mut self, frame_index: usize) {
+        if frame_index < self.max_frame_index {
+            self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
+        }
+    }
+
+    fn is_used(&self, frame_index: usize) -> bool {
+        if frame_index >= self.max_frame_index {
+            return true;
+        }
+        (self.bitmap[frame_index / 8] & (1 << (frame_index % 8))) != 0
     }
 }
 
-unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
+unsafe impl FrameAllocator<Size4KiB> for BitmapFrameAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
-        let frame = self.usable_frames().nth(self.next);
-        self.next += 1;
-        frame
+        // Linear scan starting from next_search_index
+        for i in 0..self.max_frame_index {
+            let index = (self.next_search_index + i) % self.max_frame_index;
+            if !self.is_used(index) {
+                self.set_used(index);
+                self.next_search_index = (index + 1) % self.max_frame_index;
+                return Some(PhysFrame::containing_address(PhysAddr::new(
+                    (index as u64) * 4096,
+                )));
+            }
+        }
+        None
+    }
+}
+
+impl FrameDeallocator<Size4KiB> for BitmapFrameAllocator {
+    unsafe fn deallocate_frame(&mut self, frame: PhysFrame<Size4KiB>) {
+        let index = (frame.start_address().as_u64() / 4096) as usize;
+        self.set_free(index);
     }
 }

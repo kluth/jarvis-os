@@ -1,18 +1,36 @@
+use alloc::boxed::Box;
 use core::{
     future::Future,
     pin::Pin,
+    sync::atomic::{AtomicU64, Ordering},
     task::{Context, Poll},
 };
-use alloc::boxed::Box;
-use core::sync::atomic::{AtomicU64, Ordering};
 
 pub mod executor;
 pub mod keyboard;
 
-/// Ein Task ist ein Wrapper um ein Future, das ein `()` zurückgibt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TaskId(u64);
+
+impl TaskId {
+    fn new() -> Self {
+        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+        TaskId(NEXT_ID.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Priority {
+    High = 0,
+    Normal = 1,
+    Low = 2,
+}
+
 pub struct Task {
-    id: TaskId,
-    future: Pin<Box<dyn Future<Output = ()>>>,
+    pub id: TaskId,
+    pub(crate) future: Pin<Box<dyn Future<Output = ()>>>,
+    pub priority: Priority,
+    pub ticks_remaining: usize,
 }
 
 impl Task {
@@ -20,20 +38,26 @@ impl Task {
         Task {
             id: TaskId::new(),
             future: Box::pin(future),
+            priority: Priority::Normal,
+            ticks_remaining: 10, // Default quantum
         }
     }
 
-    fn poll(&mut self, context: &mut Context) -> Poll<()> {
-        self.future.as_mut().poll(context)
+    pub fn with_priority(future: impl Future<Output = ()> + 'static, priority: Priority) -> Task {
+        let quantum = match priority {
+            Priority::High => 5,
+            Priority::Normal => 10,
+            Priority::Low => 20,
+        };
+        Task {
+            id: TaskId::new(),
+            future: Box::pin(future),
+            priority,
+            ticks_remaining: quantum,
+        }
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct TaskId(u64);
-
-impl TaskId {
-    fn new() -> Self {
-        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-        TaskId(NEXT_ID.fetch_add(1, Ordering::Relaxed))
+    pub(crate) fn poll(&mut self, context: &mut Context) -> Poll<()> {
+        self.future.as_mut().poll(context)
     }
 }

@@ -1,11 +1,1 @@
-[build]
-target = "x86_64-unknown-none"
-
-[unstable]
-build-std = ["core", "compiler_builtins", "alloc"]
-build-std-features = ["compiler-builtins-mem"]
-
-[run]
-# Später für QEMU
-# runner = "qemu-system-x86_64 -drive format=raw,file="
-
+# build-std is handled explicitly in CI to avoid host build conflicts

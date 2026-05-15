@@ -1,0 +1,42 @@
+name: Test Run JARVIS OS
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-run:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust nightly
+      uses: dtolnay/rust-toolchain@nightly
+      with:
+        toolchain: nightly
+        components: rust-src, llvm-tools-preview
+
+    - name: Install QEMU
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
+
+    - name: Run Framework Tests
+      run: |
+        # Build the kernel with test feature
+        cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
+        
+        # Run using image-builder as runner
+        cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu -- \
+          target/x86_64-jarvis_os/debug/jarvis-kernel
+
+    - name: Upload Screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: qemu-screenshot
+        path: target/screenshot.ppm

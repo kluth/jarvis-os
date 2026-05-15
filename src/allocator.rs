@@ -1,16 +1,36 @@
+use linked_list_allocator::LockedHeap;
+use spinning_top::Spinlock;
 use x86_64::{
     structures::paging::{
         mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
     },
     VirtAddr,
 };
-use linked_list_allocator::LockedHeap;
+
+pub mod slab;
+
+/// A wrapper around spinning_top::Spinlock to permit trait implementations.
+pub struct Locked<A> {
+    inner: Spinlock<A>,
+}
+
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: Spinlock::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spinning_top::guard::SpinlockGuard<'_, A> {
+        self.inner.lock()
+    }
+}
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+pub const HEAP_SIZE: usize = 32 * 1024 * 1024; // 32 MiB (Balanced increase)
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,

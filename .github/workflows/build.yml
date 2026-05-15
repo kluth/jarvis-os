@@ -2,7 +2,7 @@ name: Build JARVIS OS
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "feat/*" ]
   pull_request:
     branches: [ "main", "develop" ]
 
@@ -12,6 +12,10 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        machine: [q35, pc]
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v4
@@ -19,25 +23,64 @@ jobs:
     - name: Install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
       with:
+        toolchain: nightly
         components: rust-src, llvm-tools-preview
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
+    - name: Install QEMU and Tools
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 ffmpeg
 
-    - name: Build Kernel
-      run: cargo build --target x86_64-unknown-none
+    - name: Force Stable Dependencies
+      run: |
+        # Fix serde for both projects
+        cargo generate-lockfile
+        cargo update -p serde --precise 1.0.227 || true
+        
+        cd image-builder
+        cargo generate-lockfile
+        cargo update -p serde --precise 1.0.227 || true
+        # Fix rustix for the host tools
+        cargo update -p rustix --precise 0.38.31 || true
 
-    - name: Upload Kernel Binary
+    - name: Run Framework Tests
+      run: |
+        # Build the kernel with test feature
+        cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
+        
+        # Build and run image-builder separately
+        cd image-builder
+        cargo run --target x86_64-unknown-linux-gnu -- \
+          ../target/x86_64-jarvis_os/debug/jarvis-kernel --machine ${{ matrix.machine }} --memory 512
+
+    - name: Build Production Kernel
+      run: |
+        cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
+
+    - name: Create Production Disk Image
+      run: |
+        cd image-builder
+        cargo run --target x86_64-unknown-linux-gnu -- \
+          ../target/x86_64-jarvis_os/debug/jarvis-kernel --no-run
+
+    - name: Upload Disk Image
       uses: actions/upload-artifact@v4
       with:
-        name: jarvis-kernel
-        path: target/x86_64-unknown-none/debug/jarvis-kernel
+        name: jarvis-os-image-${{ matrix.machine }}
+        path: target/image/jarvis-os.img
+
+    - name: Convert and Upload Screenshot
+      if: always()
+      run: |
+        if [ -f target/screenshot.ppm ]; then
+          ffmpeg -i target/screenshot.ppm target/screenshot.png -y
+        else
+          echo "Screenshot not found, skipping conversion."
+        fi
+
+    - name: Upload Screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: qemu-screenshot-${{ matrix.machine }}
+        path: target/screenshot.png
