@@ -26,8 +26,8 @@ jobs:
         toolchain: nightly
         components: rust-src, llvm-tools-preview
 
-    - name: Install QEMU
-      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
+    - name: Install QEMU and Tools
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 ffmpeg
 
     - name: Force Stable Dependencies
       run: |
@@ -69,9 +69,18 @@ jobs:
         name: jarvis-os-image-${{ matrix.machine }}
         path: target/image/jarvis-os.img
 
+    - name: Convert and Upload Screenshot
+      if: always()
+      run: |
+        if [ -f target/screenshot.ppm ]; then
+          ffmpeg -i target/screenshot.ppm target/screenshot.png -y
+        else
+          echo "Screenshot not found, skipping conversion."
+        fi
+
     - name: Upload Screenshot
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: qemu-screenshot-${{ matrix.machine }}
-        path: target/screenshot.ppm
+        path: target/screenshot.png
