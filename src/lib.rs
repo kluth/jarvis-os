@@ -21,6 +21,7 @@ pub mod storage;
 pub mod ai;
 pub mod qemu;
 pub mod telemetry;
+pub mod gui;
 
 use core::panic::PanicInfo;
 

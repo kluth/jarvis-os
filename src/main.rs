@@ -9,7 +9,7 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu};
+use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui};
 use jarvis_kernel::task::{Task, executor::Executor};
 use jarvis_kernel::task::keyboard;
 
@@ -39,9 +39,14 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         vga_buffer::init(framebuffer);
     }
 
+    // Initialize the JARVIS HUD
+    gui::init_ui();
+
     serial_println!("BOOT_READY");
     serial_println!("Hello JARVIS OS!");
     
+    telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
+
     #[cfg(feature = "test")]
     run_tests();
 
@@ -89,6 +94,8 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     executor.spawn(Task::new(ai::shell::shell_task()));
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.spawn(Task::new(telemetry::telemetry_task()));
+    executor.spawn(Task::new(gui::ui_task()));
     
     serial_println!("Status: Multitasking active. System ready.");
     executor.run();
