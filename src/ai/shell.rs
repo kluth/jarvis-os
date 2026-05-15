@@ -25,13 +25,13 @@ impl Intent {
 
 /// The Jarvis Voice Shell: The primary interaction model.
 pub struct VoiceShell {
-    stt: Option<alloc::boxed::Box<dyn SttEngine>>,
+    _stt: Option<alloc::boxed::Box<dyn SttEngine>>,
     tts: Option<alloc::boxed::Box<dyn TtsEngine>>,
 }
 
 impl VoiceShell {
     pub fn new() -> Self {
-        VoiceShell { stt: None, tts: None }
+        VoiceShell { _stt: None, tts: None }
     }
 
     /// Processes a recognized command string and maps it to an Intent.

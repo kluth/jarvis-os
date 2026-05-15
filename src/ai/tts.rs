@@ -13,11 +13,15 @@ pub trait TtsEngine {
 /// 3. Async Synthesis: TTS generation should happen in a background task 
 ///    to avoid stuttering during playback.
 pub struct TtsManager {
-    engine: Option<alloc::boxed::Box<dyn TtsEngine>>,
+    _engine: Option<alloc::boxed::Box<dyn TtsEngine>>,
 }
 
 impl TtsManager {
     pub fn new() -> Self {
-        TtsManager { engine: None }
+        TtsManager { _engine: None }
+    }
+
+    pub fn set_engine(&mut self, engine: alloc::boxed::Box<dyn TtsEngine>) {
+        self._engine = Some(engine);
     }
 }

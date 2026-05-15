@@ -9,7 +9,7 @@ use core::panic::PanicInfo;
 use x86_64::VirtAddr;
 
 // Import library components
-use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui};
+use jarvis_kernel::{serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, telemetry, gui};
 use jarvis_kernel::task::{Task, executor::Executor};
 use jarvis_kernel::task::keyboard;
 
@@ -26,7 +26,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
-    config.mappings.physical_memory_offset = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
+    config.mappings.physical_memory = core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
     config
 };
 
@@ -54,13 +54,16 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     gdt::init();
     interrupts::init_idt();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory.into_option().expect("Physical memory offset not provided by bootloader"));
     
     // Initialize APIC instead of PIC
+    serial_println!("Initializing APIC...");
     unsafe { interrupts::init_apic(phys_mem_offset) };
     x86_64::instructions::interrupts::enable();
 
+    serial_println!("Initializing Memory Mapper...");
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    serial_println!("Initializing Bitmap Frame Allocator...");
     let mut frame_allocator = unsafe {
         memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset)
     };
@@ -85,7 +88,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     {
         use jarvis_kernel::storage::vfs::FileSystem;
         let mut file = jfs.create("audio_log.raw").expect("Failed to create file");
-        file.write(b"JARVIS Audio Data Placeholder").expect("Failed to write to file");
+        let _ = file.write(b"JARVIS Audio Data Placeholder");
         serial_println!("Status: JFS test write completed. Size: {} bytes", file.size());
     }
 
