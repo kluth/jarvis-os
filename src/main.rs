@@ -107,11 +107,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         acpi::init(x86_64::PhysAddr::new(rsdp_addr));
     }
 
-    #[cfg(feature = "test")]
-    run_tests();
-
     serial_println!("Scanning PCI bus...");
     let hda_devices = pci::scan_bus();
+
+    #[cfg(feature = "test")]
+    run_tests();
     for dev in hda_devices {
         serial_println!(
             "Found HDA at {}:{}:{} (BAR0: 0x{:x})",
@@ -181,9 +181,13 @@ fn run_tests() {
 #[cfg(feature = "test")]
 fn test_pci_discovery() {
     serial_print!("test_pci_discovery... ");
-    let devices = jarvis_kernel::pci::scan_bus();
-    assert!(!devices.is_empty(), "PCI bus scan returned no devices");
-    serial_println!("[ok] (found {} devices)", devices.len());
+    // Ensure PCI scan has run (it runs in kernel_main)
+    let devices = jarvis_kernel::device_manager::MANAGER.lock();
+    assert!(
+        !devices.get_devices().is_empty(),
+        "No devices registered in Device Manager"
+    );
+    serial_println!("[ok] (found {} devices)", devices.get_devices().len());
 }
 
 #[cfg(feature = "test")]
