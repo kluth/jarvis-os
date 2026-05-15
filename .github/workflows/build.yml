@@ -27,12 +27,10 @@ jobs:
 
     - name: Force Stable Dependencies
       run: |
-        # cargo update -p serde --precise 1.0.210
-        # Wait, I might need to generate the lockfile first
         cargo generate-lockfile
-        cargo update -p serde --precise 1.0.210 || true
-        # Also fix rustix for the host tools
-        cargo update -p rustix --precise 0.38.31 || true
+        # Force stable versions in the workspace lockfile
+        cargo update -p serde --precise 1.0.210
+        cargo update -p rustix --precise 0.38.31
 
     - name: Run Framework Tests
       run: |
@@ -41,7 +39,7 @@ jobs:
           -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
         
         # Run using image-builder as runner
-        cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu -- \
+        cargo run -p image-builder --target x86_64-unknown-linux-gnu -- \
           target/x86_64-jarvis_os/debug/jarvis-kernel
 
     - name: Build Production Kernel
@@ -51,7 +49,7 @@ jobs:
 
     - name: Create Production Disk Image
       run: |
-        cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu
+        cargo run -p image-builder --target x86_64-unknown-linux-gnu
 
     - name: Upload Disk Image
       uses: actions/upload-artifact@v4
