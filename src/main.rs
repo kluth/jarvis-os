@@ -35,6 +35,9 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 /// Kernel entry point.
 /// The bootloader calls this function once the system is in 64-bit mode.
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    // ALWAYS print BOOT_READY first for CI detection
+    serial_println!("BOOT_READY");
+
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
         vga_buffer::init(framebuffer);
     }
@@ -42,7 +45,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     // Initialize the JARVIS HUD
     gui::init_ui();
 
-    serial_println!("BOOT_READY");
     serial_println!("Hello JARVIS OS!");
     
     telemetry::log(telemetry::TelemetryData::SystemStatus("Booting..."));
