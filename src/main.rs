@@ -4,31 +4,18 @@
 
 extern crate alloc;
 
-mod vga_buffer;
-mod gdt;
-mod interrupts;
-mod memory;
-mod allocator;
-mod serial;
-mod task;
-mod apic;
-mod pci;
-mod audio;
-mod storage;
-mod ai;
-mod qemu;
-
 use bootloader_api::{entry_point, BootInfo, BootloaderConfig};
 use core::panic::PanicInfo;
 use x86_64::VirtAddr;
-use crate::task::{Task, executor::Executor};
-use crate::task::keyboard;
+use jarvis_kernel::{println, serial_println, gdt, interrupts, memory, allocator, pci, audio, storage, ai, vga_buffer, qemu, task};
+use jarvis_kernel::task::{Task, executor::Executor};
+use jarvis_kernel::task::keyboard;
 
 /// This function is called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    jarvis_kernel::println!("{}", info);
-    jarvis_kernel::serial_println!("{}", info);
+    println!("{}", info);
+    serial_println!("{}", info);
     
     #[cfg(feature = "test")]
     qemu::exit_qemu(qemu::QemuExitCode::Failed);
@@ -38,7 +25,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
-    config.mappings.physical_memory_offset = bootloader_api::config::Mapping::Dynamic;
+    config.mappings.physical_memory = bootloader_api::config::Mapping::Dynamic;
     config
 };
 
@@ -51,8 +38,8 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         vga_buffer::init(framebuffer);
     }
 
-    jarvis_kernel::println!("Hello JARVIS OS!");
-    jarvis_kernel::serial_println!("BOOT_READY");
+    println!("Hello JARVIS OS!");
+    serial_println!("BOOT_READY");
     
     #[cfg(feature = "test")]
     run_tests();
@@ -60,7 +47,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     gdt::init();
     interrupts::init_idt();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().expect("Physical memory offset not provided by bootloader"));
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory.into_option().expect("Physical memory offset not provided by bootloader"));
     
     // Initialize APIC instead of PIC
     unsafe { interrupts::init_apic(phys_mem_offset) };
@@ -74,11 +61,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
-    jarvis_kernel::println!("Status: Memory management initialized.");
+    println!("Status: Memory management initialized.");
 
     let hda_devices = pci::scan_bus();
     for dev in hda_devices {
-        jarvis_kernel::println!("Found HDA at {}:{}:{} (BAR0: 0x{:x})", 
+        println!("Found HDA at {}:{}:{} (BAR0: 0x{:x})", 
             dev.bus, dev.slot, dev.function, dev.read_bar(0));
         
         let mut controller = unsafe { 
@@ -89,10 +76,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     let mut jfs = storage::jfs::Jfs::new(1024 * 64); // 64 KiB RamDisk
     {
-        use crate::storage::vfs::FileSystem;
+        use jarvis_kernel::storage::vfs::FileSystem;
         let mut file = jfs.create("audio_log.raw").expect("Failed to create file");
         file.write(b"JARVIS Audio Data Placeholder").expect("Failed to write to file");
-        jarvis_kernel::println!("Status: JFS test write completed. Size: {} bytes", file.size());
+        println!("Status: JFS test write completed. Size: {} bytes", file.size());
     }
 
     let mut executor = Executor::new();
@@ -101,22 +88,22 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     
-    jarvis_kernel::println!("Status: Multitasking active. System ready.");
+    println!("Status: Multitasking active. System ready.");
     executor.run();
 }
 
 #[cfg(feature = "test")]
 fn run_tests() {
-    jarvis_kernel::serial_println!("Running system tests...");
+    serial_println!("Running system tests...");
     test_println();
-    jarvis_kernel::serial_println!("All tests passed!");
+    serial_println!("All tests passed!");
     qemu::exit_qemu(qemu::QemuExitCode::Success);
 }
 
 #[cfg(feature = "test")]
 fn test_println() {
     jarvis_kernel::serial_print!("test_println... ");
-    jarvis_kernel::serial_println!("[ok]");
+    serial_println!("[ok]");
 }
 
 async fn async_number() -> u32 {
@@ -125,5 +112,5 @@ async fn async_number() -> u32 {
 
 async fn example_task() {
     let number = async_number().await;
-    jarvis_kernel::println!("Async task says hello! The number is {}", number);
+    println!("Async task says hello! The number is {}", number);
 }
