@@ -32,7 +32,7 @@ jobs:
         cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
           -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
         
-        # Run using image-builder as runner
+        # Run using image-builder as runner (passing arg triggers QEMU)
         cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu -- \
           target/x86_64-jarvis_os/debug/jarvis-kernel
 
@@ -43,8 +43,8 @@ jobs:
 
     - name: Create Production Disk Image
       run: |
-        cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu -- \
-          target/x86_64-jarvis_os/debug/jarvis-kernel
+        # Run image-builder without args to skip QEMU
+        cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu
 
     - name: Upload Disk Image
       uses: actions/upload-artifact@v4
