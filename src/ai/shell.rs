@@ -1,6 +1,15 @@
 use super::stt::SttEngine;
 use super::tts::TtsEngine;
-use crate::println;
+use crate::{println, telemetry};
+
+#[derive(Debug, Clone, Copy)]
+pub enum Intent {
+    SystemStatus,
+    InitializeDiagnostics,
+    ControlHardware { device: &'static str, action: &'static str },
+    Greeting,
+    Unknown,
+}
 
 /// The Jarvis Voice Shell: The primary interaction model.
 pub struct VoiceShell {
@@ -13,18 +22,46 @@ impl VoiceShell {
         VoiceShell { stt: None, tts: None }
     }
 
-    /// Processes a recognized command string.
+    /// Processes a recognized command string and maps it to an Intent.
     pub fn handle_command(&mut self, text: &str) {
         println!("Voice Shell: Handling command -> {}", text);
         
+        let intent = self.map_text_to_intent(text);
+        telemetry::log(telemetry::TelemetryData::AIIntentDetected(text));
+
+        match intent {
+            Intent::SystemStatus => {
+                self.respond("All systems are operational, sir.");
+            }
+            Intent::InitializeDiagnostics => {
+                self.respond("Initiating full system diagnostics.");
+            }
+            Intent::Greeting => {
+                self.respond("Hello. I am JARVIS. How can I help you?");
+            }
+            Intent::ControlHardware { device, action } => {
+                println!("Action: {} on device: {}", action, device);
+                self.respond("Command processed.");
+            }
+            Intent::Unknown => {
+                self.respond("I'm sorry, I didn't catch that. Could you repeat?");
+            }
+        }
+    }
+
+    fn map_text_to_intent(&self, text: &str) -> Intent {
         let normalized = text.to_lowercase();
         
-        if normalized.contains("status") {
-            self.respond("All systems are operational, sir.");
-        } else if normalized.contains("hello") {
-            self.respond("Hello. I am JARVIS. How can I help you?");
+        if normalized.contains("status") || normalized.contains("how are you") {
+            Intent::SystemStatus
+        } else if normalized.contains("diagnostic") || normalized.contains("check up") {
+            Intent::InitializeDiagnostics
+        } else if normalized.contains("hello") || normalized.contains("hi") {
+            Intent::Greeting
+        } else if normalized.contains("turn on") {
+            Intent::ControlHardware { device: "lights", action: "on" }
         } else {
-            self.respond("I'm sorry, I didn't catch that.");
+            Intent::Unknown
         }
     }
 
@@ -38,7 +75,7 @@ impl VoiceShell {
 
 /// The 'Always-Listening' loop task.
 pub async fn shell_task() {
-    let mut shell = VoiceShell::new();
+    let mut _shell = VoiceShell::new();
     
     loop {
         // Here we would check the 'Voice Detected' signal from VAD
