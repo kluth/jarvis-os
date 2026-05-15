@@ -134,20 +134,43 @@ fn main() {
 
         // Trigger screenshot via QMP after some time
         thread::spawn(move || {
-            thread::sleep(Duration::from_secs(30));
-            println!("Connecting to QMP to take screenshot...");
-            match UnixStream::connect(qmp_socket) {
-                Ok(mut stream) => {
-                    let _ = stream.write_all(b"{\"execute\": \"qmp_capabilities\"}\n");
-                    thread::sleep(Duration::from_millis(500));
-                    let cmd = format!(
-                        "{{\"execute\": \"screendump\", \"arguments\": {{\"filename\": \"{}\"}}}} \n",
-                        screenshot_path
-                    );
-                    let _ = stream.write_all(cmd.as_bytes());
-                    println!("Screenshot command sent to QMP.");
+            println!("QMP Thread: Waiting for boot window (15s)...");
+            thread::sleep(Duration::from_secs(15));
+            
+            let mut retry_count = 0;
+            let mut connected = false;
+            let mut stream = None;
+            
+            while retry_count < 10 {
+                println!("QMP Thread: Connecting to QMP (attempt {})...", retry_count + 1);
+                match UnixStream::connect(qmp_socket) {
+                    Ok(s) => {
+                        println!("QMP Thread: Connected!");
+                        stream = Some(s);
+                        connected = true;
+                        break;
+                    }
+                    Err(e) => {
+                        eprintln!("QMP Thread: Connection failed: {}. Retrying in 1s...", e);
+                        thread::sleep(Duration::from_secs(1));
+                        retry_count += 1;
+                    }
                 }
-                Err(e) => eprintln!("Failed to connect to QMP: {}", e),
+            }
+
+            if let (true, Some(mut s)) = (connected, stream) {
+                let _ = s.write_all(b"{\"execute\": \"qmp_capabilities\"}\n");
+                thread::sleep(Duration::from_millis(500));
+                let cmd = format!(
+                    "{{\"execute\": \"screendump\", \"arguments\": {{\"filename\": \"{}\"}}}} \n",
+                    screenshot_path
+                );
+                let _ = s.write_all(cmd.as_bytes());
+                println!("QMP Thread: Screenshot command sent.");
+                // Give it a moment to write the file
+                thread::sleep(Duration::from_secs(2));
+            } else {
+                eprintln!("QMP Thread: Failed to establish QMP connection after retries.");
             }
         });
 
@@ -176,8 +199,8 @@ fn main() {
                 }
             }
 
-            // Keep QEMU alive for at least 40 seconds to allow for the screenshot
-            if start_time.elapsed() > Duration::from_secs(40) {
+            // Ensure we run for at least 30 seconds to allow the QMP thread to do its work
+            if start_time.elapsed() > Duration::from_secs(30) {
                 if let Some(code_opt) = test_result {
                     match code_opt {
                         Some(33) => {
