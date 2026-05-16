@@ -147,6 +147,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     // 6. Start Multitasking
     let mut executor = Executor::new();
 
+    #[cfg(feature = "storage")]
+    executor.spawn(Task::new(jarvis_kernel::storage::dht::dht_task()));
+
     #[cfg(feature = "ai")]
     {
         executor.spawn(Task::with_priority(
@@ -158,7 +161,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     }
 
     #[cfg(feature = "telemetry")]
-    executor.spawn(Task::new(telemetry::telemetry_task()));
+    {
+        executor.spawn(Task::new(telemetry::telemetry_task()));
+        executor.spawn(Task::new(jarvis_kernel::sensors::biometrics_task()));
+    }
 
     #[cfg(feature = "gui")]
     executor.spawn(Task::new(gui::ui_task()));
@@ -188,6 +194,12 @@ fn run_tests() {
     jarvis_kernel::ai::swarm::test_swarm_logic();
 
     jarvis_kernel::sensors::scene::test_scene_logic();
+
+    #[cfg(feature = "storage")]
+    jarvis_kernel::storage::dht::test_dht_storage();
+
+    #[cfg(feature = "telemetry")]
+    jarvis_kernel::sensors::biometrics::test_biometrics();
 
     #[cfg(feature = "gui")]
     jarvis_kernel::notifications::test_notifications();
