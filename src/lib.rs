@@ -24,8 +24,11 @@ pub mod interrupts;
 pub mod memory;
 #[cfg(feature = "network")]
 pub mod net;
+#[cfg(feature = "gui")]
+pub mod notifications;
 pub mod pci;
 pub mod qemu;
+pub mod sensors;
 pub mod serial;
 #[cfg(feature = "storage")]
 pub mod storage;
