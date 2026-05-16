@@ -22,7 +22,7 @@ COPY --chown=jarvis:jarvis target/image/jarvis-os.img /app/jarvis-os.img
 EXPOSE 8080
 
 # Start script
-COPY docker/start.sh /app/start.sh
+COPY --chown=jarvis:jarvis docker/start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 ENTRYPOINT ["/app/start.sh"]
