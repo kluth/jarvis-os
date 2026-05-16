@@ -154,6 +154,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
             jarvis_kernel::task::Priority::High,
         ));
         executor.spawn(Task::new(ai::shell::shell_task()));
+        executor.spawn(Task::new(ai::swarm::swarm_task()));
     }
 
     #[cfg(feature = "telemetry")]
@@ -183,6 +184,8 @@ fn run_tests() {
     test_pci_discovery();
     #[cfg(feature = "network")]
     jarvis_kernel::net::mesh::test_mesh_crypto();
+    #[cfg(feature = "ai")]
+    jarvis_kernel::ai::swarm::test_swarm_logic();
     serial_println!("All tests passed!");
     qemu::exit_qemu(qemu::QemuExitCode::Success);
 }
