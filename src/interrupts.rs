@@ -40,6 +40,12 @@ lazy_static! {
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
         idt.page_fault.set_handler_fn(page_fault_handler);
+        idt.general_protection_fault
+            .set_handler_fn(general_protection_fault_handler);
+        idt.stack_segment_fault
+            .set_handler_fn(stack_segment_fault_handler);
+        idt.invalid_opcode.set_handler_fn(invalid_opcode_handler);
+
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
         idt
@@ -73,6 +79,32 @@ extern "x86-interrupt" fn double_fault_handler(
     _error_code: u64,
 ) -> ! {
     panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+}
+
+extern "x86-interrupt" fn general_protection_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: u64,
+) {
+    println!("EXCEPTION: GENERAL PROTECTION FAULT");
+    println!("Error Code: 0x{:x}", error_code);
+    println!("{:#?}", stack_frame);
+    panic!("GPF");
+}
+
+extern "x86-interrupt" fn stack_segment_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: u64,
+) {
+    println!("EXCEPTION: STACK SEGMENT FAULT");
+    println!("Error Code: 0x{:x}", error_code);
+    println!("{:#?}", stack_frame);
+    panic!("SSF");
+}
+
+extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) {
+    println!("EXCEPTION: INVALID OPCODE");
+    println!("{:#?}", stack_frame);
+    panic!("UD");
 }
 
 extern "x86-interrupt" fn page_fault_handler(
