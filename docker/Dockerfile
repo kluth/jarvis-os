@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
 # Create working directory
 WORKDIR /app
 
-# Copy the latest kernel image (to be mounted or embedded)
-# We expect the image at /app/jarvis-os.img
+# Copy the latest kernel image
+COPY target/image/jarvis-os.img /app/jarvis-os.img
 
 # Port for noVNC
 EXPOSE 8080

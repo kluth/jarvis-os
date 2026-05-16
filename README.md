@@ -52,7 +52,13 @@ cd image-builder && cargo run -- ../target/x86_64-jarvis_os/debug/jarvis-kernel
 ```
 
 ### 🐳 Quickstart with Docker
-Experience JARVIS OS directly in your browser without installing QEMU locally:
+Experience JARVIS OS directly in your browser with a single command:
+```bash
+curl -sL https://raw.githubusercontent.com/kluth/jarvis-os/main/scripts/run.sh | bash
+```
+*Note: Requires Docker. KVM is recommended for performance.*
+
+#### Manual Docker Setup (Optional)
 1. Ensure you have the `jarvis-os.img` in `target/image/`.
 2. Run the container:
    ```bash
