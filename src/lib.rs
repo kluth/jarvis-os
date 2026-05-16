@@ -24,6 +24,7 @@ pub mod memory;
 pub mod net;
 pub mod pci;
 pub mod qemu;
+pub mod sensors;
 pub mod serial;
 #[cfg(feature = "storage")]
 pub mod storage;
