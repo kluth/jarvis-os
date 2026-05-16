@@ -51,6 +51,15 @@ Before pushing, always run the validation framework:
 cd image-builder && cargo run -- ../target/x86_64-jarvis_os/debug/jarvis-kernel
 ```
 
+### 🐳 Quickstart with Docker
+Experience JARVIS OS directly in your browser without installing QEMU locally:
+1. Ensure you have the `jarvis-os.img` in `target/image/`.
+2. Run the container:
+   ```bash
+   cd docker && docker-compose up --build -d
+   ```
+3. Open **http://localhost:8080** in your browser.
+
 ---
 
 ## 📜 Development Standards
