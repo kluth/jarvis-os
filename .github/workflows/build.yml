@@ -69,18 +69,20 @@ jobs:
         name: jarvis-os-image-${{ matrix.machine }}
         path: target/image/jarvis-os.img
 
-    - name: Convert and Upload Screenshot
+    - name: Convert and Upload Screenshots
       if: always()
       run: |
-        if [ -f target/screenshot.ppm ]; then
-          ffmpeg -i target/screenshot.ppm target/screenshot.png -y
-        else
-          echo "Screenshot not found, skipping conversion."
-        fi
+        mkdir -p target/screenshots
+        for f in target/screenshot_*.ppm; do
+          if [ -f "$f" ]; then
+            filename=$(basename "$f" .ppm)
+            ffmpeg -i "$f" "target/screenshots/${filename}.png" -y
+          fi
+        done
 
-    - name: Upload Screenshot
+    - name: Upload Screenshots
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: qemu-screenshot-${{ matrix.machine }}
-        path: target/screenshot.png
+        name: qemu-screenshots-${{ matrix.machine }}
+        path: target/screenshots/*.png
