@@ -5,12 +5,18 @@ use alloc::task::Wake;
 use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
 
+use core::sync::atomic::{AtomicUsize, Ordering};
+
+static DROPPED_WAKES: AtomicUsize = AtomicUsize::new(0);
+
 pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
     // MLFQ Queues: 0 = High, 1 = Normal, 2 = Low
     queues: [Arc<ArrayQueue<TaskId>>; 3],
     waker_cache: BTreeMap<TaskId, Waker>,
 }
+
+const PRIORITY_LIMITS: [usize; 3] = [10, 5, 2];
 
 impl Default for Executor {
     fn default() -> Self {
@@ -49,9 +55,7 @@ impl Executor {
 
     fn run_ready_tasks(&mut self) {
         // Simple starvation prevention: process up to N tasks per queue per cycle
-        let limits = [10, 5, 2];
-
-        for (i, &limit) in limits.iter().enumerate() {
+        for (i, &limit) in PRIORITY_LIMITS.iter().enumerate() {
             let mut count = 0;
             while let Some(task_id) = self.queues[i].pop() {
                 let task = match self.tasks.get_mut(&task_id) {
@@ -114,10 +118,7 @@ impl Wake for TaskWaker {
 
     fn wake_by_ref(self: &Arc<Self>) {
         if self.queue.push(self.task_id).is_err() {
-            crate::println!(
-                "WARNING: Task queue full, dropping wake signal for task {:?}",
-                self.task_id
-            );
+            DROPPED_WAKES.fetch_add(1, Ordering::Relaxed);
         }
     }
 }

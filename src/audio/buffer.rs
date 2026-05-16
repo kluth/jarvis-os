@@ -41,7 +41,7 @@ impl DmaBuffer {
             len,
             self.size
         );
-        let target = self.virt_addr.add(offset % self.size);
+        let target = self.virt_addr.add(offset);
         // Simple copy, doesn't handle wrap-around in one call yet
         core::ptr::copy_nonoverlapping(data.as_ptr(), target, len);
     }
