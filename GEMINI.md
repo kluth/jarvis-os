@@ -46,6 +46,7 @@ To maintain a pristine, easily reviewable, and perfectly linear history, we enfo
 - **Resource Constraints**: Due to hardware limitations (Chromebook), `scripts/validate.sh` focuses on `cargo check` and `clippy`. Full `cargo build` is offloaded to the CI pipeline to preserve local resources.
 - **Workflow Integrity**: ALWAYS test the run of the workflow and fix issues if they occur! ALWAYS! There are no exceptions.
 - **Engineering Excellence**: NEVER use shortcuts. Every change must be super professional, perfectly clean, and well-structured.
+- **Issue-First Policy**: EVERY new idea, feature, or architectural change MUST be documented as a fully fleshed-out GitHub Issue BEFORE any implementation begins. IMMER!
 - **Issue Management**: GitHub Issues MUST be kept up-to-date at all times. Stale issues ("Karteileichen") are strictly prohibited. Every open issue must reflect an active, prioritized task or a currently reproducible bug.
 - **Waker & ISR Safety**: NEVER use code that requires locks (e.g., `println!`, `WRITER.lock()`) inside Wakers or Interrupt Service Routines. This leads to immediate deadlocks. Use lock-free diagnostics (atomics) instead.
 - **No Magic Numbers**: Avoid hardcoded array bounds or numeric constants without a named constant (`const`). Tie array sizes to enums or common constants to ensure type safety and scalability.
