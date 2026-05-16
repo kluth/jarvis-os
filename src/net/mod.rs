@@ -1,4 +1,5 @@
 pub mod ethernet;
+pub mod mesh;
 
 use crate::{device_manager, println};
 

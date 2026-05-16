@@ -159,7 +159,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     executor.spawn(Task::new(gui::ui_task()));
 
     #[cfg(feature = "network")]
-    executor.spawn(Task::new(net::discovery_task()));
+    {
+        executor.spawn(Task::new(net::discovery_task()));
+        executor.spawn(Task::new(net::mesh::mesh_task()));
+    }
 
     // 7. Initialize UI (last, just before yielding control)
     #[cfg(feature = "gui")]
@@ -174,6 +177,8 @@ fn run_tests() {
     serial_println!("Running system tests...");
     test_println();
     test_pci_discovery();
+    #[cfg(feature = "network")]
+    jarvis_kernel::net::mesh::test_mesh_crypto();
     serial_println!("All tests passed!");
     qemu::exit_qemu(qemu::QemuExitCode::Success);
 }
