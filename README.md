@@ -1,17 +1,68 @@
-# JARVIS OS
+# J.A.R.V.I.S. OS (v0.1.0)
+**Just A Rather Very Intelligent System - Operating System**
 
-The all-encompassing operating system project.
+JARVIS OS is a highly modular, AI-native, voice-first operating system built in Rust. It is designed to autonomously discover, adapt to, and orchestrate its environment—from local hardware to network-distributed IoT services.
 
-## CI/CD Status
-Compilation is automated on GitHub to save local resources.
+---
 
-[![Build JARVIS OS](https://github.com/kluth/jarvis-os/actions/workflows/build.yml/badge.svg)](https://github.com/kluth/jarvis-os/actions/workflows/build.yml)
+## 🚀 Core Philosophy
+- **Voice-First:** Interaction is primarily speech-driven. The system communicates its state and capabilities through an audio pipeline.
+- **AI-Native:** The kernel is orchestrated by an autonomous agent capable of synthesizing drivers and intent-based routing.
+- **Extreme Modularity:** "Operation Small Footprint" ensures that only strictly necessary modules (GUI, Audio, AI, etc.) are compiled for the specific host hardware.
+- **Autonomous Discovery:** JARVIS proactive identifies environmental endpoints using mDNS, SSDP, and ONVIF.
 
-## Local Development
-Since the build process is highly resource-intensive, it is recommended to download artifacts from GitHub Actions.
+---
 
-To test in QEMU (locally):
-1. Download the `jarvis-kernel` artifact.
-2. `qemu-system-x86_64 -drive format=raw,file=target/x86_64-jarvis_os/debug/jarvis-kernel` (adjust path).
+## 🛠 Architectural Highlights
+- **Micro-Kernel Influence:** High isolation via sandboxed WebAssembly (Wasm) drivers.
+- **Multi-Level Feedback Queue (MLFQ):** Priority-based task scheduling ensures real-time responsiveness for voice and safety critical tasks.
+- **Zero-Warning Codebase:** Strictly enforced code quality (Rust, Clippy) with mandatory local validation.
+- **Hardware Agnostic:** Flexible build system supporting various machine profiles (PC, Q35, etc.).
 
-*Note: Full disk image tooling will be finalized in Phase 1.*
+---
+
+## 📸 System Previews (CI Generated)
+*The following images are captured automatically during the CI/CD boot sequence.*
+
+| Boot Stage 1 (Init) | Boot Stage 2 (Discovery) | Final State (Voice Shell) |
+| :---: | :---: | :---: |
+| ![Init](docs/images/screenshot_1.png) | ![Discovery](docs/images/screenshot_2.png) | ![Ready](docs/images/screenshot_3.png) |
+
+*(Note: Real screenshots can be found in the [GitHub Actions Artifacts](https://github.com/kluth/jarvis-os/actions))*
+
+---
+
+## 🛠 Building & Running
+
+### Prerequisites
+- Rust Nightly (latest)
+- QEMU
+- `ffmpeg` (for visual artifacts)
+
+### Local Validation (Recommended)
+Before pushing, always run the validation framework:
+```bash
+./scripts/validate.sh
+```
+
+### Build & Run in QEMU
+```bash
+# Build the image-builder runner
+cd image-builder && cargo run -- ../target/x86_64-jarvis_os/debug/jarvis-kernel
+```
+
+---
+
+## 📜 Development Standards
+See [GEMINI.md](./GEMINI.md) for detailed engineering standards, the "One Branch Per Feature" strategy, and safety protocols for Wakers and Interrupts.
+
+---
+
+## 🛡 Security & Safety
+- **Safety Gate:** AI decisions are validated by deterministic Rust safety monitors.
+- **Isolation:** Drivers run in a restricted Wasm sandbox to prevent kernel memory corruption.
+- **Lock-Free:** Core OS components use atomic operations to avoid deadlocks in high-concurrency/ISR contexts.
+
+---
+
+© 2026 JARVIS Project. Built with 🦀 for the future.
