@@ -175,6 +175,9 @@ fn main() {
                     let _ = s.write_all(cmd.as_bytes());
                     println!("QMP Thread: Screenshot {} command sent.", i);
                 }
+                
+                // Final screenshot taken, we can signal completion if the OS is already done
+                println!("QMP Thread: All screenshots captured.");
             } else {
                 eprintln!("QMP Thread: Failed to establish QMP connection after retries.");
             }
