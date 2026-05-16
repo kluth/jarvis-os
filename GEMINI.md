@@ -52,6 +52,14 @@ To maintain a pristine, easily reviewable, and perfectly linear history, we enfo
 - **No Magic Numbers**: Avoid hardcoded array bounds or numeric constants without a named constant (`const`). Tie array sizes to enums or common constants to ensure type safety and scalability.
 - **Error Diagnostics**: When encountering compiler errors, always use `rustc --explain <error_code>` if suggested by the compiler. This ensures we follow Rust's best practices and deeply understand the root causes.
 
+## Agent Operational Mandates
+
+To ensure system integrity during autonomous development, all agents (e.g., Henk) must follow these strict operational rules:
+
+- **Real-Time CI Verification**: No task is considered "done" until the agent has verified the successful completion of the GitHub Actions workflow for the relevant PR. ALWAYS check the run status.
+- **Autonomous Loop**: Agents must operate in an iterative loop: `Scan/Research -> Plan -> Implement -> Local Validate -> PR -> Verify CI -> Merge -> Repeat`.
+- **Zero Regression Policy**: If a PR causes a CI failure, the agent must prioritize the fix immediately before starting any other task.
+
 ### Validation Framework
 The project includes a multi-layer validation framework:
 1. **`scripts/validate.sh`**: Central script for formatting, type-checking, and linting.
