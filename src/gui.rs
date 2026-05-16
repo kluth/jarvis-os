@@ -3,15 +3,9 @@ use crate::telemetry;
 use crate::vga_buffer::{Color, Rect, WRITER};
 
 pub fn init_ui() {
-    serial_println!("GUI: Locking writer...");
     if let Some(writer) = WRITER.lock().as_mut() {
-        serial_println!("GUI: Clearing screen...");
         writer.clear();
-        serial_println!("GUI: Drawing static elements...");
         draw_static_elements(writer);
-        serial_println!("GUI: UI initialized.");
-    } else {
-        serial_println!("GUI: Writer not found!");
     }
 }
 

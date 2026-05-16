@@ -26,13 +26,12 @@ x86_64 = "=0.14.13"
 linked_list_allocator = "=0.10.6"
 uart_16550 = "=0.3.2"
 crossbeam-queue = { version = "=0.3.12", default-features = false, features = ["alloc"] }
-conquer-once = { version = "=0.2.1", default-features = false }
+conquer-once = { version = "=0.4.0", default-features = false }
 futures-util = { version = "=0.3.32", default-features = false, features = ["alloc"] }
 pc-keyboard = "=0.7.0"
 pic8259 = "=0.10.4"
-x25519-dalek = { version = "1.2.0", default-features = false, features = ["u64_backend"] }
-chacha20poly1305 = { version = "0.9.1", default-features = false, features = ["alloc"] }
-poly1305 = { version = "0.7.2", default-features = false, features = ["force-soft"] }
+x25519-dalek = { version = "2.0.0", default-features = false, features = ["static_secrets"] }
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc"] }
 rand_core = "0.6.4"
 rand_chacha = { version = "0.3.1", default-features = false }
 
