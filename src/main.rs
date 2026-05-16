@@ -163,6 +163,8 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     #[cfg(feature = "gui")]
     executor.spawn(Task::new(gui::ui_task()));
 
+    executor.spawn(Task::new(jarvis_kernel::security::security_task()));
+
     #[cfg(feature = "network")]
     {
         executor.spawn(Task::new(net::discovery_task()));
@@ -191,6 +193,8 @@ fn run_tests() {
 
     #[cfg(feature = "gui")]
     jarvis_kernel::notifications::test_notifications();
+
+    jarvis_kernel::security::test_security_module();
 
     serial_println!("All tests passed!");
     qemu::exit_qemu(qemu::QemuExitCode::Success);

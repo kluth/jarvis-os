@@ -28,6 +28,7 @@ pub mod net;
 pub mod notifications;
 pub mod pci;
 pub mod qemu;
+pub mod security;
 pub mod sensors;
 pub mod serial;
 #[cfg(feature = "storage")]
