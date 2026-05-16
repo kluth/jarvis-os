@@ -51,12 +51,12 @@ Before pushing, always run the validation framework:
 cd image-builder && cargo run -- ../target/x86_64-jarvis_os/debug/jarvis-kernel
 ```
 
-### 🐳 Quickstart with Docker
+### 🐳 Quickstart with Docker (Instant Experience)
 Experience JARVIS OS directly in your browser with a single command:
 ```bash
 curl -sL https://raw.githubusercontent.com/kluth/jarvis-os/main/scripts/run.sh | bash
 ```
-*Note: Requires Docker. KVM is recommended for performance.*
+*Note: This command pulls our multi-arch Docker image (supporting both x86_64 and ARM64). KVM is highly recommended for optimal performance.*
 
 #### Manual Docker Setup (Optional)
 1. Ensure you have the `jarvis-os.img` in `target/image/`.
