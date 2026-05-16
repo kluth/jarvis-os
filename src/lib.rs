@@ -18,6 +18,8 @@ pub mod device_manager;
 pub mod gdt;
 #[cfg(feature = "gui")]
 pub mod gui;
+#[cfg(feature = "gui")]
+pub mod gui_3d;
 pub mod interrupts;
 pub mod memory;
 #[cfg(feature = "network")]
