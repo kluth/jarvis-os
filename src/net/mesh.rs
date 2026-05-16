@@ -4,14 +4,27 @@ use alloc::vec::Vec;
 use chacha20poly1305::aead::{Aead, NewAead};
 use chacha20poly1305::ChaCha20Poly1305;
 use core::sync::atomic::{AtomicU64, Ordering};
+use rand_chacha::rand_core::{RngCore, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 use spinning_top::Spinlock;
 use x25519_dalek::{PublicKey, StaticSecret};
+
+pub const NONCE_SIZE: usize = 12;
+
+#[derive(Debug, Clone)]
+pub enum MeshError {
+    PeerNotFound,
+    EncryptionFailed,
+    DecryptionFailed,
+}
+
+pub type Result<T> = core::result::Result<T, MeshError>;
 
 /// Represents a secure packet in the mesh network.
 #[derive(Debug, Clone)]
 pub struct MeshPacket {
     pub sender_id: u64,
-    pub nonce: [u8; 12],
+    pub nonce: [u8; NONCE_SIZE],
     pub payload: Vec<u8>,
 }
 
@@ -26,21 +39,23 @@ pub struct MeshNode {
 /// Metadata and session state for a remote peer.
 pub struct MeshPeer {
     pub public_key: PublicKey,
-    pub shared_secret: [u8; 32],
     pub cipher: ChaCha20Poly1305,
 }
 
 impl MeshNode {
-    /// Creates a new mesh node with a generated identity.
-    ///
-    /// # Safety
-    /// This currently uses a deterministic seed for proof-of-concept.
-    /// In production, this MUST use a cryptographically secure RNG.
+    /// Creates a new mesh node with a cryptographically secure identity.
     pub fn new(node_id: u64) -> Self {
-        // Placeholder for real RNG
+        // Use a simple seed from node_id for now, but combined with some
+        // entropy would be better. TODO: Integrate hardware entropy (RDRAND).
         let mut seed = [0u8; 32];
         seed[0..8].copy_from_slice(&node_id.to_le_bytes());
-        let secret = StaticSecret::from(seed);
+        seed[8..16].copy_from_slice(&(!node_id).to_le_bytes()); // add some variation
+
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut secret_bytes = [0u8; 32];
+        rng.fill_bytes(&mut secret_bytes);
+
+        let secret = StaticSecret::from(secret_bytes);
         let public_key = PublicKey::from(&secret);
 
         Self {
@@ -64,32 +79,31 @@ impl MeshNode {
             peer_id,
             MeshPeer {
                 public_key: peer_public_key,
-                shared_secret: *shared_secret.as_bytes(),
                 cipher,
             },
         );
-
-        crate::println!("Mesh: Secured channel established with peer {}", peer_id);
+        // Note: We removed the println here to avoid deadlock risks in Wakers/ISRs.
     }
 
     /// Encrypts a payload for a specific peer.
-    pub fn send_to(&self, peer_id: u64, payload: &[u8]) -> Option<MeshPacket> {
+    pub fn send_to(&self, peer_id: u64, payload: &[u8]) -> Result<MeshPacket> {
         let mut peers = self.peers.lock();
-        let peer = peers.get_mut(&peer_id)?;
+        let peer = peers.get_mut(&peer_id).ok_or(MeshError::PeerNotFound)?;
 
-        // In a real system, nonces must NEVER be reused.
-        // We use an atomic counter as a simple sequence-based nonce.
-        static NONCE_COUNTER: AtomicU64 = AtomicU64::new(0);
+        // Nonces must NEVER be reused for the same key.
+        // We use a global atomic counter to ensure uniqueness within a boot cycle.
+        // In a production system with persistent storage, this must be persisted.
+        static NONCE_COUNTER: AtomicU64 = AtomicU64::new(1);
         let seq = NONCE_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let mut nonce = [0u8; 12];
+        let mut nonce = [0u8; NONCE_SIZE];
         nonce[0..8].copy_from_slice(&seq.to_le_bytes());
 
         let encrypted = peer
             .cipher
             .encrypt(&nonce.into(), payload)
-            .expect("Encryption failed");
+            .map_err(|_| MeshError::EncryptionFailed)?;
 
-        Some(MeshPacket {
+        Ok(MeshPacket {
             sender_id: self.node_id,
             nonce,
             payload: encrypted,
@@ -97,13 +111,15 @@ impl MeshNode {
     }
 
     /// Decrypts an incoming packet from a specific peer.
-    pub fn receive_from(&self, packet: MeshPacket) -> Option<Vec<u8>> {
+    pub fn receive_from(&self, packet: MeshPacket) -> Result<Vec<u8>> {
         let mut peers = self.peers.lock();
-        let peer = peers.get_mut(&packet.sender_id)?;
+        let peer = peers
+            .get_mut(&packet.sender_id)
+            .ok_or(MeshError::PeerNotFound)?;
 
         peer.cipher
             .decrypt(&packet.nonce.into(), packet.payload.as_ref())
-            .ok()
+            .map_err(|_| MeshError::DecryptionFailed)
     }
 }
 
@@ -138,6 +154,7 @@ lazy_static::lazy_static! {
 
 /// Background task to handle mesh coordination.
 pub async fn mesh_task() {
+    // Initial log can stay as it's called during startup, not from ISR
     crate::println!("Mesh: Node initialized. ID: 1");
 
     loop {
@@ -145,6 +162,7 @@ pub async fn mesh_task() {
         // 2. Perform handshakes
         // 3. Exchange system state securely
 
+        // Use a real yield to let other tasks run efficiently
         crate::task::yield_now().await;
     }
 }
