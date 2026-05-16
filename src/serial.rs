@@ -24,8 +24,10 @@ pub fn _print(args: core::fmt::Arguments) {
 
         #[cfg(feature = "gui")]
         {
-            if let Some(writer) = crate::vga_buffer::WRITER.lock().as_mut() {
-                writer.write_fmt(args).unwrap();
+            if let Some(mut writer) = crate::vga_buffer::WRITER.try_lock() {
+                if let Some(w) = writer.as_mut() {
+                    let _ = w.write_fmt(args);
+                }
             }
         }
     });
