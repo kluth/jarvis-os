@@ -15,21 +15,20 @@ pub fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    // 1. Print to Serial (Always)
+    // 1. Print to Serial (Always) and VGA (if enabled)
     interrupts::without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)
             .expect("Printing to serial failed");
-    });
 
-    // 2. Print to VGA Buffer (If enabled)
-    #[cfg(feature = "gui")]
-    {
-        if let Some(writer) = crate::vga_buffer::WRITER.lock().as_mut() {
-            writer.write_fmt(args).unwrap();
+        #[cfg(feature = "gui")]
+        {
+            if let Some(writer) = crate::vga_buffer::WRITER.lock().as_mut() {
+                writer.write_fmt(args).unwrap();
+            }
         }
-    }
+    });
 }
 
 /// Prints to the host through the serial interface.

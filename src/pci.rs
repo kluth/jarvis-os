@@ -36,31 +36,33 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
                     subclass,
                 };
 
-                // Register with Device Manager
-                let name = match (class, subclass) {
-                    (0x01, 0x01) => "IDE Controller",
-                    (0x01, 0x06) => "SATA Controller",
-                    (0x02, 0x00) => "Ethernet Controller",
-                    (0x03, 0x00) => "VGA Display Controller",
-                    (0x04, 0x03) => "High Definition Audio",
-                    (0x06, 0x00) => "Host Bridge",
-                    (0x06, 0x01) => "ISA Bridge",
-                    _ => "Unknown PCI Device",
+                // Register with Device Manager only if it's a known or significant device
+                let (name, recognized) = match (class, subclass) {
+                    (0x01, 0x01) => ("IDE Controller", true),
+                    (0x01, 0x06) => ("SATA Controller", true),
+                    (0x02, 0x00) => ("Ethernet Controller", true),
+                    (0x03, 0x00) => ("VGA Display Controller", true),
+                    (0x04, 0x03) => ("High Definition Audio", true),
+                    (0x06, 0x00) => ("Host Bridge", true),
+                    (0x06, 0x01) => ("ISA Bridge", true),
+                    _ => ("Unknown PCI Device", false),
                 };
 
-                let dev_type = match class {
-                    0x01 => crate::device_manager::DeviceType::Storage,
-                    0x02 => crate::device_manager::DeviceType::Network,
-                    0x03 => crate::device_manager::DeviceType::Graphics,
-                    0x04 => crate::device_manager::DeviceType::Audio,
-                    _ => crate::device_manager::DeviceType::System,
-                };
+                if recognized {
+                    let dev_type = match class {
+                        0x01 => crate::device_manager::DeviceType::Storage,
+                        0x02 => crate::device_manager::DeviceType::Network,
+                        0x03 => crate::device_manager::DeviceType::Graphics,
+                        0x04 => crate::device_manager::DeviceType::Audio,
+                        _ => crate::device_manager::DeviceType::System,
+                    };
 
-                crate::device_manager::register(crate::device_manager::DeviceInfo {
-                    name,
-                    dev_type,
-                    status: "Discovered",
-                });
+                    crate::device_manager::register(crate::device_manager::DeviceInfo {
+                        name,
+                        dev_type,
+                        status: "Discovered",
+                    });
+                }
 
                 // Intel HDA: Class 04, Subclass 03
                 if class == 0x04 && subclass == 0x03 {
