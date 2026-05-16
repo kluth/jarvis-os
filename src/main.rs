@@ -83,6 +83,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     serial_println!("Initializing CPU features...");
     gdt::init();
+    unsafe {
+        jarvis_kernel::enable_sse();
+    }
     interrupts::init_idt();
 
     serial_println!("Initializing Memory Mapper...");
