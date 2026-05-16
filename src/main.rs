@@ -186,6 +186,12 @@ fn run_tests() {
     jarvis_kernel::net::mesh::test_mesh_crypto();
     #[cfg(feature = "ai")]
     jarvis_kernel::ai::swarm::test_swarm_logic();
+
+    jarvis_kernel::sensors::scene::test_scene_logic();
+
+    #[cfg(feature = "gui")]
+    jarvis_kernel::notifications::test_notifications();
+
     serial_println!("All tests passed!");
     qemu::exit_qemu(qemu::QemuExitCode::Success);
 }
