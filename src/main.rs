@@ -37,7 +37,7 @@ pub static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
     config.mappings.physical_memory =
         core::option::Option::Some(bootloader_api::config::Mapping::Dynamic);
-    config.kernel_stack_size = 512 * 1024; // 512 KiB
+    config.kernel_stack_size = 1024 * 1024; // 1 MiB
     config
 };
 
