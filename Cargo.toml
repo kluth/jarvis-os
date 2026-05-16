@@ -34,6 +34,7 @@ x25519-dalek = { version = "1.2.0", default-features = false, features = ["u64_b
 chacha20poly1305 = { version = "0.9.1", default-features = false, features = ["alloc"] }
 poly1305 = { version = "0.7.2", default-features = false, features = ["force-soft"] }
 rand_core = "0.6.4"
+rand_chacha = { version = "0.3.1", default-features = false }
 
 [features]
 default = ["gui", "audio", "network", "ai", "storage", "telemetry"]
