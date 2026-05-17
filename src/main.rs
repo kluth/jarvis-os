@@ -14,6 +14,7 @@ use x86_64::{PhysAddr, VirtAddr};
 pub const BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
     config.mappings.physical_memory = Some(bootloader_api::config::Mapping::Dynamic);
+    config.kernel_stack_size = 1024 * 1024; // 1 MiB
     config
 };
 
@@ -29,14 +30,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     jarvis_kernel::gdt::init();
     jarvis_kernel::interrupts::init_idt();
 
-    let phys_mem_offset_raw = boot_info.physical_memory_offset.into_option().unwrap();
+    let phys_mem_offset_raw = boot_info
+        .physical_memory_offset
+        .into_option()
+        .expect("Phys mem offset missing");
     let phys_mem_offset = VirtAddr::new(phys_mem_offset_raw);
-
-    unsafe {
-        let mut apic = jarvis_kernel::apic::LocalApic::new(phys_mem_offset);
-        apic.init();
-        jarvis_kernel::apic::disable_pic();
-    };
 
     // 3. Initialize Memory Management
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
@@ -46,12 +44,24 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     jarvis_kernel::allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
-    serial_println!("Status: Memory management initialized.");
+    serial_println!("Status: Core memory initialized.");
 
-    // 4. Initialize Device Discovery
-    // Note: In QEMU/BIOS, RSDP is often at 0xf52b0
-    jarvis_kernel::acpi::init(PhysAddr::new(0xf52b0));
+    // 4. Initialize Hardware and Interrupts
+    unsafe {
+        jarvis_kernel::interrupts::init_apic(phys_mem_offset);
+    };
+
+    // Enable interrupts ONLY after memory and APIC are ready
+    x86_64::instructions::interrupts::enable();
+
+    if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
+        jarvis_kernel::acpi::init(PhysAddr::new(rsdp_addr));
+    }
+
     jarvis_kernel::pci::scan_bus();
+
+    #[cfg(feature = "network")]
+    jarvis_kernel::net::init();
 
     // 5. Initialize Services
     #[cfg(feature = "storage")]
@@ -98,11 +108,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         executor.spawn(Task::new(net::mesh::mesh_task()));
     }
 
-    // 7. Initialize UI (last, just before yielding control)
+    // 7. Initialize UI
     #[cfg(feature = "gui")]
     gui::init_ui();
 
-    serial_println!("Status: Multitasking active. System ready.");
+    serial_println!("Status: System ready.");
 
     #[cfg(feature = "test")]
     run_tests();
