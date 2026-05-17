@@ -75,16 +75,14 @@ pub unsafe fn init_apic(physical_memory_offset: VirtAddr) {
     lapic.init();
 
     // Store the raw base address for lock-free EOI in ISRs
-    // Standard Local APIC physical address is 0xFEE00000
-    let base_addr = physical_memory_offset + 0xFEE0_0000u64;
+    let base_addr = physical_memory_offset + crate::apic::DEFAULT_APIC_PHYS_BASE;
     APIC_BASE.store(base_addr.as_u64(), Ordering::SeqCst);
 
     *LAPIC.lock() = Some(lapic);
 }
 
-extern "x86-interrupt" fn breakpoint_handler(_stack_frame: InterruptStackFrame) {
-    // Exception handlers are sensitive. Avoid locks (println).
-    // In a real system, we'd increment a lock-free diagnostic counter.
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
+    serial_println_raw!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(

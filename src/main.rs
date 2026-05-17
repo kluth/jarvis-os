@@ -8,7 +8,7 @@ use bootloader_api::{entry_point, BootInfo, BootloaderConfig};
 use core::panic::PanicInfo;
 use jarvis_kernel::task::executor::Executor;
 use jarvis_kernel::task::Task;
-use jarvis_kernel::{gui, memory, net, serial_println, telemetry};
+use jarvis_kernel::{gui, memory, net, serial_println, serial_println_raw, telemetry};
 use x86_64::{PhysAddr, VirtAddr};
 
 pub const BOOTLOADER_CONFIG: BootloaderConfig = {
@@ -171,7 +171,7 @@ fn test_println() {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    serial_println!("[STABILITY_CHECK:PANIC] {}", info);
+    serial_println_raw!("[STABILITY_CHECK:PANIC] {}", info);
     loop {}
 }
 

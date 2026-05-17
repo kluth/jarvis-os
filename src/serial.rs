@@ -2,9 +2,11 @@ use lazy_static::lazy_static;
 use spinning_top::Spinlock;
 use uart_16550::SerialPort;
 
+pub const COM1_PORT: u16 = 0x3F8;
+
 lazy_static! {
     pub static ref SERIAL1: Spinlock<SerialPort> = {
-        let mut serial_port = unsafe { SerialPort::new(0x3F8) };
+        let mut serial_port = unsafe { SerialPort::new(COM1_PORT) };
         serial_port.init();
         Spinlock::new(serial_port)
     };
@@ -40,7 +42,7 @@ pub fn _print(args: core::fmt::Arguments) {
 /// This bypasses all locks. Concurrent writes from other CPUs or tasks
 /// may cause interleaved output. Only use for critical diagnostics.
 pub unsafe fn write_str_raw(s: &str) {
-    let mut serial_port = SerialPort::new(0x3F8);
+    let mut serial_port = SerialPort::new(COM1_PORT);
     for byte in s.bytes() {
         serial_port.send(byte);
     }
