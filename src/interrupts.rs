@@ -1,6 +1,6 @@
 use crate::apic::LocalApic;
 use crate::gdt;
-use crate::println;
+use crate::serial_println_raw;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
 use spinning_top::Spinlock;
@@ -98,14 +98,10 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    // Standardizing output for stability watchdog (Wait, this is an exception, not a frequent ISR)
-    // However, if we are in a deadlock state, println! will hang.
-    // For critical failures (Page Fault, GPF), we'll keep the output but be aware of the risk.
-    // Ideally, these would use a lock-free serial writer.
-    println!("[CORE] EXCEPTION: GENERAL PROTECTION FAULT");
-    println!("Error Code: 0x{:x}", error_code);
-    println!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
-    println!("{:#?}", stack_frame);
+    serial_println_raw!("[CORE] EXCEPTION: GENERAL PROTECTION FAULT");
+    serial_println_raw!("Error Code: 0x{:x}", error_code);
+    serial_println_raw!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
+    serial_println_raw!("{:#?}", stack_frame);
     panic!("GPF - System Halted for Safety");
 }
 
@@ -113,16 +109,16 @@ extern "x86-interrupt" fn stack_segment_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    println!("[CORE] EXCEPTION: STACK SEGMENT FAULT");
-    println!("Error Code: 0x{:x}", error_code);
-    println!("{:#?}", stack_frame);
+    serial_println_raw!("[CORE] EXCEPTION: STACK SEGMENT FAULT");
+    serial_println_raw!("Error Code: 0x{:x}", error_code);
+    serial_println_raw!("{:#?}", stack_frame);
     panic!("SSF - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) {
-    println!("[CORE] EXCEPTION: INVALID OPCODE");
-    println!("At Address: {:?}", stack_frame.instruction_pointer);
-    println!("{:#?}", stack_frame);
+    serial_println_raw!("[CORE] EXCEPTION: INVALID OPCODE");
+    serial_println_raw!("At Address: {:?}", stack_frame.instruction_pointer);
+    serial_println_raw!("{:#?}", stack_frame);
     panic!("UD - System Halted for Safety");
 }
 
@@ -132,11 +128,11 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("[CORE] EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
-    println!("{:#?}", stack_frame);
+    serial_println_raw!("[CORE] EXCEPTION: PAGE FAULT");
+    serial_println_raw!("Accessed Address: {:?}", Cr2::read());
+    serial_println_raw!("Error Code: {:?}", error_code);
+    serial_println_raw!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
+    serial_println_raw!("{:#?}", stack_frame);
     panic!("PAGE FAULT - System Halted for Safety");
 }
 
