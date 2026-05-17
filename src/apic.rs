@@ -98,7 +98,17 @@ impl LocalApic {
     ///
     /// This must be called at the end of every hardware interrupt handled by the APIC.
     pub unsafe fn end_of_interrupt(&mut self) {
-        self.write(Register::EndOfInterrupt, 0);
+        Self::end_of_interrupt_raw(self.base_addr);
+    }
+
+    /// Signals End of Interrupt (EOI) to the Local APIC using a raw virtual address.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `base_addr` is the correct virtual address of the APIC.
+    pub unsafe fn end_of_interrupt_raw(base_addr: VirtAddr) {
+        let ptr: *mut u32 = (base_addr + Register::EndOfInterrupt as u64).as_mut_ptr();
+        ptr.write_volatile(0);
     }
 }
 
