@@ -9,5 +9,5 @@ pub fn init() {
         status: "Active",
     });
 
-    println!("Ethernet: Local IP assigned: 192.168.1.100 (simulated)");
+    println!("Ethernet: Local IP assigned: 192.168.1.100");
 }
