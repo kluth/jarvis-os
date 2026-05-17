@@ -1,0 +1,43 @@
+INFO : Framebuffer info: FrameBufferInfo { byte_len: 2764800, width: 1280, height: 720, pixel_format: Bgr, bytes_per_pixel: 3, stride: 1280 }
+INFO : 4th Stage
+INFO : BiosInfo { stage_4: Region { start: 130000, len: 24030 }, kernel: Region { start: 1000000, len: ba7d58 }, ramdisk: Region { start: 1ba8000, len: 0 }, config_file: Region { start: 1ba8000, len: 0 }, last_used_addr: 1ba7fff, framebuffer: BiosFramebufferInfo { region: Region { start: fd000000, len: 2a3000 }, width: 500, height: 2d0, bytes_per_pixel: 3, stride: 500, pixel_format: Bgr }, memory_map_addr: 11f20, memory_map_len: 7 }
+INFO : BIOS boot
+INFO : Elf file loaded at Pointer {
+    addr: 0x0000000001000000,
+    metadata: 12221784,
+}
+INFO : virtual_address_offset: 0x0
+INFO : Handling Segment: Ph64(ProgramHeader64 { type_: Ok(Load), flags: Flags(4), offset: 0, virtual_addr: 200000, physical_addr: 200000, file_size: e0b4, mem_size: e0b4, align: 1000 })
+INFO : Handling Segment: Ph64(ProgramHeader64 { type_: Ok(Load), flags: Flags(5), offset: e0c0, virtual_addr: 20f0c0, physical_addr: 20f0c0, file_size: b7ecb, mem_size: b7ecb, align: 1000 })
+INFO : Handling Segment: Ph64(ProgramHeader64 { type_: Ok(Load), flags: Flags(6), offset: c5f90, virtual_addr: 2c7f90, physical_addr: 2c7f90, file_size: a088, mem_size: b070, align: 1000 })
+INFO : Mapping bss section
+INFO : Handling Segment: Ph64(ProgramHeader64 { type_: Ok(Load), flags: Flags(6), offset: d0080, virtual_addr: 2d3080, physical_addr: 2d3080, file_size: 220, mem_size: 13cd0, align: 1000 })
+INFO : Mapping bss section
+INFO : Entry point at: 0x214a70
+INFO : Creating GDT at PhysAddr(0x1cc5000)
+INFO : Map framebuffer
+INFO : Map physical memory
+INFO : Allocate bootinfo
+INFO : Create Memory Map
+INFO : Create bootinfo
+INFO : Jumping to kernel entry point at VirtAddr(0x214a70)
+Hello JARVIS OS!
+Initializing CPU features...
+Initializing APIC...
+Initializing Memory Mapper...
+Initializing Bitmap Frame Allocator...
+Status: Core memory initialized.
+ACPI: Initializing at PhysAddr(PhysAddr(0xf5290))
+Device Manager: Registering -> "ACPI Power Controller" (System)
+Device Manager: Registering -> "IO APIC" (System)
+Scanning PCI bus...
+Net: Initializing networking stack...
+Net: No network hardware found. Networking disabled.
+GUI: Screen size: 1280x720
+GUI: Drawing border...
+GUI: Drawing header...
+GUI: Drawing telemetry box...
+GUI: Drawing AI shell box...
+GUI: Drawing footer...
+Status: System ready.
+Storage: Decentralized Hash Table node initialized.
