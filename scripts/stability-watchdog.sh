@@ -4,21 +4,21 @@
 # Monitors QEMU output for Heartbeats and Panics.
 
 TIMEOUT=${1:-300} # Default 300 seconds (5 minutes)
-ISO_IMAGE="target/x86_64-jarvis_os/debug/bootimage-jarvis_os.iso"
+BOOT_IMAGE=${2:-"target/image/stability-os.img"}
 
-if [ ! -f "$ISO_IMAGE" ]; then
-    echo "Error: ISO image not found at $ISO_IMAGE"
+if [ ! -f "$BOOT_IMAGE" ]; then
+    echo "Error: Boot image not found at $BOOT_IMAGE"
     exit 1
 fi
 
-echo "Starting stability test (timeout: ${TIMEOUT}s)..."
+echo "Starting stability test (timeout: ${TIMEOUT}s, image: $BOOT_IMAGE)..."
 
 # Run QEMU in the background, redirecting serial to a pipe
 # -display none: we only care about serial output
 # -device isa-debug-exit: allowed to exit if needed (though we'll kill it)
 # -serial stdio: output heartbeats to stdout
 qemu-system-x86_64 \
-    -drive format=raw,file="$ISO_IMAGE" \
+    -drive format=raw,file="$BOOT_IMAGE" \
     -display none \
     -serial stdio \
     -m 512 \
