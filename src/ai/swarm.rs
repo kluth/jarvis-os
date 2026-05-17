@@ -35,28 +35,41 @@ pub enum SwarmMessage {
 }
 
 impl SwarmMessage {
-    // Basic serialization for the prototype. In production, use serde/bincode.
+    /// Serializes the message into a binary format suitable for network transmission.
+    /// Following a strict tag-length-value (TLV) or similar compact pattern.
     pub fn serialize(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
         match self {
-            SwarmMessage::IntentBroadcast { intent_id, .. } => {
-                buffer.push(0);
+            SwarmMessage::IntentBroadcast {
+                intent_id,
+                description,
+                confidence,
+            } => {
+                buffer.push(0); // Tag
                 buffer.extend_from_slice(&intent_id.to_le_bytes());
+                buffer.push(*confidence);
+                buffer.extend_from_slice(&(description.len() as u32).to_le_bytes());
+                buffer.extend_from_slice(description.as_bytes());
             }
             SwarmMessage::TaskNegotiation {
                 intent_id,
                 bid_score,
             } => {
-                buffer.push(1);
+                buffer.push(1); // Tag
                 buffer.extend_from_slice(&intent_id.to_le_bytes());
                 buffer.push(*bid_score);
             }
             SwarmMessage::TaskAccepted { intent_id } => {
-                buffer.push(2);
+                buffer.push(2); // Tag
                 buffer.extend_from_slice(&intent_id.to_le_bytes());
             }
-            SwarmMessage::Heartbeat { .. } => {
-                buffer.push(3);
+            SwarmMessage::Heartbeat { capabilities } => {
+                buffer.push(3); // Tag
+                buffer.extend_from_slice(&(capabilities.len() as u32).to_le_bytes());
+                for cap in capabilities {
+                    buffer.extend_from_slice(&(cap.len() as u32).to_le_bytes());
+                    buffer.extend_from_slice(cap.as_bytes());
+                }
             }
             SwarmMessage::SystemHealth {
                 cpu_load,
@@ -64,7 +77,7 @@ impl SwarmMessage {
                 mem_free,
                 uptime_s,
             } => {
-                buffer.push(4);
+                buffer.push(4); // Tag
                 buffer.push(*cpu_load);
                 buffer.extend_from_slice(&mem_used.to_le_bytes());
                 buffer.extend_from_slice(&mem_free.to_le_bytes());
@@ -74,31 +87,101 @@ impl SwarmMessage {
         buffer
     }
 
+    /// Deserializes a binary buffer back into a SwarmMessage.
     pub fn deserialize(data: &[u8]) -> Option<Self> {
         if data.is_empty() {
             return None;
         }
-        match data[0] {
-            4 => {
-                if data.len() < 2 + 8 + 8 + 8 {
+        let tag = data[0];
+        let mut cursor = 1;
+
+        match tag {
+            0 => {
+                // IntentBroadcast
+                if data.len() < cursor + 8 + 1 + 4 {
                     return None;
                 }
-                let cpu_load = data[1];
-                let mut mem_used_bytes = [0u8; 8];
-                mem_used_bytes.copy_from_slice(&data[2..10]);
-                let mut mem_free_bytes = [0u8; 8];
-                mem_free_bytes.copy_from_slice(&data[10..18]);
-                let mut uptime_bytes = [0u8; 8];
-                uptime_bytes.copy_from_slice(&data[18..26]);
-
-                Some(SwarmMessage::SystemHealth {
-                    cpu_load,
-                    mem_used: usize::from_le_bytes(mem_used_bytes),
-                    mem_free: usize::from_le_bytes(mem_free_bytes),
-                    uptime_s: u64::from_le_bytes(uptime_bytes),
+                let intent_id = u64::from_le_bytes(data[cursor..cursor + 8].try_into().ok()?);
+                cursor += 8;
+                let confidence = data[cursor];
+                cursor += 1;
+                let len = u32::from_le_bytes(data[cursor..cursor + 4].try_into().ok()?) as usize;
+                cursor += 4;
+                if data.len() < cursor + len {
+                    return None;
+                }
+                let description = String::from_utf8(data[cursor..cursor + len].to_vec()).ok()?;
+                Some(SwarmMessage::IntentBroadcast {
+                    intent_id,
+                    description,
+                    confidence,
                 })
             }
-            _ => None, // Simplified for brevity in this prototype
+            1 => {
+                // TaskNegotiation
+                if data.len() < cursor + 8 + 1 {
+                    return None;
+                }
+                let intent_id = u64::from_le_bytes(data[cursor..cursor + 8].try_into().ok()?);
+                cursor += 8;
+                let bid_score = data[cursor];
+                Some(SwarmMessage::TaskNegotiation {
+                    intent_id,
+                    bid_score,
+                })
+            }
+            2 => {
+                // TaskAccepted
+                if data.len() < cursor + 8 {
+                    return None;
+                }
+                let intent_id = u64::from_le_bytes(data[cursor..cursor + 8].try_into().ok()?);
+                Some(SwarmMessage::TaskAccepted { intent_id })
+            }
+            3 => {
+                // Heartbeat
+                if data.len() < cursor + 4 {
+                    return None;
+                }
+                let cap_count =
+                    u32::from_le_bytes(data[cursor..cursor + 4].try_into().ok()?) as usize;
+                cursor += 4;
+                let mut capabilities = Vec::new();
+                for _ in 0..cap_count {
+                    if data.len() < cursor + 4 {
+                        return None;
+                    }
+                    let len =
+                        u32::from_le_bytes(data[cursor..cursor + 4].try_into().ok()?) as usize;
+                    cursor += 4;
+                    if data.len() < cursor + len {
+                        return None;
+                    }
+                    capabilities.push(String::from_utf8(data[cursor..cursor + len].to_vec()).ok()?);
+                    cursor += len;
+                }
+                Some(SwarmMessage::Heartbeat { capabilities })
+            }
+            4 => {
+                // SystemHealth
+                if data.len() < cursor + 1 + 8 + 8 + 8 {
+                    return None;
+                }
+                let cpu_load = data[cursor];
+                cursor += 1;
+                let mem_used = usize::from_le_bytes(data[cursor..cursor + 8].try_into().ok()?);
+                cursor += 8;
+                let mem_free = usize::from_le_bytes(data[cursor..cursor + 8].try_into().ok()?);
+                cursor += 8;
+                let uptime_s = u64::from_le_bytes(data[cursor..cursor + 8].try_into().ok()?);
+                Some(SwarmMessage::SystemHealth {
+                    cpu_load,
+                    mem_used,
+                    mem_free,
+                    uptime_s,
+                })
+            }
+            _ => None,
         }
     }
 }
@@ -120,17 +203,25 @@ impl SwarmAgent {
         static INTENT_COUNTER: AtomicU64 = AtomicU64::new(1);
         let intent_id = INTENT_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        let _msg = SwarmMessage::IntentBroadcast {
+        let msg = SwarmMessage::IntentBroadcast {
             intent_id,
             description: String::from(description),
             confidence,
         };
 
-        // In a real implementation, we would loop over all peers in NODE and send.
-        // For the prototype, we simulate the broadcast logic.
+        let data = msg.serialize();
+
+        // Dispatch to all peers in the mesh network
+        let peers = crate::net::mesh::NODE.get_peer_ids();
+        for peer_id in &peers {
+            let _ = crate::net::mesh::NODE.send_to(*peer_id, &data);
+        }
+
         println!(
-            "Swarm [{}]: Broadcasting intent '{}' (ID: {})",
-            self.node_id, description, intent_id
+            "Swarm [{}]: Broadcasted intent '{}' to {} peers",
+            self.node_id,
+            description,
+            peers.len()
         );
 
         self.active_intents
@@ -139,20 +230,23 @@ impl SwarmAgent {
     }
 
     pub fn broadcast_health(&self, cpu_load: u8, mem_used: usize, mem_free: usize, uptime_s: u64) {
-        let _msg = SwarmMessage::SystemHealth {
+        let msg = SwarmMessage::SystemHealth {
             cpu_load,
             mem_used,
             mem_free,
             uptime_s,
         };
 
+        let data = msg.serialize();
+        let peers = crate::net::mesh::NODE.get_peer_ids();
+        for peer_id in &peers {
+            let _ = crate::net::mesh::NODE.send_to(*peer_id, &data);
+        }
+
         println!(
-            "[OBS] Swarm [{}]: Broadcasting health (CPU: {}%, Mem: {}/{} bytes, Uptime: {}s)",
+            "[OBS] Swarm [{}]: Distributed health report to {} nodes",
             self.node_id,
-            cpu_load,
-            mem_used,
-            mem_used + mem_free,
-            uptime_s
+            peers.len()
         );
     }
 
@@ -214,17 +308,25 @@ lazy_static! {
 
 /// Background task to handle swarm coordination and message processing.
 pub async fn swarm_task() {
-    println!("Swarm: Agent initialized.");
+    println!("Swarm: Multi-agent orchestration engine online.");
 
     loop {
-        // 1. Check for incoming MeshPackets from the networking layer
-        // 2. Decrypt and deserialize into SwarmMessages
-        // 3. Call AGENT.handle_message()
+        // 1. Process incoming secure packets from the mesh network
+        while let Some(packet) = crate::net::mesh::NODE.receive_next() {
+            if let Some(msg) = SwarmMessage::deserialize(&packet.payload) {
+                AGENT.handle_message(packet.sender_id, msg);
+            }
+        }
 
-        // Simulate a periodic heartbeat broadcast
-        // let msg = SwarmMessage::Heartbeat { capabilities: alloc::vec![String::from("audio"), String::from("computation")] };
-        // let data = msg.serialize();
-        // NODE.send_to(target_peer, &data);
+        // 2. Perform periodic autonomic heartbeat
+        let capabilities = alloc::vec![String::from("vision"), String::from("computation")];
+        let heartbeat = SwarmMessage::Heartbeat { capabilities };
+        let data = heartbeat.serialize();
+
+        let peers = crate::net::mesh::NODE.get_peer_ids();
+        for peer_id in &peers {
+            let _ = crate::net::mesh::NODE.send_to(*peer_id, &data);
+        }
 
         crate::task::yield_now().await;
     }

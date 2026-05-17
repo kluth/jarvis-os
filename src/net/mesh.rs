@@ -121,6 +121,17 @@ impl MeshNode {
             .decrypt(&packet.nonce.into(), packet.payload.as_ref())
             .map_err(|_| MeshError::DecryptionFailed)
     }
+
+    /// Returns a list of all active peer IDs in the mesh.
+    pub fn get_peer_ids(&self) -> Vec<u64> {
+        self.peers.lock().keys().cloned().collect()
+    }
+
+    /// Receives the next available packet from the network.
+    pub fn receive_next(&self) -> Option<MeshPacket> {
+        // In a real system, this would drain from a NIC buffer or a task queue.
+        None
+    }
 }
 
 /// Verifies the cryptographic handshake and encryption cycle.
