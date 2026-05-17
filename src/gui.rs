@@ -1,4 +1,5 @@
-use crate::gui_3d::{HologramRenderer, Mesh3D};
+use crate::gui_3d::{HologramRenderer, Mesh3D, Point2D};
+use crate::net::onion;
 use crate::notifications::CENTER;
 use crate::serial_println;
 use crate::telemetry;
@@ -95,11 +96,33 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
             x: 20,
             y: 230,
             width: 300,
-            height: 150,
+            height: 100,
         },
         blue_border,
     );
     writer.write_string_at(30, 240, "[ RECENT ACTIVITY ]", cyan);
+
+    // Secure Network Box
+    serial_println!("GUI: Drawing secure network box...");
+    writer.draw_rect(
+        Rect {
+            x: 20,
+            y: 340,
+            width: 300,
+            height: height - 390,
+        },
+        blue_border,
+    );
+    writer.write_string_at(
+        30,
+        350,
+        "[ SECURE NETWORK ]",
+        Color {
+            r: 255,
+            g: 255,
+            b: 0,
+        },
+    ); // Yellow
 
     // Hologram Box (Right side)
     serial_println!("GUI: Drawing AI shell box...");
@@ -145,6 +168,10 @@ pub async fn ui_task() {
 fn update_dynamic_elements(angle: f32) {
     if let Some(mut writer_guard) = WRITER.try_lock() {
         if let Some(writer) = writer_guard.as_mut() {
+            let info = writer.get_info();
+            let width = info.width;
+            let height = info.height;
+
             let black = Color { r: 0, g: 0, b: 0 };
             let green_text = Color {
                 r: 0,
@@ -230,7 +257,7 @@ fn update_dynamic_elements(angle: f32) {
                     x: 30,
                     y: 270,
                     width: 280,
-                    height: 100,
+                    height: 60,
                 },
                 black,
             );
@@ -263,22 +290,92 @@ fn update_dynamic_elements(angle: f32) {
                         },
                     };
                     writer.write_string_at(40, log_y, &notif.message, color);
-                    log_y += 18;
+                    log_y += 12;
                 }
             }
 
-            // 3. Draw 3D Resource Visualization
-            let info = writer.get_info();
-            let width = info.width;
-            let height = info.height;
+            // 3. Clear & Update Secure Network Area
+            writer.fill_rect(
+                Rect {
+                    x: 30,
+                    y: 380,
+                    width: 280,
+                    height: height - 420,
+                },
+                black,
+            );
 
+            let onion_status = *onion::SUBSYSTEM.status.lock();
+            let status_text = match onion_status {
+                onion::OnionStatus::Disconnected => "STATUS: OFFLINE",
+                onion::OnionStatus::Handshaking => "STATUS: HANDSHAKING...",
+                onion::OnionStatus::CircuitEstablished => "STATUS: CIRCUIT ACTIVE",
+                onion::OnionStatus::Error => "STATUS: ERROR",
+            };
+            writer.write_string_at(
+                40,
+                380,
+                status_text,
+                Color {
+                    r: 200,
+                    g: 200,
+                    b: 0,
+                },
+            );
+
+            if onion_status == onion::OnionStatus::CircuitEstablished
+                || onion_status == onion::OnionStatus::Handshaking
+            {
+                let active_hops = onion::ACTIVE_HOPS.load(core::sync::atomic::Ordering::SeqCst);
+                writer.write_string_at(
+                    40,
+                    400,
+                    &alloc::format!("ACTIVE HOPS: {}", active_hops),
+                    green_text,
+                );
+
+                // Render 3D circuit visualization in the secure box
+                let secure_renderer = HologramRenderer::new(width, height);
+                let mut prev_pos: Option<Point2D> = None;
+
+                for i in 0..active_hops {
+                    let sphere = Mesh3D::new_node_sphere(0.15, 6, cyan);
+                    // Calculate a snake-like path for the circuit in UI space
+                    let x_off = -110 + (i as isize * 35);
+                    let y_off = 130 + ((i % 2) as isize * 15);
+
+                    secure_renderer.render_mesh(writer, &sphere, angle, angle * 0.5, x_off, y_off);
+
+                    let curr_p2d = Point2D {
+                        x: (x_off + (width as isize / 2)),
+                        y: (y_off + (height as isize / 2)),
+                    };
+
+                    if let Some(prev) = prev_pos {
+                        writer.draw_line(
+                            prev.x,
+                            prev.y,
+                            curr_p2d.x,
+                            curr_p2d.y,
+                            Color {
+                                r: 0,
+                                g: 100,
+                                b: 255,
+                            },
+                        );
+                    }
+                    prev_pos = Some(curr_p2d);
+                }
+            }
+
+            // 4. Draw 3D Resource Visualization
             // Clear 3D area
             writer.fill_rect(
                 Rect {
                     x: 345,
                     y: 90,
                     width: width - 370,
-                    height: height - 170,
+                    height: height - 150,
                 },
                 black,
             );
