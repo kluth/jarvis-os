@@ -112,7 +112,7 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
         },
         blue_border,
     );
-    writer.write_string_at(350, 80, "[ HOLOGRAPHIC PIPELINE ]", cyan);
+    writer.write_string_at(350, 80, "[ 3D RESOURCE LOAD ]", cyan);
 
     // Footer
     serial_println!("GUI: Drawing footer...");
@@ -267,12 +267,12 @@ fn update_dynamic_elements(angle: f32) {
                 }
             }
 
-            // 3. Draw Holographic Mesh (Existing)
+            // 3. Draw 3D Resource Visualization
             let info = writer.get_info();
             let width = info.width;
             let height = info.height;
 
-            // Clear holographic area
+            // Clear 3D area
             writer.fill_rect(
                 Rect {
                     x: 345,
@@ -284,17 +284,22 @@ fn update_dynamic_elements(angle: f32) {
             );
 
             let renderer = HologramRenderer::new(width, height);
-            let mesh = Mesh3D::new_cube(2.0, cyan);
 
-            // Render spinning cube offset to the right side
-            renderer.render_mesh(
-                writer,
-                &mesh,
-                angle,
-                angle * 1.5,
-                (width as isize / 4) + 100,
-                -50,
-            );
+            // Render 4 bars representing "Cores" or "Tasks"
+            for i in 0..4 {
+                // Get simulated load for each "core"
+                let load = 0.5 + (libm::sinf(angle + (i as f32 * 0.5)) * 0.5 + 0.5) * 1.5;
+                let mesh = Mesh3D::new_bar(0.4, load, 0.4, green_text);
+
+                renderer.render_mesh(
+                    writer,
+                    &mesh,
+                    0.2,         // Tilted slightly forward
+                    angle * 0.2, // Slow spin
+                    (width as isize / 4) + 50 + (i as isize * 60),
+                    30,
+                );
+            }
         }
     }
 }
