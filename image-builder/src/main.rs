@@ -96,21 +96,10 @@ fn main() {
             .arg(format!("format=raw,file={}", image_path.display()))
             .arg("-device")
             .arg("isa-debug-exit,iobase=0xf4,iosize=0x04")
-            // High-Fidelity Hardware Suite
             .arg("-device")
             .arg("virtio-net-pci,netdev=net0")
             .arg("-netdev")
-            .arg("user,id=net0,hostfwd=tcp::8081-:80") // Standard internet access via user-mode slirp
-            .arg("-device")
-            .arg("virtio-rng-pci") // Hardware entropy for crypto
-            .arg("-device")
-            .arg("intel-hda")
-            .arg("-device")
-            .arg("hda-duplex") // Audio support
-            .arg("-device")
-            .arg("virtio-tablet-pci") // High-precision input
-            .arg("-rtc")
-            .arg("base=localtime") // System clock parity
+            .arg("user,id=net0")
             .arg("-machine")
             .arg(machine)
             .arg("-m")
