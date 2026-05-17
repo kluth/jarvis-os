@@ -4,6 +4,12 @@ use crate::serial_println;
 use crate::telemetry;
 use crate::vga_buffer::{Color, Rect, WRITER};
 
+use spinning_top::Spinlock;
+
+lazy_static::lazy_static! {
+    static ref ACTIVITY_LOG: Spinlock<[Option<crate::notifications::Notification>; 5]> = Spinlock::new([None, None, None, None, None]);
+}
+
 pub fn init_ui() {
     if let Some(writer) = WRITER.lock().as_mut() {
         writer.clear();
@@ -76,11 +82,24 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
             x: 20,
             y: 70,
             width: 300,
-            height: 200,
+            height: 150,
         },
         blue_border,
     );
     writer.write_string_at(30, 80, "[ SYSTEM TELEMETRY ]", cyan);
+
+    // Activity Log Box
+    serial_println!("GUI: Drawing activity log box...");
+    writer.draw_rect(
+        Rect {
+            x: 20,
+            y: 230,
+            width: 300,
+            height: 150,
+        },
+        blue_border,
+    );
+    writer.write_string_at(30, 240, "[ RECENT ACTIVITY ]", cyan);
 
     // Hologram Box (Right side)
     serial_println!("GUI: Drawing AI shell box...");
@@ -137,14 +156,19 @@ fn update_dynamic_elements(angle: f32) {
                 g: 255,
                 b: 255,
             };
+            let white = Color {
+                r: 255,
+                g: 255,
+                b: 255,
+            };
 
-            // Clear telemetry area (background only)
+            // 1. Clear & Update Telemetry Area
             writer.fill_rect(
                 Rect {
                     x: 30,
                     y: 110,
                     width: 280,
-                    height: 150,
+                    height: 100,
                 },
                 black,
             );
@@ -152,43 +176,98 @@ fn update_dynamic_elements(angle: f32) {
             let latest = telemetry::HUB.lock().get_latest(4);
             let mut y = 110;
             for data in latest {
-                let text = match data {
-                    telemetry::TelemetryData::CpuLoad(_) => "CPU Load: ACTIVE",
-                    telemetry::TelemetryData::MemoryUsed(_) => "Memory: ALLOCATED",
-                    telemetry::TelemetryData::MemoryFree(_) => "Memory: AVAILABLE",
-                    telemetry::TelemetryData::HardwareEvent { .. } => "HW Event: DETECTED",
-                    telemetry::TelemetryData::SystemStatus(s) => s,
-                    telemetry::TelemetryData::AIIntentDetected(_) => "AI: INTENT ANALYZED",
+                let (text, color) = match data {
+                    telemetry::TelemetryData::CpuLoad(load) => {
+                        writer.write_string_at(40, y, "CPU LOAD:", green_text);
+                        writer.write_string_at(
+                            150,
+                            y,
+                            if load > 0 { "BUSY" } else { "IDLE" },
+                            white,
+                        );
+                        y += 20;
+                        continue;
+                    }
+                    telemetry::TelemetryData::MemoryUsed(_used) => {
+                        writer.write_string_at(40, y, "MEM USED:", green_text);
+                        // Simple hex display for memory since we don't have full formatting
+                        writer.write_string_at(150, y, "ALLOCATED", white);
+                        y += 20;
+                        continue;
+                    }
+                    telemetry::TelemetryData::MemoryFree(_) => ("MEMORY: STABLE", green_text),
+                    telemetry::TelemetryData::HardwareEvent { device, .. } => {
+                        writer.write_string_at(
+                            40,
+                            y,
+                            "HW EVENT:",
+                            Color {
+                                r: 255,
+                                g: 165,
+                                b: 0,
+                            },
+                        ); // Orange
+                        writer.write_string_at(150, y, device, white);
+                        y += 20;
+                        continue;
+                    }
+                    telemetry::TelemetryData::SystemStatus(s) => (s, green_text),
+                    telemetry::TelemetryData::AIIntentDetected(intent) => {
+                        writer.write_string_at(40, y, "AI INTENT:", cyan);
+                        writer.write_string_at(150, y, intent, white);
+                        y += 20;
+                        continue;
+                    }
                 };
 
-                writer.write_string_at(40, y, text, green_text);
+                writer.write_string_at(40, y, text, color);
                 y += 20;
             }
 
-            // Draw Notification
-            if let Some(notification) = CENTER.pop() {
-                writer.fill_rect(
-                    Rect {
-                        x: 30,
-                        y,
-                        width: 280,
-                        height: 20,
-                    },
-                    black,
-                );
-                writer.write_string_at(
-                    40,
-                    y,
-                    &notification.message,
-                    Color {
-                        r: 255,
-                        g: 255,
-                        b: 0,
-                    },
-                ); // Yellow for alerts
+            // 2. Clear & Update Activity Log Area
+            writer.fill_rect(
+                Rect {
+                    x: 30,
+                    y: 270,
+                    width: 280,
+                    height: 100,
+                },
+                black,
+            );
+
+            // Handle new notifications (rolling log)
+            if let Some(new_notif) = CENTER.pop() {
+                let mut log = ACTIVITY_LOG.lock();
+                // Shift logs up
+                for i in 0..4 {
+                    log[i] = log[i + 1].clone();
+                }
+                log[4] = Some(new_notif);
             }
 
-            // Draw Holographic Mesh
+            let mut log_y = 270;
+            {
+                let log = ACTIVITY_LOG.lock();
+                for notif in log.iter().flatten() {
+                    let color = match notif.priority {
+                        crate::notifications::Priority::Critical => Color { r: 255, g: 0, b: 0 },
+                        crate::notifications::Priority::High => Color {
+                            r: 255,
+                            g: 255,
+                            b: 0,
+                        },
+                        _ => Color {
+                            r: 0,
+                            g: 200,
+                            b: 255,
+                        },
+                    };
+                    writer.write_string_at(40, log_y, &notif.message, color);
+                    log_y += 18;
+                }
+            }
+
+            // 3. Draw Holographic Mesh (Existing)
             let info = writer.get_info();
             let width = info.width;
             let height = info.height;
