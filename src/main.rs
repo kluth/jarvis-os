@@ -119,6 +119,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     {
         executor.spawn(Task::new(net::discovery_task()));
         executor.spawn(Task::new(net::mesh::mesh_task()));
+        executor.spawn(Task::new(net::onion::onion_task()));
     }
 
     // 7. Initialize UI
