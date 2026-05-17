@@ -12,6 +12,10 @@ jobs:
   soak-test:
     name: Parallel Soak Test (Runner ${{ matrix.instance }})
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '#soak'))
     strategy:
       fail-fast: false
       matrix:
