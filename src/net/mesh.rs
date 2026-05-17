@@ -45,11 +45,29 @@ pub struct MeshPeer {
 impl MeshNode {
     /// Creates a new mesh node with a cryptographically secure identity.
     pub fn new(node_id: u64) -> Self {
-        // Use a simple seed from node_id for now, but combined with some
-        // entropy would be better. TODO: Integrate hardware entropy (RDRAND).
         let mut seed = [0u8; 32];
-        seed[0..8].copy_from_slice(&node_id.to_le_bytes());
-        seed[8..16].copy_from_slice(&(!node_id).to_le_bytes()); // add some variation
+
+        // 1. Check for Hardware Entropy (RDRAND) support via CPUID
+        let has_rdrand = {
+            let result = core::arch::x86_64::__cpuid(0x1);
+            (result.ecx & (1 << 30)) != 0
+        };
+
+        // 2. Populate seed using best available entropy
+        for chunk in seed.chunks_mut(8) {
+            let mut val: u64 = 0;
+            unsafe {
+                if has_rdrand && core::arch::x86_64::_rdrand64_step(&mut val) != 0 {
+                    // Success! Hardware entropy obtained.
+                } else {
+                    // Fallback to high-resolution timestamp mixed with node_id
+                    val = core::arch::x86_64::_rdtsc() ^ node_id;
+                    // Add some extra mixing for the fallback
+                    val = val.wrapping_mul(0x517cc1b727220a95).rotate_left(31);
+                }
+            }
+            chunk.copy_from_slice(&val.to_le_bytes());
+        }
 
         let mut rng = ChaCha20Rng::from_seed(seed);
         let mut secret_bytes = [0u8; 32];
@@ -142,7 +160,7 @@ pub fn test_mesh_crypto() {
     let node_a = MeshNode::new(10);
     let node_b = MeshNode::new(20);
 
-    // 1. Exchange keys (simulated)
+    // 1. Exchange keys via out-of-band discovery
     node_a.add_peer(20, node_b.public_key());
     node_b.add_peer(10, node_a.public_key());
 
