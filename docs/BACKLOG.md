@@ -5,7 +5,7 @@ This document serves as the master roadmap for JARVIS OS, organized into six Str
 ## 1. Core: Foundation & Kernel Stability
 Establish a rock-solid, `no_std` Rust kernel with robust memory management and scheduling.
 
-### [CORE-001] Symmetric Multiprocessing (SMP) via APIC
+### [CORE-001] Symmetric Multiprocessing (SMP) via APIC [x]
 - **User Story:** As a kernel developer, I want to initialize all available CPU cores using the Local APIC so that the OS can truly multitask across hardware threads.
 - **Technical Context:** Requires parsing ACPI MADT tables, sending Startup IPIs (SIPI), and managing per-core GDT/IDT and stacks in a `no_std` environment.
 - **Acceptance Criteria:**
@@ -13,7 +13,7 @@ Establish a rock-solid, `no_std` Rust kernel with robust memory management and s
   - Each core enters a parked state or starts a local executor.
   - Core-local storage (GS segment) is correctly initialized.
 
-### [CORE-002] Lock-Free Slab Allocator
+### [CORE-002] Lock-Free Slab Allocator [x]
 - **User Story:** As a system component, I want a fast, lock-free memory allocator so that multiple cores can allocate small objects without contention.
 - **Technical Context:** Implementation of a slab allocator using atomic operations or per-core cache layers to minimize global lock pressure.
 - **Acceptance Criteria:**
@@ -21,7 +21,7 @@ Establish a rock-solid, `no_std` Rust kernel with robust memory management and s
   - Zero use of spinlocks in the fast path.
   - Support for multiple slab sizes (8b, 16b, 32b, etc.).
 
-### [CORE-003] Async Kernel Task Executor
+### [CORE-003] Async Kernel Task Executor [x]
 - **User Story:** As a kernel developer, I want an async/await executor so that I can write non-blocking I/O and interrupt handlers cleanly.
 - **Technical Context:** Implementation of a `Waker` and `Runtime` that integrates with the hardware timer and interrupts.
 - **Acceptance Criteria:**
@@ -58,7 +58,7 @@ Enable the OS to see and understand its environment.
   - Latency for discovery is < 2 seconds from network join.
   - Minimal impact on CPU during idle scanning.
 
-### [PERC-002] PCI Class-Based Profiling
+### [PERC-002] PCI Class-Based Profiling [x]
 - **User Story:** As the Device Manager, I want to profile PCI devices by Class and Subclass rather than just IDs so that I can use generic drivers for standard hardware.
 - **Technical Context:** Scanning the PCI bus and mapping Class Codes (e.g., 0x0401 for Audio Controller) to internal trait implementations.
 - **Acceptance Criteria:**

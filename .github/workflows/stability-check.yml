@@ -1,0 +1,48 @@
+name: Stability Soak Testing
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+  schedule:
+    - cron: '0 0 * * *' # Nightly full soak test
+
+jobs:
+  soak-test:
+    name: Parallel Soak Test (Runner ${{ matrix.instance }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: [1, 2, 3, 4, 5]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly
+        components: rust-src, llvm-tools-preview
+
+    - name: Install bootimage
+      run: cargo install bootimage
+
+    - name: Install QEMU
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
+
+    - name: Build Kernel ISO
+      run: cargo bootimage --target x86_64-jarvis_os.json
+
+    - name: Run Stability Watchdog
+      run: ./scripts/stability-watchdog.sh 600 # 10 minute soak test for PRs
+      env:
+        RUST_BACKTRACE: 1
+
+    - name: Archive Stability Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: stability-log-instance-${{ matrix.instance }}
+        path: stability.log

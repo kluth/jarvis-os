@@ -1,12 +1,15 @@
 use crate::apic::LocalApic;
 use crate::gdt;
 use crate::println;
+use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
 use spinning_top::Spinlock;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::VirtAddr;
 
 pub const TIMER_INTERRUPT_VECTOR: u8 = 32;
+
+pub static TICKS: AtomicU64 = AtomicU64::new(0);
 
 lazy_static! {
     pub static ref LAPIC: Spinlock<Option<LocalApic>> = Spinlock::new(None);
@@ -85,26 +88,28 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    println!("EXCEPTION: GENERAL PROTECTION FAULT");
+    println!("[CORE] EXCEPTION: GENERAL PROTECTION FAULT");
     println!("Error Code: 0x{:x}", error_code);
+    println!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
     println!("{:#?}", stack_frame);
-    panic!("GPF");
+    panic!("GPF - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn stack_segment_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    println!("EXCEPTION: STACK SEGMENT FAULT");
+    println!("[CORE] EXCEPTION: STACK SEGMENT FAULT");
     println!("Error Code: 0x{:x}", error_code);
     println!("{:#?}", stack_frame);
-    panic!("SSF");
+    panic!("SSF - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) {
-    println!("EXCEPTION: INVALID OPCODE");
+    println!("[CORE] EXCEPTION: INVALID OPCODE");
+    println!("At Address: {:?}", stack_frame.instruction_pointer);
     println!("{:#?}", stack_frame);
-    panic!("UD");
+    panic!("UD - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn page_fault_handler(
@@ -113,14 +118,16 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
+    println!("[CORE] EXCEPTION: PAGE FAULT");
     println!("Accessed Address: {:?}", Cr2::read());
     println!("Error Code: {:?}", error_code);
+    println!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
     println!("{:#?}", stack_frame);
-    panic!("PAGE FAULT");
+    panic!("PAGE FAULT - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    TICKS.fetch_add(1, Ordering::SeqCst);
     if let Some(ref mut lapic) = *LAPIC.lock() {
         unsafe {
             lapic.end_of_interrupt();
