@@ -1,10 +1,2 @@
-[build]
-target = "x86_64-jarvis_os.json"
-
-[unstable]
-build-std = ["core", "alloc"]
-build-std-features = ["compiler-builtins-mem"]
-json-target-spec = true
-
-[target.'cfg(target_os = "none")']
-runner = "bootimage runner"
+# build-std and target are handled via environment variables or explicit flags in CI
+# to avoid breaking host-side tools in the workspace.
