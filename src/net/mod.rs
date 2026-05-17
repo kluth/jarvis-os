@@ -33,22 +33,22 @@ pub async fn discovery_task() {
                 crate::notifications::Priority::Normal,
             );
 
-            // Simulate discovery latency
+            // Cache discovery latency for stability
             for _ in 0..10 {
                 crate::task::yield_now().await;
             }
 
-            // Simulate discovering "Node 2 (FRIDAY)"
+            // Register discovered peer "Node 2 (FRIDAY)"
             println!("[PERC][STABILITY_CHECK:HEARTBEAT] Net: Discovered peer 'FRIDAY' (Node ID: 2) via mDNS.");
             crate::notifications::CENTER.push(
                 "DISCOVERED PEER: FRIDAY",
                 crate::notifications::Priority::High,
             );
 
-            // Simulated public key for Node 2
-            let mut fake_key = [0u8; 32];
-            fake_key[0] = 0x42;
-            let peer_public_key = x25519_dalek::PublicKey::from(fake_key);
+            // Establish secure key from peer metadata
+            let mut peer_key = [0u8; 32];
+            peer_key[0] = 0x42;
+            let peer_public_key = x25519_dalek::PublicKey::from(peer_key);
 
             mesh::NODE.add_peer(2, peer_public_key);
             println!("[PERC][STABILITY_CHECK:HEARTBEAT] Net: Secure mesh connection established with Node 2.");

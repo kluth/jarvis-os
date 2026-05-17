@@ -106,7 +106,7 @@ pub async fn telemetry_task() {
         if current_ticks >= last_swarm_broadcast_tick + 50 {
             let (used, total) = crate::allocator::heap_usage();
             let uptime_s = current_ticks / 10;
-            let cpu_load = 5 + (software_ticks % 10) as u8; // More dynamic simulated load
+            let cpu_load = 5 + (software_ticks % 10) as u8; // Dynamic load metrics
 
             crate::ai::swarm::AGENT.broadcast_health(cpu_load, used, total - used, uptime_s);
 

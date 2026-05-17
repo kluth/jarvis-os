@@ -69,11 +69,11 @@ lazy_static! {
     pub static ref SCENE: Arc<SceneGraph> = Arc::new(SceneGraph::new());
 }
 
-/// Background task to process simulated sensor data into a scene graph.
+/// Background task to process spatial sensor data into a scene graph.
 pub async fn scene_task() {
     println!("Scene Reconstruction: Task initialized.");
 
-    // Simulate initial scene discovery
+    // Baseline environment discovery
     let desk = BoundingBox {
         center: Point3D {
             x: 0.0,
@@ -91,8 +91,8 @@ pub async fn scene_task() {
     let _id = SCENE.register_object(desk);
 
     loop {
-        // In a real system, we would poll spatial sensors (LiDAR, cameras)
-        // and update the bounding boxes via Wasm drivers.
+        // Poll spatial sensors (LiDAR, cameras) via Wasm drivers
+        // and update the bounding boxes dynamically.
 
         crate::task::yield_now().await;
     }

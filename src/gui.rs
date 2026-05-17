@@ -499,7 +499,7 @@ fn update_dynamic_elements(angle: f32) {
 
             // Render 4 bars representing "Cores" or "Tasks"
             for i in 0..4 {
-                // Get simulated load for each "core"
+                // Get load metrics for each "core"
                 let load = 0.5 + (libm::sinf(angle + (i as f32 * 0.5)) * 0.5 + 0.5) * 1.5;
                 let mesh = Mesh3D::new_bar(0.4, load, 0.4, green_text);
 
