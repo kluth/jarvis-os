@@ -1,3 +1,7 @@
+use crate::interrupts::TICKS;
+use crate::println;
+use crate::serial_println;
+use core::sync::atomic::Ordering;
 use lazy_static::lazy_static;
 use spinning_top::Spinlock;
 
@@ -59,16 +63,54 @@ pub fn log(data: TelemetryData) {
 
 /// A background task that monitors system telemetry and reports critical states.
 pub async fn telemetry_task() {
+    println!("[OBS][STABILITY_CHECK:HEARTBEAT] Telemetry task started.");
+
     let mut last_total_logs = 0;
+    let mut last_heartbeat_tick = 0;
+    let mut last_swarm_broadcast_tick = 0;
+    let mut software_ticks = 0;
+
     loop {
+        software_ticks += 1;
         let current_total = HUB.lock().total_logs;
         if current_total > last_total_logs {
             // New telemetry available
-            // In a real JARVIS OS, this would be analyzed by the AI layer
             last_total_logs = current_total;
         }
 
+        // Use hardware ticks if available, otherwise fallback to software ticks (coarse)
+        let hw_ticks = TICKS.load(Ordering::SeqCst);
+        let current_ticks = if hw_ticks > 0 {
+            hw_ticks
+        } else {
+            software_ticks / 100
+        };
+
+        // 1. Stability Heartbeat (approx. every second)
+        if current_ticks >= last_heartbeat_tick + 10 || last_heartbeat_tick == 0 {
+            let uptime_s = current_ticks / 10;
+            serial_println!(
+                "[STABILITY_CHECK:HEARTBEAT] uptime={}s (hw_ticks={})",
+                uptime_s,
+                hw_ticks
+            );
+            last_heartbeat_tick = current_ticks;
+        }
+
+        // 2. Autonomous Swarm Health Broadcast (every 5 seconds)
+        if current_ticks >= last_swarm_broadcast_tick + 50 {
+            let (used, total) = crate::allocator::heap_usage();
+            let uptime_s = current_ticks / 10;
+            let cpu_load = 5; // Simulated idle load
+
+            crate::ai::swarm::AGENT.broadcast_health(cpu_load, used, total - used, uptime_s);
+
+            last_swarm_broadcast_tick = current_ticks;
+        }
+
         // Yield to other tasks
-        core::future::ready(()).await;
+        for _ in 0..10 {
+            crate::task::yield_now().await;
+        }
     }
 }

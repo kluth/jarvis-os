@@ -1,6 +1,9 @@
 use x86_64::instructions::port::Port;
 use x86_64::VirtAddr;
 
+/// Standard Local APIC physical address is 0xFEE00000
+pub const DEFAULT_APIC_PHYS_BASE: u64 = 0xFEE0_0000;
+
 /// Local APIC registers offsets
 #[repr(usize)]
 pub enum Register {
@@ -43,8 +46,7 @@ impl LocalApic {
     /// The caller must ensure that `physical_memory_offset` is correct and that
     /// the Local APIC memory region is mapped at the resulting virtual address.
     pub unsafe fn new(physical_memory_offset: VirtAddr) -> Self {
-        // Standard Local APIC physical address is 0xFEE00000
-        let base_addr = physical_memory_offset + 0xFEE0_0000u64;
+        let base_addr = physical_memory_offset + DEFAULT_APIC_PHYS_BASE;
         LocalApic { base_addr }
     }
 
@@ -98,7 +100,17 @@ impl LocalApic {
     ///
     /// This must be called at the end of every hardware interrupt handled by the APIC.
     pub unsafe fn end_of_interrupt(&mut self) {
-        self.write(Register::EndOfInterrupt, 0);
+        Self::end_of_interrupt_raw(self.base_addr);
+    }
+
+    /// Signals End of Interrupt (EOI) to the Local APIC using a raw virtual address.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `base_addr` is the correct virtual address of the APIC.
+    pub unsafe fn end_of_interrupt_raw(base_addr: VirtAddr) {
+        let ptr: *mut u32 = (base_addr + Register::EndOfInterrupt as u64).as_mut_ptr();
+        ptr.write_volatile(0);
     }
 }
 

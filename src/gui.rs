@@ -1,4 +1,5 @@
 use crate::gui_3d::{HologramRenderer, Mesh3D};
+use crate::notifications::CENTER;
 use crate::serial_println;
 use crate::telemetry;
 use crate::vga_buffer::{Color, Rect, WRITER};
@@ -148,7 +149,7 @@ fn update_dynamic_elements(angle: f32) {
                 black,
             );
 
-            let latest = telemetry::HUB.lock().get_latest(5);
+            let latest = telemetry::HUB.lock().get_latest(4);
             let mut y = 110;
             for data in latest {
                 let text = match data {
@@ -162,6 +163,29 @@ fn update_dynamic_elements(angle: f32) {
 
                 writer.write_string_at(40, y, text, green_text);
                 y += 20;
+            }
+
+            // Draw Notification
+            if let Some(notification) = CENTER.pop() {
+                writer.fill_rect(
+                    Rect {
+                        x: 30,
+                        y,
+                        width: 280,
+                        height: 20,
+                    },
+                    black,
+                );
+                writer.write_string_at(
+                    40,
+                    y,
+                    &notification.message,
+                    Color {
+                        r: 255,
+                        g: 255,
+                        b: 0,
+                    },
+                ); // Yellow for alerts
             }
 
             // Draw Holographic Mesh
