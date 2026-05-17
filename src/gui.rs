@@ -330,7 +330,8 @@ fn update_dynamic_elements(angle: f32) {
             let onion_status = *onion::SUBSYSTEM.status.lock();
             let status_text = match onion_status {
                 onion::OnionStatus::Disconnected => "STATUS: OFFLINE",
-                onion::OnionStatus::Handshaking => "STATUS: HANDSHAKING...",
+                onion::OnionStatus::SocksGreeting => "STATUS: HANDSHAKING (GREETING)...",
+                onion::OnionStatus::SocksConnect => "STATUS: HANDSHAKING (CONNECT)...",
                 onion::OnionStatus::CircuitEstablished => "STATUS: CIRCUIT ACTIVE",
                 onion::OnionStatus::Error => "STATUS: ERROR",
             };
@@ -346,7 +347,8 @@ fn update_dynamic_elements(angle: f32) {
             );
 
             if onion_status == onion::OnionStatus::CircuitEstablished
-                || onion_status == onion::OnionStatus::Handshaking
+                || onion_status == onion::OnionStatus::SocksGreeting
+                || onion_status == onion::OnionStatus::SocksConnect
             {
                 let active_hops = onion::ACTIVE_HOPS.load(core::sync::atomic::Ordering::SeqCst);
                 writer.write_string_at(
