@@ -109,7 +109,7 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
             x: 20,
             y: 340,
             width: 300,
-            height: height - 390,
+            height: 100,
         },
         blue_border,
     );
@@ -123,6 +123,28 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
             b: 0,
         },
     ); // Yellow
+
+    // Brain Core Box
+    serial_println!("GUI: Drawing brain core box...");
+    writer.draw_rect(
+        Rect {
+            x: 20,
+            y: 450,
+            width: 300,
+            height: height - 470,
+        },
+        blue_border,
+    );
+    writer.write_string_at(
+        30,
+        460,
+        "[ BRAIN CORE ]",
+        Color {
+            r: 180,
+            g: 0,
+            b: 255,
+        },
+    ); // Purple
 
     // Hologram Box (Right side)
     serial_println!("GUI: Drawing AI shell box...");
@@ -142,7 +164,7 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
     writer.write_string_at(
         20,
         height - 40,
-        "STATUS: SYSTEM CORE ONLINE | ENCRYPTION: ACTIVE | CONNECTION: SECURE",
+        "STATUS: SYSTEM CORE ONLINE | ENCRYPTION: ACTIVE | HIVE: SYNCHRONIZED",
         footer_text,
     );
 }
@@ -368,7 +390,98 @@ fn update_dynamic_elements(angle: f32) {
                 }
             }
 
-            // 4. Draw 3D Resource Visualization
+            // 4. Clear & Update Brain Core Area
+            writer.fill_rect(
+                Rect {
+                    x: 30,
+                    y: 490,
+                    width: 280,
+                    height: height - 510,
+                },
+                black,
+            );
+
+            let density = crate::storage::brain::CORE
+                .synaptic_density
+                .load(core::sync::atomic::Ordering::SeqCst);
+            let hive_integrity = if crate::storage::brain::CORE
+                .hive_root
+                .load(core::sync::atomic::Ordering::SeqCst)
+                != 0
+            {
+                "STABLE"
+            } else {
+                "INITIALIZING"
+            };
+
+            writer.write_string_at(
+                40,
+                490,
+                &alloc::format!("DENSITY: {} SYNAPSES", density),
+                green_text,
+            );
+            writer.write_string_at(
+                40,
+                510,
+                &alloc::format!("HIVE: {}", hive_integrity),
+                Color {
+                    r: 180,
+                    g: 0,
+                    b: 255,
+                },
+            );
+
+            // Render 3D Synaptic Hub
+            let brain_renderer = HologramRenderer::new(width, height);
+            // Nucleus (Center)
+            let nucleus = Mesh3D::new_node_sphere(
+                0.25,
+                8,
+                Color {
+                    r: 150,
+                    g: 0,
+                    b: 255,
+                },
+            );
+            brain_renderer.render_mesh(writer, &nucleus, angle * 0.5, angle, -110, 210);
+
+            // Surrounding Synapses (representing fragments)
+            for i in 0..6 {
+                let s_angle = (i as f32 * 1.0) + angle;
+                let s_dist = 0.5 + libm::sinf(angle * 2.0 + i as f32) * 0.1;
+                let x = libm::cosf(s_angle) * s_dist;
+                let z = libm::sinf(s_angle) * s_dist;
+
+                let synapse = Mesh3D::new_node_sphere(0.08, 4, cyan);
+
+                // Manual offset for orbiting synapses
+                let x_off = -110 + (x * 60.0) as isize;
+                let y_off = 210 + (z * 30.0) as isize;
+
+                brain_renderer.render_mesh(writer, &synapse, angle, angle * 2.0, x_off, y_off);
+
+                // Visual "Firing" - lines to nucleus
+                let nucleus_p2d = Point2D {
+                    x: -110 + (width as isize / 2),
+                    y: 210 + (height as isize / 2),
+                };
+                let synapse_p2d = Point2D {
+                    x: x_off + (width as isize / 2),
+                    y: y_off + (height as isize / 2),
+                };
+
+                if libm::sinf(angle * 5.0 + i as f32) > 0.8 {
+                    writer.draw_line(
+                        nucleus_p2d.x,
+                        nucleus_p2d.y,
+                        synapse_p2d.x,
+                        synapse_p2d.y,
+                        white,
+                    );
+                }
+            }
+
+            // 5. Draw 3D Resource Visualization
             // Clear 3D area
             writer.fill_rect(
                 Rect {
