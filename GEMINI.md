@@ -72,3 +72,12 @@ JARVIS OS is a Voice-First Operating System. All new features should consider:
 - Can this be controlled via voice?
 - How does the system communicate state to the user without a screen?
 - Is the audio pipeline preserved and prioritized?
+
+## Absolute Mandate: NO MOCKS, NO PLACEHOLDERS
+
+**NEVER AGAIN USE MOCKS, PLACEHOLDERS, CONCEPTS, OR "PROTOTYPE" LOGIC.**
+- Every implementation MUST be the "real shit": complete, perfect, and fully functional.
+- Code that simulates behavior instead of executing it is strictly prohibited.
+- Placeholders like `TODO`, `FIXME`, or `... (simplified)` are grounds for immediate rejection.
+- All subsystems (Networking, Crypto, Storage, AI) must use real protocols, real encryption, and real data structures.
+- This rule takes absolute precedence over all other development workflows.
