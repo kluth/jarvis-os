@@ -107,6 +107,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         executor.spawn(Task::new(
             jarvis_kernel::sensors::biometrics::biometrics_task(),
         ));
+        executor.spawn(Task::new(jarvis_kernel::task::stress::stress_task()));
     }
 
     #[cfg(feature = "gui")]
@@ -170,7 +171,7 @@ fn test_println() {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    serial_println!("PANIC: {}", info);
+    serial_println!("[STABILITY_CHECK:PANIC] {}", info);
     loop {}
 }
 

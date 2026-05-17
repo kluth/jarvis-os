@@ -1,1 +1,2 @@
-# build-std is handled explicitly in CI to avoid host build conflicts
+# build-std and target are handled via environment variables or explicit flags in CI
+# to avoid breaking host-side tools in the workspace.
