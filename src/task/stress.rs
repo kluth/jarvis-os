@@ -43,6 +43,6 @@ pub async fn stress_task() {
         }
 
         // Small yield to prevent starvation but keep pressure high
-        core::future::ready(()).await;
+        crate::task::yield_now().await;
     }
 }
