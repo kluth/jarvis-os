@@ -187,7 +187,6 @@ fn update_dynamic_elements(angle: f32) {
                     },
                 ); // Yellow for alerts
             }
-
             // Draw Holographic Mesh
             let info = writer.get_info();
             let width = info.width;
