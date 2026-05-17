@@ -3,8 +3,22 @@ name: Build & Verify JARVIS OS
 on:
   push:
     branches: [ "main", "develop", "feat/*" ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
   pull_request:
     branches: [ "main", "develop" ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -96,7 +110,7 @@ jobs:
 
   build_production:
     name: Production Build
-    needs: test
+    needs: validate
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -128,7 +142,7 @@ jobs:
 
   publish_ghcr:
     name: Publish to GHCR
-    needs: build_production
+    needs: [test, build_production]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     permissions:
