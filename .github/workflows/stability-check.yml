@@ -33,7 +33,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
 
     - name: Build Kernel ISO
-      run: cargo bootimage --target x86_64-jarvis_os.json
+      run: cargo bootimage --target x86_64-jarvis_os.json -Zjson-target-spec
 
     - name: Run Stability Watchdog
       run: ./scripts/stability-watchdog.sh 600 # 10 minute soak test for PRs
