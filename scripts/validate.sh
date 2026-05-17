@@ -13,16 +13,16 @@ cargo fmt -- --check
 
 # 2. Compilation Check
 echo "Checking compilation for custom target (default features)..."
-cargo check -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec
+cargo check
 
 echo "Checking compilation for custom target (all features)..."
-cargo check --all-features -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec
+cargo check --all-features
 
 # 3. Linting
 echo "Running Clippy (default features)..."
-cargo clippy -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
+cargo clippy -- -D warnings
 
 echo "Running Clippy (all features)..."
-cargo clippy --all-features -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
+cargo clippy --all-features -- -D warnings
 
 echo "Validation successful! All checks passed (Build skipped due to local resource constraints)."

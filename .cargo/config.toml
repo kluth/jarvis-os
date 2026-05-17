@@ -1,1 +1,10 @@
-# build-std is handled explicitly in CI to avoid host build conflicts
+[build]
+target = "x86_64-jarvis_os.json"
+
+[unstable]
+build-std = ["core", "alloc"]
+build-std-features = ["compiler-builtins-mem"]
+json-target-spec = true
+
+[target.'cfg(target_os = "none")']
+runner = "bootimage runner"
