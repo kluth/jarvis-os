@@ -14,6 +14,7 @@ use x86_64::{PhysAddr, VirtAddr};
 pub const BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
     config.mappings.physical_memory = Some(bootloader_api::config::Mapping::Dynamic);
+    config.kernel_stack_size = 1024 * 1024; // 1 MiB
     config
 };
 
@@ -25,35 +26,56 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         jarvis_kernel::enable_sse();
     }
 
-    // 2. Initialize Core Subsystems
+    serial_println!("Hello JARVIS OS!");
+
+    // 2. Initialize Framebuffer as early as possible
+    #[cfg(feature = "gui")]
+    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
+        jarvis_kernel::vga_buffer::init(framebuffer);
+    }
+
+    // 3. Initialize Core Subsystems
+    serial_println!("Initializing CPU features...");
     jarvis_kernel::gdt::init();
     jarvis_kernel::interrupts::init_idt();
 
-    let phys_mem_offset_raw = boot_info.physical_memory_offset.into_option().unwrap();
+    let phys_mem_offset_raw = boot_info
+        .physical_memory_offset
+        .into_option()
+        .expect("Phys mem offset missing");
     let phys_mem_offset = VirtAddr::new(phys_mem_offset_raw);
 
+    serial_println!("Initializing APIC...");
     unsafe {
-        let mut apic = jarvis_kernel::apic::LocalApic::new(phys_mem_offset);
-        apic.init();
-        jarvis_kernel::apic::disable_pic();
+        jarvis_kernel::interrupts::init_apic(phys_mem_offset);
     };
 
-    // 3. Initialize Memory Management
+    x86_64::instructions::interrupts::enable();
+
+    // 4. Initialize Memory Management
+    serial_println!("Initializing Memory Mapper...");
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    serial_println!("Initializing Bitmap Frame Allocator...");
     let mut frame_allocator =
         unsafe { memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset) };
 
     jarvis_kernel::allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
-    serial_println!("Status: Memory management initialized.");
+    serial_println!("Status: Core memory initialized.");
 
-    // 4. Initialize Device Discovery
-    // Note: In QEMU/BIOS, RSDP is often at 0xf52b0
-    jarvis_kernel::acpi::init(PhysAddr::new(0xf52b0));
+    // 5. Initialize Device Discovery
+    if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
+        jarvis_kernel::acpi::init(PhysAddr::new(rsdp_addr));
+    }
+
+    serial_println!("Scanning PCI bus...");
     jarvis_kernel::pci::scan_bus();
 
-    // 5. Initialize Services
+    #[cfg(feature = "network")]
+    jarvis_kernel::net::init();
+
+    // 6. Initialize Services
     #[cfg(feature = "storage")]
     {
         use jarvis_kernel::storage;
@@ -98,11 +120,11 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         executor.spawn(Task::new(net::mesh::mesh_task()));
     }
 
-    // 7. Initialize UI (last, just before yielding control)
+    // 7. Initialize UI
     #[cfg(feature = "gui")]
     gui::init_ui();
 
-    serial_println!("Status: Multitasking active. System ready.");
+    serial_println!("Status: System ready.");
 
     #[cfg(feature = "test")]
     run_tests();
