@@ -26,7 +26,16 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         jarvis_kernel::enable_sse();
     }
 
-    // 2. Initialize Core Subsystems
+    serial_println!("Hello JARVIS OS!");
+
+    // 2. Initialize Framebuffer as early as possible
+    #[cfg(feature = "gui")]
+    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
+        jarvis_kernel::vga_buffer::init(framebuffer);
+    }
+
+    // 3. Initialize Core Subsystems
+    serial_println!("Initializing CPU features...");
     jarvis_kernel::gdt::init();
     jarvis_kernel::interrupts::init_idt();
 
@@ -36,8 +45,17 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         .expect("Phys mem offset missing");
     let phys_mem_offset = VirtAddr::new(phys_mem_offset_raw);
 
-    // 3. Initialize Memory Management
+    serial_println!("Initializing APIC...");
+    unsafe {
+        jarvis_kernel::interrupts::init_apic(phys_mem_offset);
+    };
+
+    x86_64::instructions::interrupts::enable();
+
+    // 4. Initialize Memory Management
+    serial_println!("Initializing Memory Mapper...");
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    serial_println!("Initializing Bitmap Frame Allocator...");
     let mut frame_allocator =
         unsafe { memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset) };
 
@@ -46,24 +64,18 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     serial_println!("Status: Core memory initialized.");
 
-    // 4. Initialize Hardware and Interrupts
-    unsafe {
-        jarvis_kernel::interrupts::init_apic(phys_mem_offset);
-    };
-
-    // Enable interrupts ONLY after memory and APIC are ready
-    x86_64::instructions::interrupts::enable();
-
+    // 5. Initialize Device Discovery
     if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
         jarvis_kernel::acpi::init(PhysAddr::new(rsdp_addr));
     }
 
+    serial_println!("Scanning PCI bus...");
     jarvis_kernel::pci::scan_bus();
 
     #[cfg(feature = "network")]
     jarvis_kernel::net::init();
 
-    // 5. Initialize Services
+    // 6. Initialize Services
     #[cfg(feature = "storage")]
     {
         use jarvis_kernel::storage;

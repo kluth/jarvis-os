@@ -23,7 +23,7 @@ lazy_static! {
     static ref GDT: (GlobalDescriptorTable, Selectors) = {
         let mut gdt = GlobalDescriptorTable::new();
         let code_selector = gdt.add_entry(Descriptor::kernel_code_segment());
-        let data_selector = gdt.add_entry(Descriptor::user_data_segment()); // Use user_data for kernel data in long mode is common
+        let data_selector = gdt.add_entry(Descriptor::kernel_data_segment());
         let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
         (
             gdt,
@@ -43,7 +43,7 @@ struct Selectors {
 }
 
 pub fn init() {
-    use x86_64::instructions::segmentation::{Segment, CS, DS, ES, FS, GS, SS};
+    use x86_64::instructions::segmentation::{Segment, CS, DS, ES, SS};
     use x86_64::instructions::tables::load_tss;
 
     GDT.0.load();
@@ -52,8 +52,6 @@ pub fn init() {
         SS::set_reg(GDT.1.data_selector);
         DS::set_reg(GDT.1.data_selector);
         ES::set_reg(GDT.1.data_selector);
-        FS::set_reg(GDT.1.data_selector);
-        GS::set_reg(GDT.1.data_selector);
         load_tss(GDT.1.tss_selector);
     }
 }
