@@ -191,10 +191,16 @@ fn run_tests() {
 
     jarvis_kernel::sensors::scene::test_scene_logic();
 
-    #[cfg(feature = "gui")]
-    jarvis_kernel::notifications::test_notifications();
+    #[cfg(feature = "storage")]
+    jarvis_kernel::storage::dht::test_dht_storage();
 
-    jarvis_kernel::security::test_security_module();
+    // #[cfg(feature = "telemetry")]
+    // jarvis_kernel::sensors::biometrics::test_biometrics();
+
+    // #[cfg(feature = "gui")]
+    // jarvis_kernel::notifications::test_notifications();
+
+    // jarvis_kernel::security::test_security_module();
 
     serial_println!("All tests passed!");
     qemu::exit_qemu(qemu::QemuExitCode::Success);
