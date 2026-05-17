@@ -11,6 +11,9 @@ pub const TIMER_INTERRUPT_VECTOR: u8 = 32;
 
 pub static TICKS: AtomicU64 = AtomicU64::new(0);
 
+/// Atomic storage for the APIC virtual base address to allow lock-free EOIs in ISRs.
+pub static APIC_BASE: AtomicU64 = AtomicU64::new(0);
+
 lazy_static! {
     pub static ref LAPIC: Spinlock<Option<LocalApic>> = Spinlock::new(None);
 }
@@ -70,11 +73,18 @@ pub unsafe fn init_apic(physical_memory_offset: VirtAddr) {
     crate::apic::disable_pic();
     let mut lapic = LocalApic::new(physical_memory_offset);
     lapic.init();
+
+    // Store the raw base address for lock-free EOI in ISRs
+    // Standard Local APIC physical address is 0xFEE00000
+    let base_addr = physical_memory_offset + 0xFEE0_0000u64;
+    APIC_BASE.store(base_addr.as_u64(), Ordering::SeqCst);
+
     *LAPIC.lock() = Some(lapic);
 }
 
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+extern "x86-interrupt" fn breakpoint_handler(_stack_frame: InterruptStackFrame) {
+    // Exception handlers are sensitive. Avoid locks (println).
+    // In a real system, we'd increment a lock-free diagnostic counter.
 }
 
 extern "x86-interrupt" fn double_fault_handler(
@@ -88,6 +98,10 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
+    // Standardizing output for stability watchdog (Wait, this is an exception, not a frequent ISR)
+    // However, if we are in a deadlock state, println! will hang.
+    // For critical failures (Page Fault, GPF), we'll keep the output but be aware of the risk.
+    // Ideally, these would use a lock-free serial writer.
     println!("[CORE] EXCEPTION: GENERAL PROTECTION FAULT");
     println!("Error Code: 0x{:x}", error_code);
     println!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
@@ -128,9 +142,12 @@ extern "x86-interrupt" fn page_fault_handler(
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     TICKS.fetch_add(1, Ordering::SeqCst);
-    if let Some(ref mut lapic) = *LAPIC.lock() {
+
+    // Lock-free EOI
+    let base_addr = APIC_BASE.load(Ordering::SeqCst);
+    if base_addr != 0 {
         unsafe {
-            lapic.end_of_interrupt();
+            LocalApic::end_of_interrupt_raw(VirtAddr::new(base_addr));
         }
     }
 }
@@ -142,9 +159,11 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     let scancode: u8 = unsafe { port.read() };
     crate::task::keyboard::add_scancode(scancode);
 
-    if let Some(ref mut lapic) = *LAPIC.lock() {
+    // Lock-free EOI
+    let base_addr = APIC_BASE.load(Ordering::SeqCst);
+    if base_addr != 0 {
         unsafe {
-            lapic.end_of_interrupt();
+            LocalApic::end_of_interrupt_raw(VirtAddr::new(base_addr));
         }
     }
 }
