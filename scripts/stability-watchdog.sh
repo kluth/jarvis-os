@@ -43,7 +43,10 @@ while kill -0 $QEMU_PID 2>/dev/null; do
     # Extract Max Uptime from Heartbeats
     UPTIME=$(grep "\[STABILITY_CHECK:HEARTBEAT\]" stability.log | tail -n 1 | sed -n 's/.*uptime=\([0-9]*\)s/\1/p')
     if [ ! -z "$UPTIME" ]; then
-        MAX_UPTIME=$UPTIME
+        if [ "$UPTIME" -ne "$MAX_UPTIME" ]; then
+            echo "Current Uptime: ${UPTIME}s"
+            MAX_UPTIME=$UPTIME
+        fi
     fi
 
     # Check Timeout

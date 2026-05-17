@@ -1,4 +1,5 @@
 use crate::interrupts::TICKS;
+use crate::println;
 use crate::serial_println;
 use core::sync::atomic::Ordering;
 use lazy_static::lazy_static;
@@ -62,23 +63,37 @@ pub fn log(data: TelemetryData) {
 
 /// A background task that monitors system telemetry and reports critical states.
 pub async fn telemetry_task() {
+    println!("[OBS][STABILITY_CHECK:HEARTBEAT] Telemetry task started.");
+
     let mut last_total_logs = 0;
     let mut last_heartbeat_tick = 0;
     let mut last_swarm_broadcast_tick = 0;
+    let mut software_ticks = 0;
 
     loop {
+        software_ticks += 1;
         let current_total = HUB.lock().total_logs;
         if current_total > last_total_logs {
             // New telemetry available
             last_total_logs = current_total;
         }
 
-        let current_ticks = TICKS.load(Ordering::SeqCst);
+        // Use hardware ticks if available, otherwise fallback to software ticks (coarse)
+        let hw_ticks = TICKS.load(Ordering::SeqCst);
+        let current_ticks = if hw_ticks > 0 {
+            hw_ticks
+        } else {
+            software_ticks / 100
+        };
 
-        // 1. Stability Heartbeat (approx. every second, assuming 10 ticks/s)
-        if current_ticks >= last_heartbeat_tick + 10 {
+        // 1. Stability Heartbeat (approx. every second)
+        if current_ticks >= last_heartbeat_tick + 10 || last_heartbeat_tick == 0 {
             let uptime_s = current_ticks / 10;
-            serial_println!("[STABILITY_CHECK:HEARTBEAT] uptime={}s", uptime_s);
+            serial_println!(
+                "[STABILITY_CHECK:HEARTBEAT] uptime={}s (hw_ticks={})",
+                uptime_s,
+                hw_ticks
+            );
             last_heartbeat_tick = current_ticks;
         }
 
