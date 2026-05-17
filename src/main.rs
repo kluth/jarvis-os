@@ -88,7 +88,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     let mut executor = Executor::new();
 
     #[cfg(feature = "storage")]
-    executor.spawn(Task::new(jarvis_kernel::storage::dht::dht_task()));
+    {
+        executor.spawn(Task::new(jarvis_kernel::storage::dht::dht_task()));
+        executor.spawn(Task::new(jarvis_kernel::storage::brain::brain_task()));
+    }
 
     #[cfg(feature = "ai")]
     {
