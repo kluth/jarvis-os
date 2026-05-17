@@ -59,6 +59,117 @@ impl Mesh3D {
             color,
         }
     }
+
+    pub fn new_bar(width: f32, height: f32, depth: f32, color: Color) -> Self {
+        let w = width / 2.0;
+        let h_base = 0.0; // Bar starts at bottom
+        let h_top = -height; // In 3D space, Y is often down, but let's assume standard projection
+        let d = depth / 2.0;
+
+        let vertices = alloc::vec![
+            Point3D {
+                x: -w,
+                y: h_base,
+                z: -d
+            }, // 0: Bottom-back-left
+            Point3D {
+                x: w,
+                y: h_base,
+                z: -d
+            }, // 1: Bottom-back-right
+            Point3D {
+                x: w,
+                y: h_base,
+                z: d
+            }, // 2: Bottom-front-right
+            Point3D {
+                x: -w,
+                y: h_base,
+                z: d
+            }, // 3: Bottom-front-left
+            Point3D {
+                x: -w,
+                y: h_top,
+                z: -d
+            }, // 4: Top-back-left
+            Point3D {
+                x: w,
+                y: h_top,
+                z: -d
+            }, // 5: Top-back-right
+            Point3D {
+                x: w,
+                y: h_top,
+                z: d
+            }, // 6: Top-front-right
+            Point3D {
+                x: -w,
+                y: h_top,
+                z: d
+            }, // 7: Top-front-left
+        ];
+
+        let edges = alloc::vec![
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 0), // Bottom face
+            (4, 5),
+            (5, 6),
+            (6, 7),
+            (7, 4), // Top face
+            (0, 4),
+            (1, 5),
+            (2, 6),
+            (3, 7), // Verticals
+        ];
+
+        Self {
+            vertices,
+            edges,
+            color,
+        }
+    }
+
+    pub fn new_node_sphere(radius: f32, segments: usize, color: Color) -> Self {
+        let mut vertices = Vec::new();
+        let mut edges = Vec::new();
+
+        // Simple latitude/longitude wireframe
+        for i in 0..segments {
+            let lat = (core::f32::consts::PI * i as f32) / (segments as f32 - 1.0)
+                - core::f32::consts::PI / 2.0;
+            let sin_lat = libm::sinf(lat);
+            let cos_lat = libm::cosf(lat);
+
+            for j in 0..segments {
+                let lon = (2.0 * core::f32::consts::PI * j as f32) / (segments as f32);
+                let sin_lon = libm::sinf(lon);
+                let cos_lon = libm::cosf(lon);
+
+                vertices.push(Point3D {
+                    x: radius * cos_lat * cos_lon,
+                    y: radius * sin_lat,
+                    z: radius * cos_lat * sin_lon,
+                });
+
+                let current = i * segments + j;
+                let next_lon = i * segments + (j + 1) % segments;
+                edges.push((current, next_lon));
+
+                if i < segments - 1 {
+                    let next_lat = (i + 1) * segments + j;
+                    edges.push((current, next_lat));
+                }
+            }
+        }
+
+        Self {
+            vertices,
+            edges,
+            color,
+        }
+    }
 }
 
 pub struct HologramRenderer {
