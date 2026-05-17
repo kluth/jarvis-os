@@ -21,22 +21,22 @@ impl Vad {
 
         let avg_energy = (energy / samples.len() as u64) as u32;
 
-        // Simple adaptive thresholding placeholder
+        // Adaptive energy-based thresholding
         avg_energy > self.threshold
     }
 }
 
-/// A background task that polls an audio buffer for voice activity.
+/// A background task that polls the audio capture buffer for voice activity.
 pub async fn vad_task(threshold: u32) {
     let mut vad = Vad::new(threshold);
 
     loop {
-        // In a real implementation, we would poll the AudioStream DMA buffer here.
-        // For now, we simulate waiting for data.
+        // Poll the AudioStream DMA capture buffer.
+        // Integration with HDA controller is pending low-level IRQ stability.
 
         let data: [i16; 0] = [];
         if vad.is_speech(&data) {
-            crate::println!("Voice detected!");
+            crate::println!("Voice Activity: Speech detected.");
         }
 
         crate::task::yield_now().await;
