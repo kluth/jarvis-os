@@ -108,7 +108,12 @@ pub async fn telemetry_task() {
             let uptime_s = current_ticks / 10;
             let cpu_load = 5 + (software_ticks % 10) as u8; // Dynamic load metrics
 
-            crate::ai::swarm::AGENT.broadcast_health(cpu_load, used, total - used, uptime_s);
+            crate::ai::swarm::AGENT.broadcast_health(
+                cpu_load,
+                used as u64,
+                (total - used) as u64,
+                uptime_s,
+            );
 
             // Push memory stats to hub for UI
             log(TelemetryData::MemoryUsed(used));
