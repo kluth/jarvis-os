@@ -24,20 +24,82 @@ pub enum SwarmMessage {
     /// Acknowledge taking over an intent
     TaskAccepted { intent_id: u64 },
     /// Periodic heartbeat with node capabilities
-    Heartbeat { _capabilities: Vec<String> },
+    Heartbeat { capabilities: Vec<String> },
+    /// Autonomous system health report
+    SystemHealth {
+        cpu_load: u8,
+        mem_used: usize,
+        mem_free: usize,
+        uptime_s: u64,
+    },
 }
 
 impl SwarmMessage {
     // Basic serialization for the prototype. In production, use serde/bincode.
     pub fn serialize(&self) -> Vec<u8> {
-        // Dummy serialization: just returning an empty vec for the prototype
-        // to avoid complex no_std serialization boilerplate in this step.
-        alloc::vec![]
+        let mut buffer = Vec::new();
+        match self {
+            SwarmMessage::IntentBroadcast { intent_id, .. } => {
+                buffer.push(0);
+                buffer.extend_from_slice(&intent_id.to_le_bytes());
+            }
+            SwarmMessage::TaskNegotiation {
+                intent_id,
+                bid_score,
+            } => {
+                buffer.push(1);
+                buffer.extend_from_slice(&intent_id.to_le_bytes());
+                buffer.push(*bid_score);
+            }
+            SwarmMessage::TaskAccepted { intent_id } => {
+                buffer.push(2);
+                buffer.extend_from_slice(&intent_id.to_le_bytes());
+            }
+            SwarmMessage::Heartbeat { .. } => {
+                buffer.push(3);
+            }
+            SwarmMessage::SystemHealth {
+                cpu_load,
+                mem_used,
+                mem_free,
+                uptime_s,
+            } => {
+                buffer.push(4);
+                buffer.push(*cpu_load);
+                buffer.extend_from_slice(&mem_used.to_le_bytes());
+                buffer.extend_from_slice(&mem_free.to_le_bytes());
+                buffer.extend_from_slice(&uptime_s.to_le_bytes());
+            }
+        }
+        buffer
     }
 
-    pub fn deserialize(_data: &[u8]) -> Option<Self> {
-        // Dummy deserialization
-        None
+    pub fn deserialize(data: &[u8]) -> Option<Self> {
+        if data.is_empty() {
+            return None;
+        }
+        match data[0] {
+            4 => {
+                if data.len() < 2 + 8 + 8 + 8 {
+                    return None;
+                }
+                let cpu_load = data[1];
+                let mut mem_used_bytes = [0u8; 8];
+                mem_used_bytes.copy_from_slice(&data[2..10]);
+                let mut mem_free_bytes = [0u8; 8];
+                mem_free_bytes.copy_from_slice(&data[10..18]);
+                let mut uptime_bytes = [0u8; 8];
+                uptime_bytes.copy_from_slice(&data[18..26]);
+
+                Some(SwarmMessage::SystemHealth {
+                    cpu_load,
+                    mem_used: usize::from_le_bytes(mem_used_bytes),
+                    mem_free: usize::from_le_bytes(mem_free_bytes),
+                    uptime_s: u64::from_le_bytes(uptime_bytes),
+                })
+            }
+            _ => None, // Simplified for brevity in this prototype
+        }
     }
 }
 
@@ -76,6 +138,24 @@ impl SwarmAgent {
             .insert(intent_id, String::from(description));
     }
 
+    pub fn broadcast_health(&self, cpu_load: u8, mem_used: usize, mem_free: usize, uptime_s: u64) {
+        let _msg = SwarmMessage::SystemHealth {
+            cpu_load,
+            mem_used,
+            mem_free,
+            uptime_s,
+        };
+
+        println!(
+            "[OBS] Swarm [{}]: Broadcasting health (CPU: {}%, Mem: {}/{} bytes, Uptime: {}s)",
+            self.node_id,
+            cpu_load,
+            mem_used,
+            mem_used + mem_free,
+            uptime_s
+        );
+    }
+
     pub fn handle_message(&self, sender_id: u64, msg: SwarmMessage) {
         match msg {
             SwarmMessage::IntentBroadcast {
@@ -105,8 +185,24 @@ impl SwarmAgent {
                 );
                 self.active_intents.lock().remove(&intent_id);
             }
-            SwarmMessage::Heartbeat { _capabilities: _ } => {
+            SwarmMessage::Heartbeat { capabilities: _ } => {
                 // println!("Swarm [{}]: Heartbeat from Node {} with {} capabilities", self.node_id, sender_id, capabilities.len());
+            }
+            SwarmMessage::SystemHealth {
+                cpu_load,
+                mem_used,
+                mem_free,
+                uptime_s,
+            } => {
+                println!(
+                    "Swarm [{}]: Remote health from Node {} (CPU: {}%, Mem: {}/{} bytes, Uptime: {}s)",
+                    self.node_id,
+                    sender_id,
+                    cpu_load,
+                    mem_used,
+                    mem_used + mem_free,
+                    uptime_s
+                );
             }
         }
     }

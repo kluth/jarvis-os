@@ -1,12 +1,18 @@
 use crate::apic::LocalApic;
 use crate::gdt;
-use crate::println;
+use crate::serial_println_raw;
+use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
 use spinning_top::Spinlock;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::VirtAddr;
 
 pub const TIMER_INTERRUPT_VECTOR: u8 = 32;
+
+pub static TICKS: AtomicU64 = AtomicU64::new(0);
+
+/// Atomic storage for the APIC virtual base address to allow lock-free EOIs in ISRs.
+pub static APIC_BASE: AtomicU64 = AtomicU64::new(0);
 
 lazy_static! {
     pub static ref LAPIC: Spinlock<Option<LocalApic>> = Spinlock::new(None);
@@ -67,11 +73,16 @@ pub unsafe fn init_apic(physical_memory_offset: VirtAddr) {
     crate::apic::disable_pic();
     let mut lapic = LocalApic::new(physical_memory_offset);
     lapic.init();
+
+    // Store the raw base address for lock-free EOI in ISRs
+    let base_addr = physical_memory_offset + crate::apic::DEFAULT_APIC_PHYS_BASE;
+    APIC_BASE.store(base_addr.as_u64(), Ordering::SeqCst);
+
     *LAPIC.lock() = Some(lapic);
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    serial_println_raw!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
@@ -85,26 +96,28 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    println!("EXCEPTION: GENERAL PROTECTION FAULT");
-    println!("Error Code: 0x{:x}", error_code);
-    println!("{:#?}", stack_frame);
-    panic!("GPF");
+    serial_println_raw!("[CORE] EXCEPTION: GENERAL PROTECTION FAULT");
+    serial_println_raw!("Error Code: 0x{:x}", error_code);
+    serial_println_raw!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
+    serial_println_raw!("{:#?}", stack_frame);
+    panic!("GPF - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn stack_segment_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) {
-    println!("EXCEPTION: STACK SEGMENT FAULT");
-    println!("Error Code: 0x{:x}", error_code);
-    println!("{:#?}", stack_frame);
-    panic!("SSF");
+    serial_println_raw!("[CORE] EXCEPTION: STACK SEGMENT FAULT");
+    serial_println_raw!("Error Code: 0x{:x}", error_code);
+    serial_println_raw!("{:#?}", stack_frame);
+    panic!("SSF - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) {
-    println!("EXCEPTION: INVALID OPCODE");
-    println!("{:#?}", stack_frame);
-    panic!("UD");
+    serial_println_raw!("[CORE] EXCEPTION: INVALID OPCODE");
+    serial_println_raw!("At Address: {:?}", stack_frame.instruction_pointer);
+    serial_println_raw!("{:#?}", stack_frame);
+    panic!("UD - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn page_fault_handler(
@@ -113,17 +126,22 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("{:#?}", stack_frame);
-    panic!("PAGE FAULT");
+    serial_println_raw!("[CORE] EXCEPTION: PAGE FAULT");
+    serial_println_raw!("Accessed Address: {:?}", Cr2::read());
+    serial_println_raw!("Error Code: {:?}", error_code);
+    serial_println_raw!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
+    serial_println_raw!("{:#?}", stack_frame);
+    panic!("PAGE FAULT - System Halted for Safety");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    if let Some(ref mut lapic) = *LAPIC.lock() {
+    TICKS.fetch_add(1, Ordering::SeqCst);
+
+    // Lock-free EOI
+    let base_addr = APIC_BASE.load(Ordering::SeqCst);
+    if base_addr != 0 {
         unsafe {
-            lapic.end_of_interrupt();
+            LocalApic::end_of_interrupt_raw(VirtAddr::new(base_addr));
         }
     }
 }
@@ -135,9 +153,11 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     let scancode: u8 = unsafe { port.read() };
     crate::task::keyboard::add_scancode(scancode);
 
-    if let Some(ref mut lapic) = *LAPIC.lock() {
+    // Lock-free EOI
+    let base_addr = APIC_BASE.load(Ordering::SeqCst);
+    if base_addr != 0 {
         unsafe {
-            lapic.end_of_interrupt();
+            LocalApic::end_of_interrupt_raw(VirtAddr::new(base_addr));
         }
     }
 }

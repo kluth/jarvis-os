@@ -66,6 +66,14 @@ curl -sL https://raw.githubusercontent.com/kluth/jarvis-os/main/scripts/run.sh |
    ```
 3. Open **http://localhost:8080** in your browser.
 
+### Stability Testing (Soak Testing)
+The project includes a robust stability watchdog to detect intermittent panics and race conditions:
+```bash
+# Run a 10-minute stability soak test locally
+./scripts/stability-watchdog.sh 600
+```
+The CI/CD pipeline runs these tests in parallel to maximize the probability of triggering latent bugs.
+
 ---
 
 ## 📜 Development Standards

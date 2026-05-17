@@ -60,3 +60,9 @@ pub fn init_heap(
 
     Ok(())
 }
+
+/// Returns the current heap usage (used bytes, total size).
+pub fn heap_usage() -> (usize, usize) {
+    let heap = ALLOCATOR.lock();
+    (heap.used(), heap.size())
+}

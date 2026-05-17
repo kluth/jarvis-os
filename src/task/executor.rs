@@ -2,8 +2,12 @@ use super::{Task, TaskId};
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::task::Wake;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
+
+/// Global counter for wake signals dropped due to a full task queue.
+pub static DROPPED_WAKES: AtomicUsize = AtomicUsize::new(0);
 
 pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
@@ -114,10 +118,7 @@ impl Wake for TaskWaker {
 
     fn wake_by_ref(self: &Arc<Self>) {
         if self.queue.push(self.task_id).is_err() {
-            crate::println!(
-                "WARNING: Task queue full, dropping wake signal for task {:?}",
-                self.task_id
-            );
+            DROPPED_WAKES.fetch_add(1, Ordering::Relaxed);
         }
     }
 }

@@ -2,9 +2,11 @@ use lazy_static::lazy_static;
 use spinning_top::Spinlock;
 use uart_16550::SerialPort;
 
+pub const COM1_PORT: u16 = 0x3F8;
+
 lazy_static! {
     pub static ref SERIAL1: Spinlock<SerialPort> = {
-        let mut serial_port = unsafe { SerialPort::new(0x3F8) };
+        let mut serial_port = unsafe { SerialPort::new(COM1_PORT) };
         serial_port.init();
         Spinlock::new(serial_port)
     };
@@ -31,6 +33,30 @@ pub fn _print(args: core::fmt::Arguments) {
             }
         }
     });
+}
+
+/// A raw, lock-free serial write for use in exceptions and ISRs.
+///
+/// # Safety
+///
+/// This bypasses all locks. Concurrent writes from other CPUs or tasks
+/// may cause interleaved output. Only use for critical diagnostics.
+pub unsafe fn write_str_raw(s: &str) {
+    let mut serial_port = SerialPort::new(COM1_PORT);
+    for byte in s.bytes() {
+        serial_port.send(byte);
+    }
+}
+
+pub struct RawSerialWriter;
+
+impl core::fmt::Write for RawSerialWriter {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        unsafe {
+            write_str_raw(s);
+        }
+        Ok(())
+    }
 }
 
 /// Prints to the host through the serial interface.
@@ -61,4 +87,19 @@ macro_rules! print {
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+pub fn _print_raw(args: core::fmt::Arguments) {
+    use core::fmt::Write;
+    let _ = RawSerialWriter.write_fmt(args);
+}
+
+/// A raw, lock-free println macro for use in exceptions and ISRs.
+#[macro_export]
+macro_rules! serial_println_raw {
+    ($($arg:tt)*) => {
+        $crate::serial::_print_raw(format_args!($($arg)*));
+        $crate::serial::_print_raw(format_args!("\n"));
+    };
 }
