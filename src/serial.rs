@@ -17,22 +17,25 @@ pub fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    // 1. Print to Serial (Always) and VGA (if enabled)
+    // 1. Print to Serial (Always)
     interrupts::without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)
             .expect("Printing to serial failed");
-
-        #[cfg(feature = "gui")]
-        {
-            if let Some(mut writer) = crate::vga_buffer::WRITER.try_lock() {
-                if let Some(w) = writer.as_mut() {
-                    let _ = w.write_fmt(args);
-                }
-            }
-        }
     });
+
+    // 2. Push to System Log for UI (if allocation is safe and heap is ready)
+    #[cfg(feature = "gui")]
+    {
+        use alloc::string::ToString;
+        // Safety: Only log if we are not in an early boot phase where heap might be flaky.
+        // We check a global flag that is set after heap init.
+        if crate::is_heap_ready() && args.as_str().map(|s| s.len()).unwrap_or(0) < 64 {
+            let s = args.to_string();
+            crate::telemetry::push_log(s);
+        }
+    }
 }
 
 /// A raw, lock-free serial write for use in exceptions and ISRs.

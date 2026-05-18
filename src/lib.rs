@@ -17,7 +17,6 @@ pub mod gdt;
 pub mod gui;
 #[cfg(feature = "gui")]
 pub mod gui_3d;
-pub mod hpet;
 pub mod interrupts;
 pub mod memory;
 #[cfg(feature = "network")]
@@ -39,6 +38,17 @@ pub mod vga_buffer;
 pub use vga_buffer::WRITER;
 
 use core::panic::PanicInfo;
+use core::sync::atomic::{AtomicBool, Ordering};
+
+static HEAP_READY: AtomicBool = AtomicBool::new(false);
+
+pub fn set_heap_ready() {
+    HEAP_READY.store(true, Ordering::SeqCst);
+}
+
+pub fn is_heap_ready() -> bool {
+    HEAP_READY.load(Ordering::SeqCst)
+}
 
 pub fn test_runner(tests: &[&dyn Fn()]) {
     serial_println!("Running {} tests", tests.len());
