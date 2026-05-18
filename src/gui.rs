@@ -4,12 +4,7 @@ use crate::serial_println;
 use crate::telemetry;
 use crate::vga_buffer::{Color, Rect, WRITER};
 
-pub fn init_ui() {
-    if let Some(writer) = WRITER.lock().as_mut() {
-        writer.clear();
-        draw_static_elements(writer);
-    }
-}
+pub fn init_ui() {}
 
 fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
     let info = writer.get_info();
@@ -164,19 +159,33 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
 
 pub async fn ui_task() {
     let mut angle: f32 = 0.0;
+    let mut initialized = false;
+
+    serial_println!("GUI: UI task started.");
 
     loop {
-        update_dynamic_elements(angle);
+        if !initialized {
+            if let Some(mut writer_guard) = WRITER.try_lock() {
+                if let Some(writer) = writer_guard.as_mut() {
+                    writer.clear();
+                    draw_static_elements(writer);
+                    initialized = true;
+                    serial_println!("GUI: Static elements drawn.");
+                }
+            }
+        }
+
+        if initialized {
+            update_dynamic_elements(angle);
+        }
+
         angle += 0.05;
         if angle > core::f32::consts::TAU {
             angle = 0.0;
         }
 
-        // Update every ~100ms approx
-        for _ in 0..1 {
-            core::future::ready(()).await;
-            crate::task::yield_now().await;
-        }
+        // Small yield to keep UI fluid
+        crate::task::yield_now().await;
     }
 }
 
