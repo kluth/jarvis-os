@@ -164,6 +164,6 @@ pub async fn shell_task() {
         //    shell.handle_command(&text);
         // }
 
-        core::future::ready(()).await;
+        crate::task::sleep(100).await;
     }
 }
