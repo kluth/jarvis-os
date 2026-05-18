@@ -103,14 +103,16 @@ impl Sleep {
 impl Future for Sleep {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<()> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         let current = crate::interrupts::TICKS.load(core::sync::atomic::Ordering::SeqCst);
         if current >= self.target_tick {
             Poll::Ready(())
         } else {
-            // The executor's timer interrupt will wake all tasks, so we don't strictly
-            // need to register a waker here, but it's good practice.
-            // In our current executor, timer interrupts wake everyone anyway.
+            // Register a waker to be notified when system ticks progress.
+            // In a real preemptive kernel, the timer interrupt would check
+            // which tasks are sleeping and wake only them.
+            // For now, we wake on every poll until ready.
+            cx.waker().wake_by_ref();
             Poll::Pending
         }
     }

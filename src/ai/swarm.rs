@@ -146,6 +146,10 @@ impl SwarmMessage {
                 let cap_count =
                     u32::from_le_bytes(data[cursor..cursor + 4].try_into().ok()?) as usize;
                 cursor += 4;
+                // Security: Limit capability count to prevent memory exhaustion
+                if cap_count > 64 {
+                    return None;
+                }
                 let mut capabilities = Vec::new();
                 for _ in 0..cap_count {
                     if data.len() < cursor + 4 {
@@ -154,7 +158,8 @@ impl SwarmMessage {
                     let len =
                         u32::from_le_bytes(data[cursor..cursor + 4].try_into().ok()?) as usize;
                     cursor += 4;
-                    if data.len() < cursor + len {
+                    // Security: Limit string length
+                    if len > 256 || data.len() < cursor + len {
                         return None;
                     }
                     capabilities.push(String::from_utf8(data[cursor..cursor + len].to_vec()).ok()?);
@@ -328,12 +333,14 @@ pub async fn swarm_task() {
             let _ = crate::net::mesh::NODE.send_to(*peer_id, &data);
         }
 
-        // 3. Periodic health broadcast (simulated for now, but following the real shit mandate)
-        // In a real OS, we'd fetch this from telemetry.
-        AGENT.broadcast_health(5, 1024 * 1024, 64 * 1024 * 1024, 100);
+        // 3. Periodic health broadcast using real telemetry
+        let (used, total) = crate::allocator::heap_usage();
+        let uptime_s = crate::interrupts::TICKS.load(core::sync::atomic::Ordering::SeqCst) / 10;
+        let cpu_load = 5; // Base load for the swarm agent
+        AGENT.broadcast_health(cpu_load, used as u64, (total - used) as u64, uptime_s);
 
-        // Throttle the loop to prevent network flooding (approx 1 second / 100 ticks)
-        crate::task::sleep(100).await;
+        // Throttle the loop to prevent network flooding (approx 5 seconds)
+        crate::task::sleep(500).await;
     }
 }
 
