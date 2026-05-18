@@ -17,6 +17,7 @@ pub mod gdt;
 pub mod gui;
 #[cfg(feature = "gui")]
 pub mod gui_3d;
+pub mod hpet;
 pub mod interrupts;
 pub mod memory;
 #[cfg(feature = "network")]
