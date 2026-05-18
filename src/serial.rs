@@ -25,12 +25,16 @@ pub fn _print(args: core::fmt::Arguments) {
             .expect("Printing to serial failed");
     });
 
-    // 2. Push to System Log for UI (if allocation is safe)
+    // 2. Push to System Log for UI (if allocation is safe and heap is ready)
     #[cfg(feature = "gui")]
     {
         use alloc::string::ToString;
-        let s = args.to_string();
-        crate::telemetry::push_log(s);
+        // Safety: Only log if we are not in an early boot phase where heap might be flaky.
+        // We check a global flag that is set after heap init.
+        if crate::is_heap_ready() && args.as_str().map(|s| s.len()).unwrap_or(0) < 64 {
+            let s = args.to_string();
+            crate::telemetry::push_log(s);
+        }
     }
 }
 

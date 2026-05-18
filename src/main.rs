@@ -62,6 +62,8 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     jarvis_kernel::allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
+    jarvis_kernel::set_heap_ready();
+
     serial_println!("Status: Core memory initialized.");
 
     // 5. Initialize Device Discovery
