@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spinning_top::Spinlock;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeviceType {
     Storage,
     Network,
@@ -10,6 +10,17 @@ pub enum DeviceType {
     Graphics,
     Input,
     System,
+    Light,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Capability {
+    PowerControl,
+    VolumeControl,
+    BrightnessControl,
+    Diagnostic,
+    StorageRead,
+    StorageWrite,
 }
 
 #[derive(Debug, Clone)]
@@ -17,6 +28,7 @@ pub struct DeviceInfo {
     pub name: &'static str,
     pub dev_type: DeviceType,
     pub status: &'static str,
+    pub capabilities: &'static [Capability],
 }
 
 #[derive(Default)]
@@ -31,15 +43,24 @@ impl DeviceManager {
 
     pub fn register_device(&mut self, device: DeviceInfo) {
         crate::println!(
-            "Device Manager: Registering -> {:?} ({:?})",
+            "Device Manager: Registering -> {:?} ({:?}) with capabilities: {:?}",
             device.name,
-            device.dev_type
+            device.dev_type,
+            device.capabilities
         );
         self.devices.push(device);
     }
 
     pub fn get_devices(&self) -> &Vec<DeviceInfo> {
         &self.devices
+    }
+
+    pub fn find_by_capability(&self, capability: Capability) -> Vec<DeviceInfo> {
+        self.devices
+            .iter()
+            .filter(|d| d.capabilities.contains(&capability))
+            .cloned()
+            .collect()
     }
 }
 

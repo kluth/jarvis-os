@@ -57,10 +57,26 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
                         _ => crate::device_manager::DeviceType::System,
                     };
 
+                    let capabilities: &'static [crate::device_manager::Capability] = match dev_type
+                    {
+                        crate::device_manager::DeviceType::Storage => &[
+                            crate::device_manager::Capability::StorageRead,
+                            crate::device_manager::Capability::StorageWrite,
+                        ],
+                        crate::device_manager::DeviceType::Audio => {
+                            &[crate::device_manager::Capability::VolumeControl]
+                        }
+                        crate::device_manager::DeviceType::System => {
+                            &[crate::device_manager::Capability::Diagnostic]
+                        }
+                        _ => &[],
+                    };
+
                     crate::device_manager::register(crate::device_manager::DeviceInfo {
                         name,
                         dev_type,
                         status: "Discovered",
+                        capabilities,
                     });
                 }
 

@@ -85,3 +85,39 @@ impl Future for YieldNow {
 pub fn yield_now() -> YieldNow {
     YieldNow { yielded: false }
 }
+
+/// A future that waits for a specific number of system ticks.
+pub struct Sleep {
+    target_tick: u64,
+}
+
+impl Sleep {
+    pub fn new(ticks: u64) -> Self {
+        let current = crate::interrupts::TICKS.load(core::sync::atomic::Ordering::SeqCst);
+        Self {
+            target_tick: current + ticks,
+        }
+    }
+}
+
+impl Future for Sleep {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        let current = crate::interrupts::TICKS.load(core::sync::atomic::Ordering::SeqCst);
+        if current >= self.target_tick {
+            Poll::Ready(())
+        } else {
+            // Register a waker to be notified when system ticks progress.
+            // In a real preemptive kernel, the timer interrupt would check
+            // which tasks are sleeping and wake only them.
+            // For now, we wake on every poll until ready.
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        }
+    }
+}
+
+pub fn sleep(ticks: u64) -> Sleep {
+    Sleep::new(ticks)
+}
