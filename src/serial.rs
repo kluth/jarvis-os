@@ -17,22 +17,21 @@ pub fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    // 1. Print to Serial (Always) and VGA (if enabled)
+    // 1. Print to Serial (Always)
     interrupts::without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)
             .expect("Printing to serial failed");
-
-        #[cfg(feature = "gui")]
-        {
-            if let Some(mut writer) = crate::vga_buffer::WRITER.try_lock() {
-                if let Some(w) = writer.as_mut() {
-                    let _ = w.write_fmt(args);
-                }
-            }
-        }
     });
+
+    // 2. Push to System Log for UI (if allocation is safe)
+    #[cfg(feature = "gui")]
+    {
+        use alloc::string::ToString;
+        let s = args.to_string();
+        crate::telemetry::push_log(s);
+    }
 }
 
 /// A raw, lock-free serial write for use in exceptions and ISRs.

@@ -1,15 +1,8 @@
 use crate::gui_3d::{HologramRenderer, Mesh3D, Point2D};
 use crate::net::onion;
-use crate::notifications::CENTER;
 use crate::serial_println;
 use crate::telemetry;
 use crate::vga_buffer::{Color, Rect, WRITER};
-
-use spinning_top::Spinlock;
-
-lazy_static::lazy_static! {
-    static ref ACTIVITY_LOG: Spinlock<[Option<crate::notifications::Notification>; 5]> = Spinlock::new([None, None, None, None, None]);
-}
 
 pub fn init_ui() {
     if let Some(writer) = WRITER.lock().as_mut() {
@@ -89,25 +82,25 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
     );
     writer.write_string_at(30, 80, "[ SYSTEM TELEMETRY ]", cyan);
 
-    // Activity Log Box
-    serial_println!("GUI: Drawing activity log box...");
+    // System Log Box
+    serial_println!("GUI: Drawing system log box...");
     writer.draw_rect(
         Rect {
             x: 20,
             y: 230,
             width: 300,
-            height: 100,
+            height: 120,
         },
         blue_border,
     );
-    writer.write_string_at(30, 240, "[ RECENT ACTIVITY ]", cyan);
+    writer.write_string_at(30, 240, "[ SYSTEM LOG ]", cyan);
 
     // Secure Network Box
     serial_println!("GUI: Drawing secure network box...");
     writer.draw_rect(
         Rect {
             x: 20,
-            y: 340,
+            y: 360,
             width: 300,
             height: 100,
         },
@@ -115,7 +108,7 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
     );
     writer.write_string_at(
         30,
-        350,
+        370,
         "[ SECURE NETWORK ]",
         Color {
             r: 255,
@@ -129,15 +122,15 @@ fn draw_static_elements(writer: &mut crate::vga_buffer::FramebufferWriter) {
     writer.draw_rect(
         Rect {
             x: 20,
-            y: 450,
+            y: 470,
             width: 300,
-            height: height - 470,
+            height: height - 490,
         },
         blue_border,
     );
     writer.write_string_at(
         30,
-        460,
+        480,
         "[ BRAIN CORE ]",
         Color {
             r: 180,
@@ -273,46 +266,28 @@ fn update_dynamic_elements(angle: f32) {
                 y += 20;
             }
 
-            // 2. Clear & Update Activity Log Area
+            // 2. Clear & Update System Log Area
             writer.fill_rect(
                 Rect {
                     x: 30,
-                    y: 270,
+                    y: 260,
                     width: 280,
-                    height: 60,
+                    height: 80,
                 },
                 black,
             );
 
-            // Handle new notifications (rolling log)
-            if let Some(new_notif) = CENTER.pop() {
-                let mut log = ACTIVITY_LOG.lock();
-                // Shift logs up
-                for i in 0..4 {
-                    log[i] = log[i + 1].clone();
-                }
-                log[4] = Some(new_notif);
-            }
-
-            let mut log_y = 270;
+            let mut log_y = 260;
             {
-                let log = ACTIVITY_LOG.lock();
-                for notif in log.iter().flatten() {
-                    let color = match notif.priority {
-                        crate::notifications::Priority::Critical => Color { r: 255, g: 0, b: 0 },
-                        crate::notifications::Priority::High => Color {
-                            r: 255,
-                            g: 255,
-                            b: 0,
-                        },
-                        _ => Color {
-                            r: 0,
-                            g: 200,
-                            b: 255,
-                        },
-                    };
-                    writer.write_string_at(40, log_y, &notif.message, color);
-                    log_y += 12;
+                let log = telemetry::SYSTEM_LOG.lock();
+                for msg in log.iter() {
+                    // Truncate or wrap if needed (simple truncate for now)
+                    let display_msg = if msg.len() > 32 { &msg[0..32] } else { msg };
+                    writer.write_string_at(40, log_y, display_msg, white);
+                    log_y += 10;
+                    if log_y > 340 {
+                        break;
+                    }
                 }
             }
 
@@ -320,9 +295,9 @@ fn update_dynamic_elements(angle: f32) {
             writer.fill_rect(
                 Rect {
                     x: 30,
-                    y: 380,
+                    y: 400,
                     width: 280,
-                    height: height - 420,
+                    height: 60,
                 },
                 black,
             );
@@ -330,14 +305,14 @@ fn update_dynamic_elements(angle: f32) {
             let onion_status = *onion::SUBSYSTEM.status.lock();
             let status_text = match onion_status {
                 onion::OnionStatus::Disconnected => "STATUS: OFFLINE",
-                onion::OnionStatus::SocksGreeting => "STATUS: HANDSHAKING (GREETING)...",
-                onion::OnionStatus::SocksConnect => "STATUS: HANDSHAKING (CONNECT)...",
+                onion::OnionStatus::SocksGreeting => "STATUS: HANDSHAKING...",
+                onion::OnionStatus::SocksConnect => "STATUS: CONNECTING...",
                 onion::OnionStatus::CircuitEstablished => "STATUS: CIRCUIT ACTIVE",
                 onion::OnionStatus::Error => "STATUS: ERROR",
             };
             writer.write_string_at(
                 40,
-                380,
+                400,
                 status_text,
                 Color {
                     r: 200,
@@ -353,7 +328,7 @@ fn update_dynamic_elements(angle: f32) {
                 let active_hops = onion::ACTIVE_HOPS.load(core::sync::atomic::Ordering::SeqCst);
                 writer.write_string_at(
                     40,
-                    400,
+                    420,
                     &alloc::format!("ACTIVE HOPS: {}", active_hops),
                     green_text,
                 );
@@ -366,7 +341,7 @@ fn update_dynamic_elements(angle: f32) {
                     let sphere = Mesh3D::new_node_sphere(0.15, 6, cyan);
                     // Calculate a snake-like path for the circuit in UI space
                     let x_off = -110 + (i as isize * 35);
-                    let y_off = 130 + ((i % 2) as isize * 15);
+                    let y_off = 150 + ((i % 2) as isize * 15);
 
                     secure_renderer.render_mesh(writer, &sphere, angle, angle * 0.5, x_off, y_off);
 
@@ -396,9 +371,9 @@ fn update_dynamic_elements(angle: f32) {
             writer.fill_rect(
                 Rect {
                     x: 30,
-                    y: 490,
+                    y: 500,
                     width: 280,
-                    height: height - 510,
+                    height: 60,
                 },
                 black,
             );
@@ -418,13 +393,13 @@ fn update_dynamic_elements(angle: f32) {
 
             writer.write_string_at(
                 40,
-                490,
+                510,
                 &alloc::format!("DENSITY: {} SYNAPSES", density),
                 green_text,
             );
             writer.write_string_at(
                 40,
-                510,
+                530,
                 &alloc::format!("HIVE: {}", hive_integrity),
                 Color {
                     r: 180,
@@ -445,7 +420,7 @@ fn update_dynamic_elements(angle: f32) {
                     b: 255,
                 },
             );
-            brain_renderer.render_mesh(writer, &nucleus, angle * 0.5, angle, -110, 210);
+            brain_renderer.render_mesh(writer, &nucleus, angle * 0.5, angle, -110, 250);
 
             // Surrounding Synapses (representing fragments)
             for i in 0..6 {
@@ -458,14 +433,14 @@ fn update_dynamic_elements(angle: f32) {
 
                 // Manual offset for orbiting synapses
                 let x_off = -110 + (x * 60.0) as isize;
-                let y_off = 210 + (z * 30.0) as isize;
+                let y_off = 250 + (z * 30.0) as isize;
 
                 brain_renderer.render_mesh(writer, &synapse, angle, angle * 2.0, x_off, y_off);
 
                 // Visual "Firing" - lines to nucleus
                 let nucleus_p2d = Point2D {
                     x: -110 + (width as isize / 2),
-                    y: 210 + (height as isize / 2),
+                    y: 250 + (height as isize / 2),
                 };
                 let synapse_p2d = Point2D {
                     x: x_off + (width as isize / 2),

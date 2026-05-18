@@ -55,6 +55,16 @@ lazy_static! {
         index: 0,
         total_logs: 0,
     });
+    pub static ref SYSTEM_LOG: Spinlock<alloc::vec::Vec<alloc::string::String>> =
+        Spinlock::new(alloc::vec::Vec::with_capacity(16));
+}
+
+pub fn push_log(message: alloc::string::String) {
+    let mut log = SYSTEM_LOG.lock();
+    if log.len() >= 16 {
+        log.remove(0);
+    }
+    log.push(message);
 }
 
 pub fn log(data: TelemetryData) {
