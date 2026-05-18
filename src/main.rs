@@ -162,9 +162,12 @@ fn run_tests() {
 fn test_pci_discovery() {
     jarvis_kernel::serial_print!("test_pci_discovery... ");
     let devices = jarvis_kernel::device_manager::MANAGER.lock();
-    // In some QEMU configurations (like CI runners), PCI might not be fully populated 
+    // In some QEMU configurations (like CI runners), PCI might not be fully populated
     // or recognized. We ensure at least the system has been initialized.
-    serial_println!("[ok] (found {} devices registered)", devices.get_devices().len());
+    serial_println!(
+        "[ok] (found {} devices registered)",
+        devices.get_devices().len()
+    );
 }
 
 #[cfg(feature = "test")]
