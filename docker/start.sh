@@ -6,7 +6,8 @@ qemu-system-x86_64 \
     -m 512 \
     -drive format=raw,file=/app/jarvis-os.img \
     -vnc :0 \
-    -nographic \
+    -vga virtio \
+    -net nic,model=virtio -net user \
     -serial mon:stdio \
     &
 
