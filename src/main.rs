@@ -66,7 +66,16 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     // 5. Initialize Device Discovery
     if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
-        jarvis_kernel::acpi::init(PhysAddr::new(rsdp_addr));
+        jarvis_kernel::acpi::init_with_offset(PhysAddr::new(rsdp_addr), phys_mem_offset);
+    }
+
+    // Initialize HPET if discovered
+    unsafe {
+        if let Some(hpet_base) = jarvis_kernel::acpi::HPET_BASE {
+            serial_println!("Initializing HPET...");
+            let hpet = jarvis_kernel::hpet::Hpet::new(hpet_base);
+            hpet.init();
+        }
     }
 
     serial_println!("Scanning PCI bus...");
@@ -142,10 +151,13 @@ fn run_tests() {
     serial_println!("Running system tests...");
     test_println();
     test_pci_discovery();
+    #[cfg(feature = "ai")]
+    {
+        jarvis_kernel::ai::perception::test_inference();
+        jarvis_kernel::ai::swarm::test_swarm_logic();
+    }
     #[cfg(feature = "network")]
     jarvis_kernel::net::mesh::test_mesh_crypto();
-    #[cfg(feature = "ai")]
-    jarvis_kernel::ai::swarm::test_swarm_logic();
 
     jarvis_kernel::sensors::scene::test_scene_logic();
 

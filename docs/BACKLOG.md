@@ -103,7 +103,7 @@ The primary interface for JARVIS OS.
   - Integration with the kernel task executor.
   - Real-time feedback in the UI activity log.
 
-### [INT-002] Semantic Intent Mapping
+### [INT-002] Semantic Intent Mapping [x]
 - **User Story:** As a user, I want to say "JARVIS, turn on the lights" and have it mapped to the correct discovered device.
 - **Technical Context:** An Intent Engine that resolves natural language phrases to specific capability calls in the System Registry.
 - **Acceptance Criteria:**

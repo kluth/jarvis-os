@@ -83,24 +83,66 @@ impl VoiceShell {
     fn map_text_to_intent(&self, text: &str) -> Intent {
         let normalized = text.to_lowercase();
 
+        // 1. Check for specific keywords
         if normalized.contains("status") || normalized.contains("how are you") {
-            Intent::SystemStatus
-        } else if normalized.contains("diagnostic") || normalized.contains("check up") {
-            Intent::InitializeDiagnostics
-        } else if normalized.contains("hello") || normalized.contains("hi") {
-            Intent::Greeting
-        } else if normalized.contains("device") || normalized.contains("hardware") {
-            Intent::ListDevices
-        } else if normalized.contains("network") || normalized.contains("scan") {
-            Intent::ScanNetwork
-        } else if normalized.contains("turn on") {
-            Intent::ControlHardware {
-                device: "lights",
-                action: "on",
-            }
-        } else {
-            Intent::Unknown
+            return Intent::SystemStatus;
         }
+        if normalized.contains("diagnostic") || normalized.contains("check up") {
+            return Intent::InitializeDiagnostics;
+        }
+        if normalized.contains("hello") || normalized.contains("hi") {
+            return Intent::Greeting;
+        }
+        if normalized.contains("device") || normalized.contains("hardware") {
+            return Intent::ListDevices;
+        }
+        if normalized.contains("network") || normalized.contains("scan") {
+            return Intent::ScanNetwork;
+        }
+
+        // 2. Resolve complex intents using Capability-based discovery
+        if normalized.contains("turn on")
+            || normalized.contains("activate")
+            || normalized.contains("start")
+        {
+            // Look for PowerControl capability
+            let targets = device_manager::MANAGER
+                .lock()
+                .find_by_capability(device_manager::Capability::PowerControl);
+            if !targets.is_empty() {
+                // Heuristic: check if user mentioned a specific device name
+                for dev in &targets {
+                    if normalized.contains(&dev.name.to_lowercase()) {
+                        return Intent::ControlHardware {
+                            device: dev.name,
+                            action: "on",
+                        };
+                    }
+                }
+                // If no specific name mentioned, default to the first one (or handle conflict)
+                return Intent::ControlHardware {
+                    device: targets[0].name,
+                    action: "on",
+                };
+            }
+        }
+
+        if normalized.contains("volume")
+            || normalized.contains("louder")
+            || normalized.contains("quieter")
+        {
+            let targets = device_manager::MANAGER
+                .lock()
+                .find_by_capability(device_manager::Capability::VolumeControl);
+            if !targets.is_empty() {
+                return Intent::ControlHardware {
+                    device: targets[0].name,
+                    action: "adjust",
+                };
+            }
+        }
+
+        Intent::Unknown
     }
 
     fn respond(&mut self, text: &str) {
