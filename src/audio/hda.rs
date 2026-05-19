@@ -1,5 +1,4 @@
 use crate::pci::PciDevice;
-use crate::println;
 use x86_64::VirtAddr;
 
 pub struct HdaController {
@@ -28,7 +27,7 @@ impl HdaController {
     ///
     /// The caller must ensure that the controller base address is valid and mapped.
     pub unsafe fn init(&mut self) {
-        println!("Initializing HDA Controller at {:?}", self.base_addr);
+        crate::serial_println!("Initializing HDA Controller at {:?}", self.base_addr);
 
         // 1. Reset the controller
         let gctl_ptr: *mut u32 = self.base_addr.as_mut_ptr();
@@ -41,15 +40,15 @@ impl HdaController {
         gctl_ptr.write_volatile(gctl_ptr.read_volatile() | 1);
         while gctl_ptr.read_volatile() & 1 == 0 {}
 
-        println!("HDA Controller exited reset state.");
+        crate::serial_println!("HDA Controller exited reset state.");
 
         // 2. Initialize CORB/RIRB (Command/Response Ring Buffers)
         // For now, we just print the capabilities. Full DMA allocation requires
         // a more complex memory setup which will be done in the next phase.
         let corbsize: *const u8 = (self.base_addr + 0x4Eu64).as_ptr();
-        println!("CORB Size Capability: 0x{:x}", corbsize.read_volatile());
+        crate::serial_println!("CORB Size Capability: 0x{:x}", corbsize.read_volatile());
 
         let rirbsize: *const u8 = (self.base_addr + 0x5Eu64).as_ptr();
-        println!("RIRB Size Capability: 0x{:x}", rirbsize.read_volatile());
+        crate::serial_println!("RIRB Size Capability: 0x{:x}", rirbsize.read_volatile());
     }
 }

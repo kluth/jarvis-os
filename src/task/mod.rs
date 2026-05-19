@@ -8,6 +8,7 @@ use core::{
 
 pub mod executor;
 pub mod keyboard;
+pub mod signal;
 pub mod stress;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

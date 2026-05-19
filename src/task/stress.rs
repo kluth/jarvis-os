@@ -1,11 +1,10 @@
-use crate::println;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 static STRESS_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub async fn stress_task() {
-    println!("Stability: Stress task initialized. Starting allocation pressure...");
+    crate::serial_println!("Stability: Stress task initialized. Starting allocation pressure...");
 
     let mut iteration = 0;
     loop {
@@ -33,7 +32,7 @@ pub async fn stress_task() {
         // 3. Recursive pressure (optional, be careful with stack)
         // We'll just do more allocations for now.
         if iteration % 1000 == 0 {
-            println!("Stability: Stress cycle {} completed.", iteration);
+            crate::serial_println!("Stability: Stress cycle {} completed.", iteration);
 
             // Large allocation to test heap fragmentation
             let mut large = Vec::with_capacity(1024 * 32);

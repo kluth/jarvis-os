@@ -11,7 +11,9 @@ pub mod acpi;
 pub mod ai;
 pub mod allocator;
 pub mod apic;
+pub mod audio;
 pub mod device_manager;
+pub mod drivers;
 pub mod gdt;
 #[cfg(feature = "gui")]
 pub mod gui;
@@ -28,9 +30,9 @@ pub mod pci;
 pub mod qemu;
 pub mod security;
 pub mod sensors;
-pub mod serial;
 #[cfg(feature = "storage")]
 pub mod storage;
+pub mod sync;
 pub mod task;
 #[cfg(feature = "telemetry")]
 pub mod telemetry;
@@ -52,7 +54,7 @@ pub fn is_heap_ready() -> bool {
 }
 
 pub fn test_runner(tests: &[&dyn Fn()]) {
-    serial_println!("Running {} tests", tests.len());
+    crate::serial_println!("Running {} tests", tests.len());
     for test in tests {
         test();
     }
@@ -60,8 +62,8 @@ pub fn test_runner(tests: &[&dyn Fn()]) {
 }
 
 pub fn test_panic_handler(info: &PanicInfo) -> ! {
-    serial_println!("[failed]\n");
-    serial_println!("[STABILITY_CHECK:PANIC] Error: {}\n", info);
+    crate::serial_println!("[failed]\n");
+    crate::serial_println!("[STABILITY_CHECK:PANIC] Error: {}\n", info);
     qemu::exit_qemu(qemu::QemuExitCode::Failed);
 }
 

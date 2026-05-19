@@ -1,11 +1,10 @@
-use crate::println;
 use crate::storage::merkle;
+use crate::sync::Spinlock;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BrainTier {
@@ -47,7 +46,7 @@ impl JarvisBrain {
             let tree = merkle::MerkleTree::from_data_blocks(&blocks);
             self.hive_root
                 .store(tree.root_hash as usize, Ordering::SeqCst);
-            println!("[BRAIN] Immutability locked: CID for '{}' registered.", key);
+            crate::serial_println!("[BRAIN] Immutability locked: CID for '{}' registered.", key);
         }
 
         synapses.insert(
@@ -83,7 +82,7 @@ impl JarvisBrain {
 
         let pruned = initial_count - synapses.len();
         if pruned > 0 {
-            println!(
+            crate::serial_println!(
                 "[BRAIN] Synaptic pruning complete: {} low-weight memories evicted.",
                 pruned
             );
@@ -94,7 +93,7 @@ impl JarvisBrain {
 }
 
 pub async fn brain_task() {
-    println!("[BRAIN] Tiered Intelligence Engine initialized.");
+    crate::serial_println!("[BRAIN] Tiered Intelligence Engine initialized.");
 
     // Simulate biological growth
     CORE.store(
@@ -120,7 +119,7 @@ pub async fn brain_task() {
         // Simulate Central Aid coordination
         let density = CORE.synaptic_density.load(Ordering::SeqCst);
         if density > 0 && density.wrapping_rem(5) == 0 {
-            // println!("[BRAIN] Syncing with Central Intelligence Hub...");
+            // crate::serial_println!("[BRAIN] Syncing with Central Intelligence Hub...");
         }
 
         for _ in 0..100 {

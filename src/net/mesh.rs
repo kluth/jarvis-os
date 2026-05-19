@@ -1,3 +1,4 @@
+use crate::sync::Spinlock;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -6,7 +7,6 @@ use chacha20poly1305::ChaCha20Poly1305;
 use core::sync::atomic::{AtomicU64, Ordering};
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use spinning_top::Spinlock;
 use x25519_dalek::{PublicKey, StaticSecret};
 
 pub const NONCE_SIZE: usize = 12;
@@ -184,7 +184,7 @@ lazy_static::lazy_static! {
 /// Background task to handle mesh coordination.
 pub async fn mesh_task() {
     // Initial log can stay as it's called during startup, not from ISR
-    crate::println!("Mesh: Node initialized. ID: 1");
+    crate::serial_println!("Mesh: Node initialized. ID: 1");
 
     loop {
         // 1. Scan for other nodes via mDNS (to be implemented)

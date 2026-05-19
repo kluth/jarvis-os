@@ -1,3 +1,4 @@
+use crate::sync::Spinlock;
 use alloc::sync::Arc;
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
@@ -5,9 +6,6 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use spinning_top::Spinlock;
-
-use crate::println;
 
 pub struct SecurityModule {
     fuzz_counter: AtomicUsize,
@@ -40,7 +38,7 @@ impl SecurityModule {
         let cycle = self.fuzz_counter.fetch_add(1, Ordering::SeqCst);
 
         if cycle.is_multiple_of(5) {
-            println!(
+            crate::serial_println!(
                 "Security: Running penetration test cycle #{} on virtual boundaries...",
                 cycle
             );
@@ -49,7 +47,18 @@ impl SecurityModule {
     }
 
     fn simulate_decryption_attack(&self) {
-        let mut rng = ChaCha20Rng::from_seed([0x42; 32]);
+        // OMEGA-Level Hardening: Use hardware-derived entropy (RDTSC + Ticks)
+        let tsc = unsafe { core::arch::x86_64::_rdtsc() };
+        let ticks = crate::interrupts::TICKS.load(Ordering::Relaxed);
+        let mut seed = [0u8; 32];
+        seed[0..8].copy_from_slice(&tsc.to_le_bytes());
+        seed[8..16].copy_from_slice(&ticks.to_le_bytes());
+        // Fill remaining with deterministic but non-obvious values
+        for (i, byte) in seed.iter_mut().enumerate().skip(16) {
+            *byte = (tsc >> (i % 8)) as u8 ^ (ticks >> (i % 8)) as u8;
+        }
+
+        let mut rng = ChaCha20Rng::from_seed(seed);
         let mut key = [0u8; 32];
         rng.fill_bytes(&mut key);
         let mut nonce = [0u8; 12];
@@ -59,7 +68,6 @@ impl SecurityModule {
         let mut buffer = [0u8; 15];
         buffer.copy_from_slice(b"Top secret data");
 
-        // Simulating a stream cipher operation
         cipher.apply_keystream(&mut buffer);
     }
 }
@@ -69,15 +77,12 @@ lazy_static! {
 }
 
 pub async fn security_task() {
-    println!("Security: Automated Penetration Testing Module initialized.");
+    crate::serial_println!("Security: Automated Penetration Testing Module initialized.");
     SECURITY.set_active(true);
 
     loop {
         SECURITY.run_fuzzing_cycle();
-
-        for _ in 0..20 {
-            crate::task::yield_now().await;
-        }
+        crate::task::yield_now().await;
     }
 }
 

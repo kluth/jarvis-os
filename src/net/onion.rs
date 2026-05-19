@@ -1,9 +1,8 @@
-use crate::println;
+use crate::sync::Spinlock;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 
 /// Represents the state of the SOCKS5 handshake and Onion circuit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,7 +67,7 @@ impl OnionSubsystem {
 }
 
 pub async fn onion_task() {
-    println!("[SEC] Onion: Multi-hop encryption engine active.");
+    crate::serial_println!("[SEC] Onion: Multi-hop encryption engine active.");
 
     loop {
         let current_status = *SUBSYSTEM.status.lock();
@@ -95,7 +94,7 @@ pub async fn onion_task() {
                     alias: String::from(*name),
                 });
                 ACTIVE_HOPS.store(i + 1, Ordering::SeqCst);
-                println!("[SEC] Onion: Secure hop established at {}", name);
+                crate::serial_println!("[SEC] Onion: Secure hop established at {}", name);
             }
 
             *SUBSYSTEM.status.lock() = OnionStatus::CircuitEstablished;
@@ -123,7 +122,7 @@ pub async fn onion_task() {
                 let mut connect_payload = Vec::new();
                 SUBSYSTEM.socks5_connect(target, 80, &mut connect_payload);
 
-                println!(
+                crate::serial_println!(
                     "[SEC] Onion: Routing payload to {} ({} bytes)",
                     target,
                     connect_payload.len()

@@ -83,6 +83,7 @@ pub fn scan_bus() -> alloc::vec::Vec<PciDevice> {
                 // Intel HDA: Class 04, Subclass 03
                 if class == 0x04 && subclass == 0x03 {
                     devices.push(dev);
+                    crate::audio::pc_speaker::audio_discovered_alert();
                 }
 
                 // If it's not a multi-function device, don't check other functions

@@ -1,11 +1,9 @@
+use crate::sync::Spinlock;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
-
-use crate::println;
 
 #[derive(Debug, Clone)]
 pub struct Point3D {
@@ -43,7 +41,7 @@ impl SceneGraph {
 
     pub fn register_object(&self, bbox: BoundingBox) -> usize {
         let id = self.update_counter.fetch_add(1, Ordering::SeqCst);
-        println!("Scene: Registered object '{}' at ID {}", bbox.label, id);
+        crate::serial_println!("Scene: Registered object '{}' at ID {}", bbox.label, id);
         self.objects.lock().insert(id, bbox);
         id
     }
@@ -56,7 +54,7 @@ impl SceneGraph {
 
     pub fn remove_object(&self, id: usize) {
         if self.objects.lock().remove(&id).is_some() {
-            println!("Scene: Removed object ID {}", id);
+            crate::serial_println!("Scene: Removed object ID {}", id);
         }
     }
 
@@ -71,7 +69,7 @@ lazy_static! {
 
 /// Background task to process spatial sensor data into a scene graph.
 pub async fn scene_task() {
-    println!("Scene Reconstruction: Task initialized.");
+    crate::serial_println!("Scene Reconstruction: Task initialized.");
 
     // Baseline environment discovery
     let desk = BoundingBox {

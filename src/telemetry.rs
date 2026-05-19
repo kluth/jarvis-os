@@ -1,9 +1,7 @@
 use crate::interrupts::TICKS;
-use crate::println;
-use crate::serial_println;
+use crate::sync::Spinlock;
 use core::sync::atomic::Ordering;
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 
 #[derive(Debug, Clone, Copy)]
 pub enum TelemetryData {
@@ -73,7 +71,7 @@ pub fn log(data: TelemetryData) {
 
 /// A background task that monitors system telemetry and reports critical states.
 pub async fn telemetry_task() {
-    println!("[OBS][STABILITY_CHECK:HEARTBEAT] Telemetry task started.");
+    crate::serial_println!("[OBS][STABILITY_CHECK:HEARTBEAT] Telemetry task started.");
 
     let mut last_total_logs = 0;
     let mut last_heartbeat_tick = 0;
@@ -99,7 +97,7 @@ pub async fn telemetry_task() {
         // 1. Stability Heartbeat (approx. every second)
         if current_ticks >= last_heartbeat_tick + 10 || last_heartbeat_tick == 0 {
             let uptime_s = current_ticks / 10;
-            serial_println!(
+            crate::serial_println!(
                 "[STABILITY_CHECK:HEARTBEAT] uptime={}s (hw_ticks={})",
                 uptime_s,
                 hw_ticks

@@ -1,6 +1,6 @@
+use crate::sync::Spinlock;
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeviceType {
@@ -42,7 +42,7 @@ impl DeviceManager {
     }
 
     pub fn register_device(&mut self, device: DeviceInfo) {
-        crate::println!(
+        crate::serial_println!(
             "Device Manager: Registering -> {:?} ({:?}) with capabilities: {:?}",
             device.name,
             device.dev_type,

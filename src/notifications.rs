@@ -1,9 +1,9 @@
+use crate::sync::Spinlock;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Priority {

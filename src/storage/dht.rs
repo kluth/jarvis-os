@@ -1,11 +1,9 @@
+use crate::sync::Spinlock;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
-
-use crate::println;
 
 const CHUNK_SIZE: usize = 4096; // 4KB chunks
 
@@ -51,7 +49,7 @@ impl DhtNode {
         }
 
         self.file_index.lock().insert(file_id, hashes);
-        println!(
+        crate::serial_println!(
             "DHT [Node {}]: Stored file {} ({} chunks)",
             self.node_id,
             file_id,
@@ -84,7 +82,7 @@ lazy_static! {
 }
 
 pub async fn dht_task() {
-    println!("Storage: Decentralized Hash Table node initialized.");
+    crate::serial_println!("Storage: Decentralized Hash Table node initialized.");
     loop {
         crate::task::yield_now().await;
     }

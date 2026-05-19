@@ -1,10 +1,8 @@
+use crate::sync::Spinlock;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
-
-use crate::println;
 
 #[derive(Debug, Clone)]
 pub struct BiometricReading {
@@ -36,9 +34,11 @@ impl BiometricSensor {
     pub fn record(&self, reading: BiometricReading) {
         let count = self.counter.fetch_add(1, Ordering::SeqCst);
         if count.is_multiple_of(10) {
-            println!(
+            crate::serial_println!(
                 "Biometrics: HR: {} bpm, SpO2: {}%, Stress: {}/100",
-                reading.heart_rate, reading.oxygen_saturation, reading.stress_level
+                reading.heart_rate,
+                reading.oxygen_saturation,
+                reading.stress_level
             );
         }
 
@@ -59,7 +59,7 @@ lazy_static! {
 }
 
 pub async fn biometrics_task() {
-    println!("Health: Biometric Telemetry task initialized.");
+    crate::serial_println!("Health: Biometric Telemetry task initialized.");
     let mut base_hr = 70;
     loop {
         base_hr += 1;

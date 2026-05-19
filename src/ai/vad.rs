@@ -31,14 +31,16 @@ pub async fn vad_task(threshold: u32) {
     let mut vad = Vad::new(threshold);
 
     loop {
+        super::AUDIO_SAMPLES_READY.wait().await;
+        super::AUDIO_SAMPLES_READY.reset();
+
         // Poll the AudioStream DMA capture buffer.
         // Integration with HDA controller is pending low-level IRQ stability.
 
         let data: [i16; 0] = [];
         if vad.is_speech(&data) {
-            crate::println!("Voice Activity: Speech detected.");
+            crate::serial_println!("Voice Activity: Speech detected.");
+            super::VOICE_DETECTED.trigger();
         }
-
-        crate::task::yield_now().await;
     }
 }

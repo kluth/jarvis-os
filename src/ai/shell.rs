@@ -1,6 +1,6 @@
 use super::stt::SttEngine;
 use super::tts::TtsEngine;
-use crate::{device_manager, println, telemetry};
+use crate::{device_manager, telemetry};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Intent {
@@ -46,7 +46,7 @@ impl VoiceShell {
 impl VoiceShell {
     /// Processes a recognized command string and maps it to an Intent.
     pub fn handle_command(&mut self, text: &str) {
-        println!("Voice Shell: Handling command -> {}", text);
+        crate::serial_println!("Voice Shell: Handling command -> {}", text);
 
         let intent = self.map_text_to_intent(text);
         // Log the intent type (static str) instead of the dynamic input text
@@ -64,14 +64,14 @@ impl VoiceShell {
             }
             Intent::ListDevices => {
                 let count = device_manager::MANAGER.lock().get_devices().len();
-                println!("JARVIS: Found {} devices in registry.", count);
+                crate::serial_println!("JARVIS: Found {} devices in registry.", count);
                 self.respond("Displaying all discovered hardware on the HUD.");
             }
             Intent::ScanNetwork => {
                 self.respond("Scanning local subnet for active nodes.");
             }
             Intent::ControlHardware { device, action } => {
-                println!("Action: {} on device: {}", action, device);
+                crate::serial_println!("Action: {} on device: {}", action, device);
                 self.respond("Command processed.");
             }
             Intent::Unknown => {
@@ -146,7 +146,7 @@ impl VoiceShell {
     }
 
     fn respond(&mut self, text: &str) {
-        println!("JARVIS: {}", text);
+        crate::serial_println!("JARVIS: {}", text);
         if let Some(ref mut tts) = self.tts {
             let _ = tts.speak(text);
         }
@@ -158,12 +158,12 @@ pub async fn shell_task() {
     let mut _shell = VoiceShell::new();
 
     loop {
-        // Here we would check the 'Voice Detected' signal from VAD
-        // if voice_detected {
-        //    let text = stt.transcribe(buffer);
-        //    shell.handle_command(&text);
-        // }
+        super::VOICE_DETECTED.wait().await;
+        super::VOICE_DETECTED.reset();
 
-        crate::task::sleep(100).await;
+        // Here we would check the 'Voice Detected' signal from VAD
+        // let text = stt.transcribe(buffer);
+        // shell.handle_command(&text);
+        crate::serial_println!("Voice Shell: Signal received, processing voice input...");
     }
 }

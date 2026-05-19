@@ -1,4 +1,4 @@
-use crate::{device_manager, println};
+use crate::device_manager;
 use core::ptr;
 use x86_64::{PhysAddr, VirtAddr};
 
@@ -48,7 +48,7 @@ struct GenericAddressStructure {
 pub static mut HPET_BASE: Option<VirtAddr> = None;
 
 pub fn init(rsdp_addr: PhysAddr) {
-    println!("ACPI: Initializing at PhysAddr({:?})", rsdp_addr);
+    crate::serial_println!("ACPI: Initializing at PhysAddr({:?})", rsdp_addr);
 
     // Get the physical memory offset from the kernel's state (passed via boot_info)
     // For now, we assume we can calculate it if we have access to it.
@@ -66,24 +66,24 @@ pub fn init(rsdp_addr: PhysAddr) {
 /// The caller must ensure that `phys_mem_offset` is correct and that the memory at `rsdp_addr`
 /// contains a valid RSDP structure.
 pub fn init_with_offset(rsdp_addr: PhysAddr, phys_mem_offset: VirtAddr) {
-    println!("ACPI: Real Initialization at PhysAddr({:?})", rsdp_addr);
+    crate::serial_println!("ACPI: Real Initialization at PhysAddr({:?})", rsdp_addr);
 
     unsafe {
         let rsdp_ptr: *const Rsdp = (phys_mem_offset + rsdp_addr.as_u64()).as_ptr();
         let rsdp = &*rsdp_ptr;
 
         if &rsdp.signature != b"RSD PTR " {
-            println!("ACPI Error: Invalid RSDP signature");
+            crate::serial_println!("ACPI Error: Invalid RSDP signature");
             return;
         }
 
-        println!("ACPI: RSDP Revision {}", rsdp.revision);
+        crate::serial_println!("ACPI: RSDP Revision {}", rsdp.revision);
 
         let rsdt_ptr: *const SdtHeader = (phys_mem_offset + rsdp.rsdt_addr as u64).as_ptr();
         let rsdt = &*rsdt_ptr;
 
         if &rsdt.signature != b"RSDT" {
-            println!("ACPI Error: Invalid RSDT signature");
+            crate::serial_println!("ACPI Error: Invalid RSDT signature");
             return;
         }
 
@@ -96,13 +96,13 @@ pub fn init_with_offset(rsdp_addr: PhysAddr, phys_mem_offset: VirtAddr) {
             let sdt = &*sdt_ptr;
 
             let sig = core::str::from_utf8(&sdt.signature).unwrap_or("????");
-            println!("ACPI: Found table {}", sig);
+            crate::serial_println!("ACPI: Found table {}", sig);
 
             if &sdt.signature == b"HPET" {
-                println!("ACPI: HPET Table detected!");
+                crate::serial_println!("ACPI: HPET Table detected!");
                 let hpet_table = &*(sdt_ptr as *const HpetTable);
                 let hpet_phys_addr = hpet_table.base_address.address;
-                println!("ACPI: HPET Base Address: 0x{:x}", hpet_phys_addr);
+                crate::serial_println!("ACPI: HPET Base Address: 0x{:x}", hpet_phys_addr);
 
                 HPET_BASE = Some(phys_mem_offset + hpet_phys_addr);
 

@@ -8,7 +8,7 @@ use bootloader_api::{entry_point, BootInfo, BootloaderConfig};
 use core::panic::PanicInfo;
 use jarvis_kernel::task::executor::Executor;
 use jarvis_kernel::task::Task;
-use jarvis_kernel::{gui, memory, net, serial_println, serial_println_raw, telemetry};
+use jarvis_kernel::{gui, memory, net, serial_println, telemetry};
 use x86_64::{PhysAddr, VirtAddr};
 
 pub const BOOTLOADER_CONFIG: BootloaderConfig = {
@@ -26,7 +26,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         jarvis_kernel::enable_sse();
     }
 
-    serial_println!("Hello JARVIS OS!");
+    crate::serial_println!("Hello JARVIS OS!");
 
     // 2. Initialize Framebuffer as early as possible
     #[cfg(feature = "gui")]
@@ -35,7 +35,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     }
 
     // 3. Initialize Core Subsystems
-    serial_println!("Initializing CPU features...");
+    crate::serial_println!("Initializing CPU features...");
     jarvis_kernel::gdt::init();
     jarvis_kernel::interrupts::init_idt();
 
@@ -45,7 +45,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         .expect("Phys mem offset missing");
     let phys_mem_offset = VirtAddr::new(phys_mem_offset_raw);
 
-    serial_println!("Initializing APIC...");
+    crate::serial_println!("Initializing APIC...");
     unsafe {
         jarvis_kernel::interrupts::init_apic(phys_mem_offset);
     };
@@ -53,9 +53,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     x86_64::instructions::interrupts::enable();
 
     // 4. Initialize Memory Management
-    serial_println!("Initializing Memory Mapper...");
+    crate::serial_println!("Initializing Memory Mapper...");
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    serial_println!("Initializing Bitmap Frame Allocator...");
+    crate::serial_println!("Initializing Bitmap Frame Allocator...");
     let mut frame_allocator =
         unsafe { memory::BitmapFrameAllocator::init(&boot_info.memory_regions, phys_mem_offset) };
 
@@ -64,7 +64,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     jarvis_kernel::set_heap_ready();
 
-    serial_println!("Status: Core memory initialized.");
+    crate::serial_println!("Status: Core memory initialized.");
 
     // 5. Initialize Device Discovery
     if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
@@ -74,13 +74,13 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     // Initialize HPET if discovered
     unsafe {
         if let Some(hpet_base) = jarvis_kernel::acpi::HPET_BASE {
-            serial_println!("Initializing HPET...");
+            crate::serial_println!("Initializing HPET...");
             let hpet = jarvis_kernel::hpet::Hpet::new(hpet_base);
             hpet.init();
         }
     }
 
-    serial_println!("Scanning PCI bus...");
+    crate::serial_println!("Scanning PCI bus...");
     jarvis_kernel::pci::scan_bus();
 
     #[cfg(feature = "network")]
@@ -140,7 +140,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     #[cfg(feature = "gui")]
     gui::init_ui();
 
-    serial_println!("Status: System ready.");
+    crate::serial_println!("Status: System ready.");
 
     #[cfg(feature = "test")]
     run_tests();
@@ -150,7 +150,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
 #[cfg(feature = "test")]
 fn run_tests() {
-    serial_println!("Running system tests...");
+    crate::serial_println!("Running system tests...");
     test_println();
     test_pci_discovery();
     #[cfg(feature = "network")]
@@ -163,7 +163,7 @@ fn run_tests() {
     #[cfg(feature = "storage")]
     jarvis_kernel::storage::dht::test_dht_storage();
 
-    serial_println!("All tests passed!");
+    crate::serial_println!("All tests passed!");
     jarvis_kernel::qemu::exit_qemu(jarvis_kernel::qemu::QemuExitCode::Success);
 }
 
@@ -173,7 +173,7 @@ fn test_pci_discovery() {
     let devices = jarvis_kernel::device_manager::MANAGER.lock();
     // In some QEMU configurations (like CI runners), PCI might not be fully populated
     // or recognized. We ensure at least the system has been initialized.
-    serial_println!(
+    jarvis_kernel::serial_println!(
         "[ok] (found {} devices registered)",
         devices.get_devices().len()
     );
@@ -187,7 +187,7 @@ fn test_println() {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    serial_println_raw!("[STABILITY_CHECK:PANIC] {}", info);
+    jarvis_kernel::serial_println_raw!("[STABILITY_CHECK:PANIC] {}", info);
     loop {}
 }
 

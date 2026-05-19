@@ -1,7 +1,7 @@
-use crate::{device_manager, println};
+use crate::device_manager;
 
 pub fn init() {
-    println!("Ethernet: Initialized VirtIO driver.");
+    crate::serial_println!("Ethernet: Initialized VirtIO driver.");
 
     device_manager::register(device_manager::DeviceInfo {
         name: "VirtIO Interface 0",
@@ -10,5 +10,5 @@ pub fn init() {
         capabilities: &[],
     });
 
-    println!("Ethernet: Local IP assigned: 192.168.1.100");
+    crate::serial_println!("Ethernet: Local IP assigned: 192.168.1.100");
 }

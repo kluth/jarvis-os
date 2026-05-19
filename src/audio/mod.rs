@@ -1,3 +1,1 @@
-pub mod buffer;
-pub mod hda;
-pub mod stream;
+pub mod pc_speaker;

@@ -1,8 +1,8 @@
+use crate::sync::Spinlock;
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use core::{fmt, ptr};
 use font8x8::UnicodeFonts;
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Rect {
