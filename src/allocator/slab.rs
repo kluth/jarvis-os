@@ -1,4 +1,4 @@
-use super::Locked;
+use crate::sync::Spinlock;
 use core::{mem, ptr::NonNull};
 
 /// A simple slab allocator for fixed-size objects.
@@ -83,7 +83,7 @@ impl<T> Slab<T> {
 unsafe impl<T> Send for Slab<T> {}
 
 pub struct SlabAllocator<T> {
-    inner: Locked<Slab<T>>,
+    inner: Spinlock<Slab<T>>,
 }
 
 impl<T> Default for SlabAllocator<T> {
@@ -95,7 +95,7 @@ impl<T> Default for SlabAllocator<T> {
 impl<T> SlabAllocator<T> {
     pub const fn new() -> Self {
         SlabAllocator {
-            inner: Locked::new(Slab::new()),
+            inner: Spinlock::new(Slab::new()),
         }
     }
 

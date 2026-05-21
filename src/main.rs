@@ -22,9 +22,7 @@ entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     // 1. Initialize hardware SSE support immediately
-    unsafe {
-        jarvis_kernel::enable_sse();
-    }
+    jarvis_kernel::enable_sse();
 
     crate::serial_println!("Hello JARVIS OS!");
 

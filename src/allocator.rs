@@ -1,5 +1,6 @@
-use linked_list_allocator::LockedHeap;
-use spinning_top::Spinlock;
+pub mod linked_list;
+pub mod slab;
+use crate::allocator::linked_list::LockedAllocator;
 use x86_64::{
     structures::paging::{
         mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
@@ -7,30 +8,11 @@ use x86_64::{
     VirtAddr,
 };
 
-pub mod slab;
-
-/// A wrapper around spinning_top::Spinlock to permit trait implementations.
-pub struct Locked<A> {
-    inner: Spinlock<A>,
-}
-
-impl<A> Locked<A> {
-    pub const fn new(inner: A) -> Self {
-        Locked {
-            inner: Spinlock::new(inner),
-        }
-    }
-
-    pub fn lock(&self) -> spinning_top::guard::SpinlockGuard<'_, A> {
-        self.inner.lock()
-    }
-}
-
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: LockedAllocator = LockedAllocator::new();
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 32 * 1024 * 1024; // 32 MiB (Balanced increase)
+pub const HEAP_SIZE: usize = 32 * 1024 * 1024;
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
@@ -43,7 +25,6 @@ pub fn init_heap(
         let heap_end_page = Page::containing_address(heap_end);
         Page::range_inclusive(heap_start_page, heap_end_page)
     };
-
     for page in page_range {
         let frame = frame_allocator
             .allocate_frame()
@@ -53,15 +34,12 @@ pub fn init_heap(
             mapper.map_to(page, frame, flags, frame_allocator)?.flush();
         }
     }
-
     unsafe {
-        ALLOCATOR.lock().init(HEAP_START as *mut u8, HEAP_SIZE);
+        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
-
     Ok(())
 }
 
-/// Returns the current heap usage (used bytes, total size).
 pub fn heap_usage() -> (usize, usize) {
     let heap = ALLOCATOR.lock();
     (heap.used(), heap.size())

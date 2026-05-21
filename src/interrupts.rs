@@ -1,9 +1,9 @@
 use crate::apic::LocalApic;
 use crate::gdt;
 use crate::serial_println_raw;
+use crate::sync::Spinlock;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::VirtAddr;
 
@@ -89,7 +89,10 @@ extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     _error_code: u64,
 ) -> ! {
-    panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+    serial_println_raw!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 extern "x86-interrupt" fn general_protection_fault_handler(
@@ -100,7 +103,10 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     serial_println_raw!("Error Code: 0x{:x}", error_code);
     serial_println_raw!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
     serial_println_raw!("{:#?}", stack_frame);
-    panic!("GPF - System Halted for Safety");
+    serial_println_raw!("GPF - System Halted for Safety");
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 extern "x86-interrupt" fn stack_segment_fault_handler(
@@ -110,14 +116,20 @@ extern "x86-interrupt" fn stack_segment_fault_handler(
     serial_println_raw!("[CORE] EXCEPTION: STACK SEGMENT FAULT");
     serial_println_raw!("Error Code: 0x{:x}", error_code);
     serial_println_raw!("{:#?}", stack_frame);
-    panic!("SSF - System Halted for Safety");
+    serial_println_raw!("SSF - System Halted for Safety");
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) {
     serial_println_raw!("[CORE] EXCEPTION: INVALID OPCODE");
     serial_println_raw!("At Address: {:?}", stack_frame.instruction_pointer);
     serial_println_raw!("{:#?}", stack_frame);
-    panic!("UD - System Halted for Safety");
+    serial_println_raw!("UD - System Halted for Safety");
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 extern "x86-interrupt" fn page_fault_handler(
@@ -131,7 +143,10 @@ extern "x86-interrupt" fn page_fault_handler(
     serial_println_raw!("Error Code: {:?}", error_code);
     serial_println_raw!("Instruction Pointer: {:?}", stack_frame.instruction_pointer);
     serial_println_raw!("{:#?}", stack_frame);
-    panic!("PAGE FAULT - System Halted for Safety");
+    serial_println_raw!("PAGE FAULT - System Halted for Safety");
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
