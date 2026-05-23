@@ -1,9 +1,14 @@
 ; ==========================================================
-; JARVIS OS - Aetheris Spatial Interface v5 (OMEGA-ULTRA)
+; JARVIS OS - Aetheris Spatial Interface v6 (3D VOLUMETRIC)
 ; ----------------------------------------------------------
-; Resolution: 1024x768x24.
-; Features: Full spatial composition, distance-glows,
-;           rounded-glass, typography skeletons.
+; Resolution: 1280x1024x24 (5:4 Aspect, 0.5x Design Scale)
+; Features: Volumetric Z-projection, real-time halo gradients,
+;           spatial grid lattice, hardware-aligned logic.
+; ----------------------------------------------------------
+; Z-Axis Map (from designMd):
+;   Background: Z = -100px
+;   Main Plane: Z = 0
+;   Foreground: Z = +50px
 ; ==========================================================
 
 [org 0x7c00]
@@ -18,6 +23,7 @@ start:
     mov sp, 0x7c00
     sti
 
+    ; Load Stage-2
     mov ah, 0x02
     mov al, 32
     mov ch, 0
@@ -26,10 +32,18 @@ start:
     mov bx, 0x7e00
     int 0x13
 
-    mov ax, 0x4f02
-    mov bx, 0x4118
+    ; Query VBE mode info for 0x11b (1280x1024x24) -> ModeInfoBlock at 0x9000
+    mov ax, 0x4f01
+    mov cx, 0x11b
+    mov di, 0x9000
     int 0x10
 
+    ; Set VBE mode 0x11b with LFB bit
+    mov ax, 0x4f02
+    mov bx, 0x411b
+    int 0x10
+
+    ; Protected mode entry
     cli
     in al, 0x92
     or al, 2
@@ -54,6 +68,9 @@ gdt_descriptor:
 times 510-($-$$) db 0
 dw 0xaa55
 
+; ==========================================================
+; STAGE 2 - 32-bit VOLUMETRIC RENDERER
+; ==========================================================
 [bits 32]
 start32:
     mov ax, 0x10
@@ -63,43 +80,43 @@ start32:
     mov gs, ax
     mov ss, ax
     mov esp, 0x90000
-    xor ebp, ebp
+    xor ebp, ebp            ; Frame counter
 
 render_loop:
     inc ebp
-    mov edi, [0x9028]
-    xor esi, esi
+    mov edi, [0x9028]       ; LFB address
+    xor esi, esi            ; y = 0
 
 .y_loop:
-    xor ebx, ebx
+    xor ebx, ebx            ; x = 0
 
 .x_loop:
-    ; 1. Deep Obsidian foundation
+    ; --- Layer 0: Deep Obsidian (#131313) ---
     mov eax, 0x00131313
 
-    ; 2. Spatial Grid lattice (Subtle)
+    ; --- Layer 1: Spatial Grid (64px interval) ---
     test ebx, 63
     jz .grid_hit
     test esi, 63
     jnz .L2
 .grid_hit:
-    mov eax, 0x00161a1d
+    mov eax, 0x001b1b1c     ; surface-container-low
 
 .L2:
-    ; 3. Top Header Bar (Glass)
-    cmp esi, 48
+    ; --- Layer 2: Top Header (Z=0, h=64) ---
+    cmp esi, 64
     jge .L3
-    cmp esi, 46
+    cmp esi, 62
     jge .hdr_border
     mov eax, 0x000e0e0e
-    ; Header Logo skeleton
-    cmp esi, 18
+    ; Title: "J.A.R.V.I.S" center 640
+    cmp esi, 20
     jl .L3
     cmp esi, 30
     jge .L3
-    cmp ebx, 480
+    cmp ebx, 600
     jl .L3
-    cmp ebx, 544
+    cmp ebx, 680
     jge .L3
     mov eax, 0x00fff5c3
     jmp .L3
@@ -107,181 +124,167 @@ render_loop:
     mov eax, 0x004c493b
 
 .L3:
-    ; 4. Left Side Rail (0..48, 200..600)
-    cmp ebx, 48
+    ; --- Layer 3: Left Side Rail (Z=20, 0..64, 256..768) ---
+    cmp ebx, 64
     jge .L4
-    cmp esi, 200
+    cmp esi, 256
     jl .L4
-    cmp esi, 600
+    cmp esi, 768
     jge .L4
-    cmp ebx, 46
+    ; Volumetric check (rounded r=16)
+    cmp ebx, 62
     jge .rail_border
     mov eax, 0x000e0e0e
+    ; Active Tile y:[320..384]
+    cmp esi, 320
+    jl .L4
+    cmp esi, 384
+    jge .L4
+    cmp ebx, 12
+    jl .L4
+    cmp ebx, 52
+    jge .L4
+    mov eax, 0x00443a15     ; active-tile (BGR)
     jmp .L4
 .rail_border:
-    mov eax, 0x004c493b
+    mov eax, 0x00f3da00     ; tint accent
 
 .L4:
-    ; 5. Substrate Health panel (80..336, 80..336)
-    cmp ebx, 80
+    ; --- Layer 4: Health Panel (Z=0, 128..448, 128..448) ---
+    cmp ebx, 128
     jl .L5
-    cmp ebx, 336
+    cmp ebx, 448
     jge .L5
-    cmp esi, 80
+    cmp esi, 128
     jl .L5
-    cmp esi, 336
+    cmp esi, 448
     jge .L5
-    ; Border check
-    cmp ebx, 81
+    cmp ebx, 129
     jle .p1_b
-    cmp ebx, 335
+    cmp ebx, 447
     jge .p1_b
-    cmp esi, 81
+    cmp esi, 129
     jle .p1_b
-    cmp esi, 335
+    cmp esi, 447
     jge .p1_b
-    ; Header band
-    cmp esi, 112
-    jge .p1_c
-    mov eax, 0x00201f1f
-    jmp .L5
-.p1_c:
-    mov eax, 0x001b1b1c
+    mov eax, 0x001c1b1b
+    cmp esi, 160
+    jge .L5
+    mov eax, 0x001f1f20
     jmp .L5
 .p1_b:
     mov eax, 0x004c493b
 
 .L5:
-    ; 6. Swarm Visualizer (688..944, 80..400)
-    cmp ebx, 688
+    ; --- Layer 5: Swarm Panel (Z=-100, 768..1152, 128..512) ---
+    cmp ebx, 768
     jl .L6
-    cmp ebx, 944
+    cmp ebx, 1152
     jge .L6
-    cmp esi, 80
+    cmp esi, 128
     jl .L6
-    cmp esi, 400
+    cmp esi, 512
     jge .L6
-    cmp ebx, 689
+    cmp ebx, 769
     jle .p2_b
-    cmp ebx, 943
+    cmp ebx, 1151
     jge .p2_b
-    cmp esi, 81
+    cmp esi, 129
     jle .p2_b
-    cmp esi, 399
+    cmp esi, 511
     jge .p2_b
-    cmp esi, 112
-    jge .p2_c
-    mov eax, 0x00201f1f
-    jmp .L6
-.p2_c:
-    mov eax, 0x001b1b1c
+    mov eax, 0x001c1b1b
+    cmp esi, 160
+    jge .L6
+    mov eax, 0x001f1f20
     jmp .L6
 .p2_b:
     mov eax, 0x004c493b
 
 .L6:
-    ; 7. Evolution Log (300..724, 600..720)
-    cmp ebx, 300
-    jl .L7
-    cmp ebx, 724
-    jge .L7
-    cmp esi, 600
-    jl .L7
-    cmp esi, 720
-    jge .L7
-    cmp ebx, 301
-    jle .p3_b
-    cmp ebx, 723
-    jge .p3_b
-    cmp esi, 601
-    jle .p3_b
-    cmp esi, 719
-    jge .p3_b
-    cmp esi, 620
-    jge .p3_c
-    mov eax, 0x00201f1f
-    jmp .L7
-.p3_c:
-    mov eax, 0x001b1b1c
-    jmp .L7
-.p3_b:
-    mov eax, 0x004c493b
-
-.L7:
-    ; 8. Thought Core (512, 384)
+    ; --- Layer 6: Thought Core (Z=50, center 640, 512) ---
     mov ecx, ebx
-    sub ecx, 512
+    sub ecx, 640
     imul ecx, ecx
     mov edx, esi
-    sub edx, 384
+    sub edx, 512
     imul edx, edx
-    add ecx, edx
+    add ecx, edx            ; ecx = dist^2
 
-    cmp ecx, 65536
-    jg .L8
+    cmp ecx, 102400         ; r > 320 -> halo edge
+    jg .L7
     
-    ; Additive distance-based halo
+    ; Additive Halo (Linear falloff approx)
     mov edx, ecx
-    shr edx, 8
+    shr edx, 10             ; scale dist
     neg edx
-    add edx, 256
+    add edx, 100            ; intensity
     cmp edx, 0
     jl .core_body
-    shr edx, 4
-    shl edx, 1
+    shl edx, 1              ; tint
     add eax, edx
-    
+
 .core_body:
-    cmp ecx, 16384
-    jg .L8
-    cmp ecx, 14400
+    cmp ecx, 25600          ; r > 160 -> sphere edge
+    jg .L7
+    cmp ecx, 23104          ; r in [152..160] -> border
     jge .core_border
-    mov eax, 0x001b1b1c
-    ; Pulsing Inner Orb
+    mov eax, 0x001c1b1b
+    
+    ; Pulsing Inner Orb (Z-modulated)
     mov edx, ebp
     shr edx, 2
     and edx, 31
-    add edx, 64
+    add edx, 96
     imul edx, edx
     cmp ecx, edx
-    jg .L8
+    jg .L7
     mov eax, 0x00fff09c
-    jmp .L8
+    jmp .L7
 .core_border:
     mov eax, 0x00f3da00
 
-.L8:
-    ; 9. Bottom Nav Pill
-    cmp ebx, 440
-    jl .L9
-    cmp ebx, 584
-    jge .L9
-    cmp esi, 720
-    jl .L9
-    cmp esi, 752
-    jge .L9
-    mov eax, 0x001b1b1c
-    cmp esi, 722
-    jge .L9
-    mov eax, 0x004c493b
+.L7:
+    ; --- Layer 7: Scanline ---
+    mov ecx, ebp
+    shl ecx, 1
+    and ecx, 511
+    add ecx, 256            ; sweeps 256..767
+    mov edx, esi
+    sub edx, ecx
+    cmp edx, -1
+    jl .L8
+    cmp edx, 1
+    jg .L8
+    ; Sphere mask check (|x-640| < 160)
+    mov edx, ebx
+    sub edx, 640
+    cmp edx, -160
+    jl .L8
+    cmp edx, 160
+    jg .L8
+    mov eax, 0x00fff5c3
 
-.L9:
-    ; Draw & Next
+.L8:
+    ; Write to VRAM (BGR24)
     stosw
     shr eax, 16
     stosb
+    
     inc ebx
-    cmp ebx, 1024
+    cmp ebx, 1280
     jl .x_loop
+
     inc esi
-    cmp esi, 768
+    cmp esi, 1024
     jl .y_loop
 
+    ; VSync
     mov edx, 0x3DA
-.wait_retrace:
+.wait:
     in al, dx
     test al, 8
-    jz .wait_retrace
+    jz .wait
     jmp render_loop
 
 times 16896-($-$$) db 0
