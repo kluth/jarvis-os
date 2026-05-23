@@ -27,13 +27,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Dependencies (NASM & QEMU for AArch64)
+      - name: Install Dependencies (NASM, QEMU & AArch64 Libs)
         run: |
           sudo apt-get update
-          sudo apt-get install -y nasm qemu-user-static
+          sudo apt-get install -y nasm qemu-user-static libc6-arm64-cross
 
       - name: Run Validation Script (via QEMU)
         run: |
-          # Use qemu-aarch64-static to run the jrvc binary
-          # We need to wrap the jrvc call in the script or use binfmt_misc (which qemu-user-static should set up)
+          # Use qemu-aarch64-static with the correct library path
+          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
           ./scripts/validate.sh

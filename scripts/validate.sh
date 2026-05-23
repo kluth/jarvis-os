@@ -17,7 +17,9 @@ echo "Checking JRV modules..."
 JRV_CMD="./jrvc"
 if [ "$(uname -m)" != "aarch64" ] && [ -f "/usr/bin/qemu-aarch64-static" ]; then
     echo "Non-AArch64 host detected. Using QEMU emulation for jrvc."
-    JRV_CMD="qemu-aarch64-static ./jrvc"
+    # Use QEMU_LD_PREFIX if set, otherwise default to standard cross-path
+    PREFIX=${QEMU_LD_PREFIX:-"/usr/aarch64-linux-gnu"}
+    JRV_CMD="qemu-aarch64-static -L $PREFIX ./jrvc"
 fi
 
 for f in $(find . -name "*.jrv"); do
