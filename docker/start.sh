@@ -17,6 +17,7 @@ qemu-system-x86_64 \
     -vga virtio \
     -net nic,model=virtio -net user \
     -serial mon:stdio \
+    -monitor unix:/tmp/qemu-monitor.sock,server,nowait \
     &
 
 # Poll for QEMU readiness instead of fixed sleep
