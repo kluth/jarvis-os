@@ -113,35 +113,35 @@ render_loop:
     mov eax, 0x00121d20
 
 .L2:
-    ; ----- Layer 2: Top header bar (y < 64) -----
-    cmp esi, 64
+    ; ----- Layer 2: Top header bar (y < 48) -----
+    cmp esi, 48
     jge .L3
-    cmp esi, 62
+    cmp esi, 46
     jge .hdr_border
-    mov eax, 0x00111719
+    mov eax, 0x00131313     ; surface
     jmp .L3
 .hdr_border:
-    mov eax, 0x00003a45
+    mov eax, 0x003b494c     ; outline-variant
 
 .L3:
-    ; ----- Layer 3: Left side rail (0..64, 192..448) -----
+    ; ----- Layer 3: Left side rail (0..48, 192..448) -----
     cmp ebx, 0
     jl .L4
-    cmp ebx, 64
+    cmp ebx, 48
     jge .L4
     cmp esi, 192
     jl .L4
     cmp esi, 448
     jge .L4
-    cmp ebx, 2
+    cmp ebx, 1
     jle .rail_b
-    cmp ebx, 62
+    cmp ebx, 46
     jge .rail_b
-    cmp esi, 194
+    cmp esi, 193
     jle .rail_b
-    cmp esi, 446
+    cmp esi, 447
     jge .rail_b
-    mov eax, 0x00131a1d
+    mov eax, 0x000e0e0e     ; surface-container-lowest
     ; Active tile at y in [220..280]
     cmp esi, 220
     jl .L4
@@ -149,44 +149,44 @@ render_loop:
     jge .L4
     cmp ebx, 10
     jl .L4
-    cmp ebx, 54
+    cmp ebx, 38
     jge .L4
     mov eax, 0x00153a44
     jmp .L4
 .rail_b:
-    mov eax, 0x00003a45
+    mov eax, 0x003b494c
 
 .L4:
-    ; ----- Layer 4: Substrate Health panel (128..384, 64..256) -----
-    cmp ebx, 128
+    ; ----- Layer 4: Substrate Health panel (64..320, 64..320) -----
+    cmp ebx, 64
     jl .L5
-    cmp ebx, 384
+    cmp ebx, 320
     jge .L5
     cmp esi, 64
     jl .L5
-    cmp esi, 256
+    cmp esi, 320
     jge .L5
-    cmp ebx, 130
+    cmp ebx, 65
     jle .p1_b
-    cmp ebx, 382
+    cmp ebx, 318
     jge .p1_b
-    cmp esi, 66
+    cmp esi, 65
     jle .p1_b
-    cmp esi, 254
+    cmp esi, 318
     jge .p1_b
-    mov eax, 0x00131a1d
-    ; Header band: y in [66..94]
-    cmp esi, 94
+    mov eax, 0x001c1b1b     ; surface-container-low
+    ; Header band: y in [65..96]
+    cmp esi, 96
     jge .p1_check_status
-    mov eax, 0x00161e22
+    mov eax, 0x00201f1f     ; surface-container
     jmp .L5
 .p1_check_status:
-    ; "WASM_SANDBOX: SECURE" green status dot at (146, 230) r=4
+    ; "WASM_SANDBOX: SECURE" green status dot at (80, 280) r=4
     mov ecx, ebx
-    sub ecx, 146
+    sub ecx, 80
     imul ecx, ecx
     mov edx, esi
-    sub edx, 230
+    sub edx, 280
     imul edx, edx
     add ecx, edx
     cmp ecx, 16
@@ -194,7 +194,7 @@ render_loop:
     mov eax, 0x0034d399     ; emerald-400
     jmp .L5
 .p1_b:
-    mov eax, 0x00003a45
+    mov eax, 0x003b494c
 
 .L5:
     ; ----- Layer 5: Swarm Visualizer panel (448..768, 64..448) -----
@@ -206,18 +206,18 @@ render_loop:
     jl .L6
     cmp esi, 448
     jge .L6
-    cmp ebx, 450
+    cmp ebx, 449
     jle .p2_b
-    cmp ebx, 766
+    cmp ebx, 767
     jge .p2_b
-    cmp esi, 66
+    cmp esi, 65
     jle .p2_b
-    cmp esi, 446
+    cmp esi, 447
     jge .p2_b
-    mov eax, 0x00131a1d
-    cmp esi, 94
+    mov eax, 0x001c1b1b
+    cmp esi, 96
     jge .p2_marker
-    mov eax, 0x00161e22
+    mov eax, 0x00201f1f
     jmp .L6
 .p2_marker:
     ; Interactive node marker 1: (576, 200) r=4 cyan ring
@@ -250,41 +250,38 @@ render_loop:
     mov eax, 0x00b6c4ff     ; secondary-fixed-dim
     jmp .L6
 .p2_b:
-    mov eax, 0x00003a45
+    mov eax, 0x003b494c
 
 .L6:
-    ; ----- Layer 6: Evolution Log panel (200..600, 410..500) -----
+    ; ----- Layer 6: Evolution Log panel (200..600, 480..560) -----
     cmp ebx, 200
     jl .L7
     cmp ebx, 600
     jge .L7
-    cmp esi, 410
+    cmp esi, 480
     jl .L7
-    cmp esi, 500
+    cmp esi, 560
     jge .L7
-    cmp ebx, 202
+    cmp ebx, 201
     jle .p3_b
-    cmp ebx, 598
+    cmp ebx, 599
     jge .p3_b
-    cmp esi, 412
+    cmp esi, 481
     jle .p3_b
-    cmp esi, 498
+    cmp esi, 559
     jge .p3_b
-    mov eax, 0x00131a1d
-    ; Header strip y in [412..432]
-    cmp esi, 432
+    mov eax, 0x001c1b1b
+    ; Header strip y in [481..500]
+    cmp esi, 500
     jge .p3_lines
-    mov eax, 0x00161e22
+    mov eax, 0x00201f1f
     jmp .L7
 .p3_lines:
-    ; Faux log lines: thin cyan ticks at evenly spaced y rows
-    ; Row positions: 442, 452, 462, 472, 482 (5 rows, 10px apart)
-    ; Tick at x in [210..230] indicates timestamp gutter
     mov ecx, esi
-    sub ecx, 442
+    sub ecx, 510
     cmp ecx, 0
     jl .L7
-    test ecx, 9             ; close to a row boundary
+    test ecx, 7
     jnz .L7
     cmp ebx, 210
     jl .L7
@@ -293,15 +290,15 @@ render_loop:
     mov eax, 0x0000daf3
     jmp .L7
 .p3_b:
-    mov eax, 0x00003a45
+    mov eax, 0x003b494c
 
 .L7:
-    ; ----- Layer 7: Thought Core (center 400, 280) -----
+    ; ----- Layer 7: Thought Core (center 400, 256) -----
     mov ecx, ebx
     sub ecx, 400
     imul ecx, ecx
     mov edx, esi
-    sub edx, 280
+    sub edx, 256
     imul edx, edx
     add ecx, edx            ; ecx = dist^2 from core center
 
@@ -337,22 +334,22 @@ render_loop:
     mov eax, 0x0000daf3
     jmp .L8
 .core_glass:
-    mov eax, 0x00111f24
+    mov eax, 0x001c1b1b     ; glass substrate
     jmp .L8
 .core_border:
     mov eax, 0x0000daf3
     jmp .L8
 .core_halo:
     ; Additive halo tint over whatever Layer<7 painted
-    add eax, 0x00050a0c
+    add eax, 0x00020405
 
 .L8:
     ; ----- Layer 8: Animated scanline across core -----
-    ; scan_y = 152 + ((ebp>>1) & 255)  -> sweeps 152..407
+    ; scan_y = 128 + ((ebp>>1) & 255)  -> sweeps 128..383
     mov ecx, ebp
     shr ecx, 1
     and ecx, 255
-    add ecx, 152
+    add ecx, 128
     mov edx, esi
     sub edx, ecx
     cmp edx, -1
@@ -369,32 +366,30 @@ render_loop:
     mov eax, 0x00c3f5ff
 
 .L9:
-    ; ----- Layer 9a: Bottom nav pill (280..520, 550..590) -----
+    ; ----- Layer 9a: Bottom nav pill (280..520, 520..560) -----
     cmp ebx, 280
     jl .L9_voice
     cmp ebx, 520
     jge .L9_voice
-    cmp esi, 550
+    cmp esi, 520
     jl .L9_voice
-    cmp esi, 590
+    cmp esi, 560
     jge .L9_voice
-    mov eax, 0x00131a1d
+    mov eax, 0x00131313
     ; Top border
-    cmp esi, 552
-    jl .pill_b
-    ; Inner dots: 5 nav icons evenly spaced (x cells: 300,360,400,460,500)
-    ; Skip — voice will overlap center
+    cmp esi, 521
+    jle .pill_b
     jmp .L9_voice
 .pill_b:
-    mov eax, 0x00003a45
+    mov eax, 0x003b494c
 
 .L9_voice:
-    ; ----- Layer 9b: Voice button (cx=400, cy=540, r=32) -----
+    ; ----- Layer 9b: Voice button (cx=400, cy=512, r=32) -----
     mov ecx, ebx
     sub ecx, 400
     imul ecx, ecx
     mov edx, esi
-    sub edx, 540
+    sub edx, 512
     imul edx, edx
     add ecx, edx
     cmp ecx, 1024           ; r > 32 -> outside
