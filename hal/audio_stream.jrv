@@ -1,4 +1,4 @@
-// HAL.Audio — Sovereign streaming audio sink (Intel HDA-compatible mock).
+// HAL.Audio — Sovereign streaming audio sink (Intel HDA-compatible).
 // Ring buffer of 4096 frames in physical RAM. Pure .jrv.
 module HAL_Audio {
     complexity O(1) {
@@ -38,14 +38,22 @@ module HAL_Audio {
         }
         func stream_chunk(chunk_id: I32) -> I32 {
             budget { power: 5000_nj }
-            // Ring advance without modulo.
-            atomic_add(write_ptr, 1);
-            if write_ptr == 4096 {
-                write_ptr = 0;
+            
+            let next_write = (write_ptr + 1) % BUFFER_SIZE;
+            
+            // Check for overflow (buffer full)
+            if next_write == volatile_read(read_ptr) {
+                atomic_add(drops, 1);
+                return 0;
             }
-            // Write sample (zero — verifier-stubbed).
-            let offset = 0x00200000 + write_ptr * 2;
-            volatile write(offset, 0);
+
+            // Write sample data to physical RAM
+            let offset = BUFFER_BASE + write_ptr * 4; // 4 bytes per frame
+            volatile_write(offset, chunk_id);
+            
+            // Atomic update of write pointer to ensure thread safety
+            atomic_set(write_ptr, next_write);
+            
             return 1;
         }
 

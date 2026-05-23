@@ -4,6 +4,9 @@ complexity O(1)
     import Core.RCU;
 
     const MAX_AGENTS = 1024;
+    const AGENT_STATUS_ACTIVE = 1;
+    const ERR_REGISTRY_FULL = 9999;
+
     memory agent_registry: Array[Agent, MAX_AGENTS];
     memory active_agent_count: I32 = 0;
 
@@ -17,15 +20,14 @@ complexity O(1)
         budget { power: 1000_nj }
 
         if active_agent_count == MAX_AGENTS {
-            // Using 9999 as error code if -1 is problematic
-            return 9999;
+            return ERR_REGISTRY_FULL;
         }
 
         let id = active_agent_count;
         agent_registry[id] = Agent {
             id: id,
             name: name,
-            status: 1, // ACTIVE
+            status: AGENT_STATUS_ACTIVE,
             last_epoch: Core.RCU.get_epoch()
         };
 
@@ -52,14 +54,14 @@ complexity O(1)
         
         let target_id = msg.target_id;
         
-        if target_id == 1024 { // MAX_AGENTS
+        if target_id == MAX_AGENTS {
             Core.RCU.exit_read();
             return false;
         }
 
         let target_agent = agent_registry[target_id];
         
-        if target_agent.status != 1 {
+        if target_agent.status != AGENT_STATUS_ACTIVE {
             Core.RCU.exit_read();
             return false;
         }
