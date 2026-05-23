@@ -13,9 +13,9 @@
 ;   glass_header   = 0x161e22   panel header band
 ;   grid_line      = 0x121d20   spatial grid
 ;   border_cyan    = 0x003a45   cyan/20 border
-;   neon_cyan      = 0x00daf3   accent / borders / voice
-;   bright_cyan    = 0xb0f5ff   scanline / outer ring
-;   inner_orb      = 0x80e8f5   pulsing core
+;   neon_cyan      = 0x00daf3   accent / borders / voice (surface-tint)
+;   bright_cyan    = 0xc3f5ff   scanline / outer ring (primary)
+;   inner_orb      = 0x9cf0ff   pulsing core (primary-fixed)
 ;   active_tile    = 0x153a44   side-rail active item
 ; ==========================================================
 
@@ -113,10 +113,10 @@ render_loop:
     mov eax, 0x00121d20
 
 .L2:
-    ; ----- Layer 2: Top header bar (y < 56) -----
-    cmp esi, 56
+    ; ----- Layer 2: Top header bar (y < 64) -----
+    cmp esi, 64
     jge .L3
-    cmp esi, 54
+    cmp esi, 62
     jge .hdr_border
     mov eax, 0x00111719
     jmp .L3
@@ -124,32 +124,32 @@ render_loop:
     mov eax, 0x00003a45
 
 .L3:
-    ; ----- Layer 3: Left side rail (16..96, 200..420) -----
-    cmp ebx, 16
+    ; ----- Layer 3: Left side rail (0..64, 192..448) -----
+    cmp ebx, 0
     jl .L4
-    cmp ebx, 96
+    cmp ebx, 64
     jge .L4
-    cmp esi, 200
+    cmp esi, 192
     jl .L4
-    cmp esi, 420
+    cmp esi, 448
     jge .L4
-    cmp ebx, 18
+    cmp ebx, 2
     jle .rail_b
-    cmp ebx, 94
+    cmp ebx, 62
     jge .rail_b
-    cmp esi, 202
+    cmp esi, 194
     jle .rail_b
-    cmp esi, 418
+    cmp esi, 446
     jge .rail_b
     mov eax, 0x00131a1d
-    ; Active tile (top icon: HUB) at y in [220..280], x in [26..86]
+    ; Active tile at y in [220..280]
     cmp esi, 220
     jl .L4
     cmp esi, 280
     jge .L4
-    cmp ebx, 26
+    cmp ebx, 10
     jl .L4
-    cmp ebx, 86
+    cmp ebx, 54
     jge .L4
     mov eax, 0x00153a44
     jmp .L4
@@ -157,36 +157,36 @@ render_loop:
     mov eax, 0x00003a45
 
 .L4:
-    ; ----- Layer 4: Substrate Health panel (112..384, 80..280) -----
-    cmp ebx, 112
+    ; ----- Layer 4: Substrate Health panel (128..384, 64..256) -----
+    cmp ebx, 128
     jl .L5
     cmp ebx, 384
     jge .L5
-    cmp esi, 80
+    cmp esi, 64
     jl .L5
-    cmp esi, 280
+    cmp esi, 256
     jge .L5
-    cmp ebx, 114
+    cmp ebx, 130
     jle .p1_b
     cmp ebx, 382
     jge .p1_b
-    cmp esi, 82
+    cmp esi, 66
     jle .p1_b
-    cmp esi, 278
+    cmp esi, 254
     jge .p1_b
     mov eax, 0x00131a1d
-    ; Header band: y in [82..110]
-    cmp esi, 110
+    ; Header band: y in [66..94]
+    cmp esi, 94
     jge .p1_check_status
     mov eax, 0x00161e22
     jmp .L5
 .p1_check_status:
-    ; "WASM_SANDBOX: SECURE" green status dot at (130, 250) r=4
+    ; "WASM_SANDBOX: SECURE" green status dot at (146, 230) r=4
     mov ecx, ebx
-    sub ecx, 130
+    sub ecx, 146
     imul ecx, ecx
     mov edx, esi
-    sub edx, 250
+    sub edx, 230
     imul edx, edx
     add ecx, edx
     cmp ecx, 16
@@ -197,25 +197,25 @@ render_loop:
     mov eax, 0x00003a45
 
 .L5:
-    ; ----- Layer 5: Swarm Visualizer panel (480..768, 80..480) -----
-    cmp ebx, 480
+    ; ----- Layer 5: Swarm Visualizer panel (448..768, 64..448) -----
+    cmp ebx, 448
     jl .L6
     cmp ebx, 768
     jge .L6
-    cmp esi, 80
+    cmp esi, 64
     jl .L6
-    cmp esi, 480
+    cmp esi, 448
     jge .L6
-    cmp ebx, 482
+    cmp ebx, 450
     jle .p2_b
     cmp ebx, 766
     jge .p2_b
-    cmp esi, 82
+    cmp esi, 66
     jle .p2_b
-    cmp esi, 478
+    cmp esi, 446
     jge .p2_b
     mov eax, 0x00131a1d
-    cmp esi, 110
+    cmp esi, 94
     jge .p2_marker
     mov eax, 0x00161e22
     jmp .L6
@@ -323,10 +323,10 @@ render_loop:
     imul edx, edx           ; pulse r^2
     cmp ecx, edx
     jg .core_outer_orb
-    mov eax, 0x0080e8f5     ; hot inner orb
+    mov eax, 0x009cf0ff     ; hot inner orb (primary-fixed)
     jmp .L8
 .core_outer_orb:
-    mov eax, 0x000a3a45     ; cool outer orb
+    mov eax, 0x00003a45     ; cool outer orb (border-cyan)
     jmp .L8
 .core_orbit:
     ; Dashed orbital ring -- sample by angle approximation via (x XOR y) & 8
@@ -366,7 +366,7 @@ render_loop:
     jl .L9
     cmp edx, 120
     jg .L9
-    mov eax, 0x00b0f5ff
+    mov eax, 0x00c3f5ff
 
 .L9:
     ; ----- Layer 9a: Bottom nav pill (280..520, 550..590) -----
@@ -404,7 +404,7 @@ render_loop:
     mov eax, 0x0000daf3     ; solid cyan core
     jmp .L10
 .voice_ring:
-    mov eax, 0x00b0f5ff
+    mov eax, 0x00c3f5ff
 
 .L10:
     ; ----- Layer 10: Ambient agent nodes -----

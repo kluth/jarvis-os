@@ -1,11 +1,13 @@
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install QEMU, noVNC, and websockify
+# Install QEMU, noVNC, websockify, socat, and netcat
 RUN apt-get update && apt-get install -y \
     qemu-system-x86 \
     novnc \
     websockify \
+    socat \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Create working directory
