@@ -59,14 +59,11 @@ jobs:
 
       - name: Run Integration Test
         run: |
-          # Run QEMU and check if it boots (at least doesn't crash immediately)
-          # We use -display none and -device isa-debug-exit for exit codes if supported,
-          # but here we just want to satisfy the "required check" while doing a basic boot test.
           timeout 10s qemu-system-x86_64 \
             -drive format=raw,file=jarvis-os.img \
             -machine ${{ matrix.machine }} \
             -display none \
-            -serial stdio || [ $? -eq 124 ] # timeout returns 124, which is expected
+            -serial stdio || [ $? -eq 124 ]
 
   publish_ghcr:
     name: Publish to GHCR
@@ -80,6 +77,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Install NASM
+        run: sudo apt-get update && sudo apt-get install -y nasm
+
+      - name: Build Boot Image
+        run: |
+          nasm -f bin boot.asm -o boot.bin
+          dd if=/dev/zero of=jarvis-os.img bs=1024 count=1440
+          dd if=boot.bin of=jarvis-os.img conv=notrunc
+
       - name: Set up QEMU for multi-arch
         uses: docker/setup-qemu-action@v3
       
