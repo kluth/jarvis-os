@@ -169,8 +169,34 @@ render_loop:
     jge .p1_b
     mov eax, 0x001c1b1b
     cmp esi, 160
-    jge .L5
+    jge .p1_check_status
     mov eax, 0x001f1f20
+    jmp .L5
+.p1_check_status:
+    ; "WASM_SANDBOX: SECURE" green status dot at (144, 400)
+    mov ecx, ebx
+    sub ecx, 144
+    imul ecx, ecx
+    mov edx, esi
+    sub edx, 400
+    imul edx, edx
+    add ecx, edx
+    cmp ecx, 16
+    jg .p1_gpu_status
+    mov eax, 0x0034d399     ; emerald-400
+    jmp .L5
+.p1_gpu_status:
+    ; "GPU_AMD: ACTIVE" neon-cyan status dot at (144, 424)
+    mov ecx, ebx
+    sub ecx, 144
+    imul ecx, ecx
+    mov edx, esi
+    sub edx, 424
+    imul edx, edx
+    add ecx, edx
+    cmp ecx, 16
+    jg .L5
+    mov eax, 0x0000daf3     ; neon-cyan
     jmp .L5
 .p1_b:
     mov eax, 0x004c493b
