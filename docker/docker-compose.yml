@@ -4,13 +4,6 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: jarvis_vm
-    # We use a group add for kvm instead of a hard device dependency to be more portable
-    group_add:
-      - kvm
-    devices:
-      - /dev/kvm:/dev/kvm
     ports:
       - "8080:8080" # noVNC Web Interface
-    volumes:
-      - ../target/image/jarvis-os.img:/app/jarvis-os.img:ro
     restart: unless-stopped

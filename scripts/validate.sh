@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 
 # JARVIS OS - Local Validation Script
-# This script ensures that the codebase meets all quality standards before pushing.
+# This script ensures that the JRV codebase meets all quality standards.
 
 set -e
 
-echo "Starting JARVIS OS validation..."
+echo "Starting JARVIS OS validation (JRV Edition)..."
 
-# 1. Format Check
-echo "Checking formatting..."
-cargo fmt -- --check
+# 1. Bootloader Check
+echo "Checking bootloader assembly..."
+nasm -f bin boot.asm -o boot.bin
+rm boot.bin
 
-# 2. Compilation Check
-echo "Checking compilation for custom target (default features)..."
-cargo check -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec
+# 2. JRV Compilation Check
+echo "Checking JRV modules..."
+for f in $(find . -name "*.jrv"); do
+    echo "Compiling $f..."
+    ./jrvc "$f" > /dev/null
+done
 
-echo "Checking compilation for custom target (all features)..."
-cargo check --all-features -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec
+# 3. Documentation Check
+if [ -f "GEMINI.md" ]; then
+    echo "GEMINI.md found."
+fi
 
-# 3. Linting
-echo "Running Clippy (default features)..."
-cargo clippy -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
-
-echo "Running Clippy (all features)..."
-cargo clippy --all-features -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
-
-echo "Validation successful! All checks passed (Build skipped due to local resource constraints)."
+echo "Validation successful! All JRV modules compiled and bootloader is valid."
+rm -f output.elf

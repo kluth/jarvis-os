@@ -1,0 +1,28 @@
+import Core.RCU;
+import Core.MAG;
+
+module Core.Boot {
+    complexity O(1) {
+        verify {
+            test "boot_init_sequence" {
+                let res = initialize();
+                assert(res != -1);
+            }
+        }
+
+        func initialize() -> I32 {
+            complexity O(1)
+            budget { power: 5000_nj }
+            
+            // substrate requires RCU initialization before MAG
+            Core.RCU.rotate_epoch();
+            Core.MAG.cycle();
+            
+            contract {
+                ensures result != -1;
+            }
+
+            return 1;
+        }
+    }
+}

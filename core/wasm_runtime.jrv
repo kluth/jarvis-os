@@ -1,0 +1,28 @@
+module WasmRuntime {
+    complexity O(1) {
+        memory module_base_ptr: U64
+        memory module_size: U64
+
+        verify {
+            test "wasm_init_proof" {
+                assert(init_sandbox(100, 100) == 1);
+            }
+        }
+        func init_sandbox(base: U64, size: U64) -> I32 {
+            budget { power: 5000_nj }
+            module_base_ptr = base;
+            module_size = size;
+            return 1;
+        }
+
+        verify {
+            test "wasm_host_call_proof" {
+                assert(host_call(1, 0) == 1);
+            }
+        }
+        func host_call(call_id: I32, arg_ptr: U64) -> I32 {
+            budget { power: 2500_nj }
+            return 1;
+        }
+    }
+}

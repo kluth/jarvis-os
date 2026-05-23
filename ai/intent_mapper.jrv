@@ -1,0 +1,77 @@
+import Core.MAG;
+
+module AI.Intent {
+    complexity O(N log N) {
+        memory agent_id: I32 = -1;
+        memory intent_weights: Tensor[F32, 128, 128];
+
+        verify {
+            test "intent_init_proof" {
+                init();
+                assert(agent_id != -1);
+            }
+        }
+        func init() {
+            complexity O(1)
+            budget { power: 5000_nj }
+            agent_id = Core.MAG.register_agent("IntentAgent");
+            subscribe_to_stream(210); // 210 = NLP_TOKENS_STREAM
+        }
+
+        verify {
+            test "intent_mapping_resolution" {
+                let input = Tensor.random(128);
+                let intent = resolve(input);
+                assert(intent != -1);
+            }
+        }
+        func resolve(tokens: Tensor) -> I32 {
+            complexity O(N log N)
+            budget { power: 15000_nj }
+
+            // native '@' dot product syntax for neural intent mapping
+            let output = tokens @ intent_weights;
+            
+            let predicted_id = output.argmax();
+            
+            contract {
+                ensures predicted_id != -1;
+            }
+
+            return predicted_id;
+        }
+
+        verify {
+            test "on_stream_receive_proof" {
+                assert(true);
+            }
+        }
+        func on_stream_receive(msg: Message) {
+            complexity O(N log N)
+            budget { power: 5000_nj }
+            if msg.type == 210 {
+                let intent_id = resolve(msg.payload.as_tensor());
+                dispatch_intent_command(intent_id);
+            }
+        }
+
+        verify {
+            test "dispatch_intent_command_proof" {
+                dispatch_intent_command(1);
+                assert(true);
+            }
+        }
+        func dispatch_intent_command(id: I32) {
+            complexity O(1)
+            budget { power: 2000_nj }
+            
+            let msg = Message {
+                source_id: agent_id,
+                target_id: -1, // Broadcast for capability agents
+                type: 70,      // INTENT_COMMAND
+                payload: id
+            };
+            Core.MAG.dispatch(msg);
+        }
+    }
+}

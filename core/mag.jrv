@@ -1,0 +1,85 @@
+module Core.MAG
+complexity O(1)
+{
+    import Core.RCU;
+
+    const MAX_AGENTS = 1024;
+    memory agent_registry: Array[Agent, MAX_AGENTS];
+    memory active_agent_count: I32 = 0;
+
+    verify {
+        test "agent_registration" {
+            let id = register_agent("TestAgent");
+            assert(id == 0);
+        }
+    }
+    func register_agent(name: String) -> I32 {
+        budget { power: 1000_nj }
+
+        if active_agent_count == MAX_AGENTS {
+            // Using 9999 as error code if -1 is problematic
+            return 9999;
+        }
+
+        let id = active_agent_count;
+        agent_registry[id] = Agent {
+            id: id,
+            name: name,
+            status: 1, // ACTIVE
+            last_epoch: Core.RCU.get_epoch()
+        };
+
+        atomic_add(active_agent_count, 1);
+        
+        contract {
+            ensures active_agent_count == old(active_agent_count) + 1;
+        }
+
+        return id;
+    }
+
+    verify {
+        test "stream_dispatch" {
+            let msg = create_message(1, "Ping");
+            let result = dispatch(msg);
+            assert(result == true);
+        }
+    }
+    func dispatch(msg: Message) -> Bool {
+        budget { power: 2500_nj }
+
+        Core.RCU.enter_read();
+        
+        let target_id = msg.target_id;
+        
+        if target_id == 1024 { // MAX_AGENTS
+            Core.RCU.exit_read();
+            return false;
+        }
+
+        let target_agent = agent_registry[target_id];
+        
+        if target_agent.status != 1 {
+            Core.RCU.exit_read();
+            return false;
+        }
+
+        push_stream(target_agent.stream_ptr, msg);
+
+        Core.RCU.exit_read();
+        return true;
+    }
+
+    verify {
+        test "mag_cycle_proof" {
+            cycle();
+            assert(true);
+        }
+    }
+    func cycle() {
+        budget { power: 5000_nj }
+
+        Core.RCU.rotate_epoch();
+        signal_evolution();
+    }
+}

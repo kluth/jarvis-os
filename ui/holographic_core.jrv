@@ -1,92 +1,133 @@
-module HolographicCore {
-    complexity O(1) {
-        memory thought_core_scale: I32 = 100
-        memory log_offset: I32 = 0
+// ==========================================================
+// Aetheris Spatial Interface v2  (Stitch-aligned)
+// ----------------------------------------------------------
+// This module declares the layered composition contract for
+// the spatial interface. Rendering is currently performed by
+// the Stage-2 boot.asm renderer (per-pixel framebuffer write
+// in 32-bit protected mode); this module formalizes the
+// layer model under eTDD so the language side stays in step.
+// Implementation will migrate into .jrv once the substrate
+// gains struct + HAL intrinsic support (GH issues #12, #14).
+// ==========================================================
+module HolographicCore
+complexity O(1)
+{
+    memory frame_count: I32 = 0
+    memory aetheris_version: I32 = 2
 
-        verify {
-            test "holo_init_proof" {
-                assert(init_hologram() == 1);
-            }
-        }
-        func init_hologram() -> I32 {
-            budget { power: 25000_nj }
-            
-            // Draw the Aetheris Spatial environment
-            draw_spatial_grid();
-            draw_thought_core();
-            
-            // HUD Panels (Z-elevation simulated)
-            draw_hud_panel(10, 10, 20);  // Health (Top Left)
-            draw_hud_panel(10, 150, 10); // Log (Bottom)
-            
-            return 1;
-        }
+    // ------------------------------------------------------
+    // Layer init proofs
+    // ------------------------------------------------------
 
-        verify {
-            test "spatial_grid_proof" {
-                assert(draw_spatial_grid() == 1);
-            }
+    verify {
+        test "holo_init_proof" {
+            assert(init_hologram() == 1);
         }
-        func draw_spatial_grid() -> I32 {
-            budget { power: 10000_nj }
-            // Logic: Draw perspective-warped background grid lines
-            return 1;
-        }
+    }
+    func init_hologram() -> I32 {
+        budget { power: 20000_nj }
+        let bg     = init_background();
+        let grid   = init_spatial_grid();
+        let header = init_header_bar();
+        let rail   = init_side_rail();
+        let panels = init_info_panels();
+        let log    = init_evolution_log();
+        let core   = init_thought_core();
+        let scan   = init_scanline();
+        let nav    = init_bottom_nav();
+        let agents = init_ambient_agents();
+        return 1;
+    }
 
-        verify {
-            test "thought_core_proof" {
-                assert(draw_thought_core() == 1);
-            }
-        }
-        func draw_thought_core() -> I32 {
-            budget { power: 8000_nj }
-            // Logic: Pulsating volumetric central visualizer
-            thought_core_scale = thought_core_scale + 1;
-            if thought_core_scale == 120 {
-                thought_core_scale = 80;
-            }
-            return 1;
-        }
+    verify {
+        test "bg_proof" { assert(init_background() == 1); }
+    }
+    func init_background() -> I32 {
+        budget { power: 200_nj }
+        // Deep obsidian #0e0e0e fill
+        return 1;
+    }
 
-        verify {
-            test "hud_panel_proof" {
-                assert(draw_hud_panel(0, 0, 0) == 1);
-            }
-        }
-        func draw_hud_panel(x: I32, y: I32, z: I32) -> I32 {
-            budget { power: 5000_nj }
-            // Logic: Render translucent glassmorphic panel with cyan glow
-            return 1;
-        }
+    verify {
+        test "grid_proof" { assert(init_spatial_grid() == 1); }
+    }
+    func init_spatial_grid() -> I32 {
+        budget { power: 800_nj }
+        // 64x64 cyan lattice, ridge color #121d20
+        return 1;
+    }
 
-        verify {
-            test "project_x_proof" {
-                assert(project_x(10, 10) == 20);
-            }
-        }
-        func project_x(x: I32, z: I32) -> I32 {
-            budget { power: 100_nj }
-            return x + z;
-        }
+    verify {
+        test "header_proof" { assert(init_header_bar() == 1); }
+    }
+    func init_header_bar() -> I32 {
+        budget { power: 400_nj }
+        // y < 56, bottom border cyan/20
+        return 1;
+    }
 
-        verify {
-            test "project_y_proof" {
-                assert(project_y(10, 10) == 20);
-            }
-        }
-        func project_y(y: I32, z: I32) -> I32 {
-            budget { power: 100_nj }
-            return y + z;
-        }
+    verify {
+        test "rail_proof" { assert(init_side_rail() == 1); }
+    }
+    func init_side_rail() -> I32 {
+        budget { power: 600_nj }
+        // x:[16..96], y:[200..420], active item highlight
+        return 1;
+    }
 
-        verify {
-            test "draw_point_proof" {
-                assert(draw_point(0, 0) == 1);
-            }
-        }
-        func draw_point(x: I32, y: I32) -> I32 {
-            budget { power: 500_nj }
-            return 1;
-        }
+    verify {
+        test "panels_proof" { assert(init_info_panels() == 1); }
+    }
+    func init_info_panels() -> I32 {
+        budget { power: 1800_nj }
+        // Substrate Health (112..384, 80..280)
+        // Swarm Visualizer (480..768, 80..480)
+        return 1;
+    }
+
+    verify {
+        test "log_proof" { assert(init_evolution_log() == 1); }
+    }
+    func init_evolution_log() -> I32 {
+        budget { power: 500_nj }
+        // (200..600, 410..500), header band + 5 ticker rows
+        return 1;
+    }
+
+    verify {
+        test "core_proof" { assert(init_thought_core() == 1); }
+    }
+    func init_thought_core() -> I32 {
+        budget { power: 4000_nj }
+        // Center (400,280): halo r<=192, sphere border r:[120..128],
+        // glass r<=120, dashed orbit r:[96..106], pulsing orb r:[72..95]
+        return 1;
+    }
+
+    verify {
+        test "scanline_proof" { assert(init_scanline() == 1); }
+    }
+    func init_scanline() -> I32 {
+        budget { power: 300_nj }
+        // 2px bright cyan band sweeping the sphere, driven by frame_count
+        return 1;
+    }
+
+    verify {
+        test "nav_proof" { assert(init_bottom_nav() == 1); }
+    }
+    func init_bottom_nav() -> I32 {
+        budget { power: 700_nj }
+        // Pill (280..520, 550..590) + voice button cx=400 cy=540 r=32
+        return 1;
+    }
+
+    verify {
+        test "agents_proof" { assert(init_ambient_agents() == 1); }
+    }
+    func init_ambient_agents() -> I32 {
+        budget { power: 200_nj }
+        // Two ambient nodes: (200,150) cyan, (600,400) deep blue
+        return 1;
     }
 }

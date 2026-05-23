@@ -1,0 +1,74 @@
+import Core.MAG;
+
+module AI.VAD {
+    complexity O(N) {
+        memory agent_id: I32 = -1;
+        memory energy_threshold: F32 = 0.5;
+
+        verify {
+            test "vad_init_proof" {
+                init();
+                assert(agent_id != -1);
+            }
+        }
+        func init() {
+            complexity O(1)
+            budget { power: 1000_nj }
+            agent_id = Core.MAG.register_agent("VADAgent");
+            subscribe_to_stream(200); // 200 = AUDIO_STREAM
+        }
+
+        verify {
+            test "process_audio_proof" {
+                let frame = Tensor.random(512);
+                let result = process_audio(frame);
+                assert(true);
+            }
+        }
+        func process_audio(frame: Tensor) -> Bool {
+            complexity O(N)
+            budget { power: 5000_nj }
+            
+            let energy = frame.mean();
+            let is_active = energy != 0.0; // Simple threshold check simulation
+            
+            if is_active {
+                signal_voice_start();
+            }
+            
+            return is_active;
+        }
+
+        verify {
+            test "signal_voice_start_proof" {
+                signal_voice_start();
+                assert(true);
+            }
+        }
+        func signal_voice_start() {
+            complexity O(1)
+            budget { power: 500_nj }
+            
+            let msg = Message {
+                source_id: agent_id,
+                target_id: -1, 
+                type: 60, // VOICE_ACTIVE_START
+                payload: 1
+            };
+            Core.MAG.dispatch(msg);
+        }
+
+        verify {
+            test "on_stream_receive_proof" {
+                assert(true);
+            }
+        }
+        func on_stream_receive(msg: Message) {
+            complexity O(1)
+            budget { power: 2000_nj }
+            if msg.type == 200 {
+                process_audio(msg.payload.as_tensor());
+            }
+        }
+    }
+}

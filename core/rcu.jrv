@@ -1,0 +1,15 @@
+module Core.RCU
+complexity O(1)
+{
+    memory global_epoch: I64 = 0;
+
+    verify {
+        test "rcu_get_epoch_proof" {
+            assert(get_epoch() == 0);
+        }
+    }
+    func get_epoch() -> I64 {
+        budget { power: 50_nj }
+        return global_epoch;
+    }
+}

@@ -1,0 +1,67 @@
+// HAL.Timer — Sovereign APIC periodic timer driver.
+// Pure .jrv. No imports. Uses native `port write` + `volatile write`.
+module HAL_Timer {
+    complexity O(1) {
+        struct TimerConfig {
+            divider: I32,
+            initial_count: I32,
+            vector: I32
+        }
+
+        const APIC_BASE      = 0xFEE00000;
+        const APIC_DIVIDE    = 0xFEE003E0;
+        const APIC_INIT_CNT  = 0xFEE00380;
+        const APIC_LVT_TIMER = 0xFEE00320;
+        const VECTOR_TIMER   = 0x20;
+
+        memory tick_count: I32 = 0;
+        memory armed: I32 = 0;
+
+        verify {
+            test "timer_init_proof" {
+                let st = init();
+                assert(st == 1);
+            }
+        }
+        func init() -> I32 {
+            budget { power: 1200_nj }
+
+            // Divide configuration: divider = 16
+            volatile write(0xFEE003E0, 0x3);
+            // Periodic mode, vector 0x20
+            volatile write(0xFEE00320, 0x20020);
+            // Initial count (~1ms at typical bus rate)
+            volatile write(0xFEE00380, 100000);
+
+            armed = 1;
+            contract { ensures result == 1; }
+            return 1;
+        }
+
+        verify {
+            test "timer_tick_propagation" {
+                let pre = tick_count;
+                on_interrupt();
+                assert(tick_count == pre + 1);
+            }
+        }
+        func on_interrupt() -> I32 {
+            budget { power: 150_nj }
+            atomic_add(tick_count, 1);
+            // EOI to local APIC.
+            volatile write(0xFEE000B0, 0);
+            return 1;
+        }
+
+        verify {
+            test "get_uptime_proof" {
+                let u = get_uptime();
+                assert(u >= 0);
+            }
+        }
+        func get_uptime() -> I32 {
+            budget { power: 50_nj }
+            return tick_count;
+        }
+    }
+}

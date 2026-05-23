@@ -1,0 +1,75 @@
+// HAL.Serial — Sovereign UART driver for COM1 (16550A compatible).
+// Pure .jrv. No imports. Uses native `port write` intrinsic.
+module HAL_Serial {
+    complexity O(1) {
+        struct SerialPort {
+            base: I32,
+            divisor: I32,
+            ready: I32
+        }
+
+        memory com1_base: I32 = 0;
+        memory tx_count: I32 = 0;
+
+        verify {
+            test "serial_init_proof" {
+                let st = init();
+                assert(st == 1);
+            }
+        }
+        func init() -> I32 {
+            budget { power: 1500_nj }
+            com1_base = 0x3F8;
+
+            // Disable interrupts; set DLAB; 38400 baud (divisor=3);
+            // 8N1; FIFO enabled, 14-byte threshold; RTS+DSR asserted.
+            port write(0x3F9, 0x00);
+            port write(0x3FB, 0x80);
+            port write(0x3F8, 0x03);
+            port write(0x3F9, 0x00);
+            port write(0x3FB, 0x03);
+            port write(0x3FA, 0xC7);
+            port write(0x3FC, 0x0B);
+
+            contract { ensures result == 1; }
+            return 1;
+        }
+
+        verify {
+            test "serial_write_byte_proof" {
+                let n = write_byte(65);
+                assert(n == 1);
+            }
+        }
+        func write_byte(byte: I32) -> I32 {
+            budget { power: 200_nj }
+            port write(0x3F8, byte);
+            atomic_add(tx_count, 1);
+            return 1;
+        }
+
+        verify {
+            test "serial_banner_proof" {
+                let n = write_banner();
+                assert(n == 12);
+            }
+        }
+        func write_banner() -> I32 {
+            budget { power: 1200_nj }
+            let n = 0;
+            write_byte(0x4A); n = n + 1; // 'J'
+            write_byte(0x41); n = n + 1; // 'A'
+            write_byte(0x52); n = n + 1; // 'R'
+            write_byte(0x56); n = n + 1; // 'V'
+            write_byte(0x49); n = n + 1; // 'I'
+            write_byte(0x53); n = n + 1; // 'S'
+            write_byte(0x20); n = n + 1; // ' '
+            write_byte(0x4F); n = n + 1; // 'O'
+            write_byte(0x53); n = n + 1; // 'S'
+            write_byte(0x0D); n = n + 1; // \r
+            write_byte(0x0A); n = n + 1; // \n
+            write_byte(0x00); n = n + 1; // NUL
+            return n;
+        }
+    }
+}
