@@ -30,7 +30,7 @@ jobs:
       - name: Install Dependencies (NASM, QEMU & AArch64 Libs)
         run: |
           sudo apt-get update
-          sudo apt-get install -y nasm qemu-user-static libc6-arm64-cross
+          sudo apt-get install -y nasm qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
 
       - name: Run Validation Script (via QEMU)
         run: |
