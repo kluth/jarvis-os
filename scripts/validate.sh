@@ -14,9 +14,15 @@ rm boot.bin
 
 # 2. JRV Compilation Check
 echo "Checking JRV modules..."
+JRV_CMD="./jrvc"
+if [ "$(uname -m)" != "aarch64" ] && [ -f "/usr/bin/qemu-aarch64-static" ]; then
+    echo "Non-AArch64 host detected. Using QEMU emulation for jrvc."
+    JRV_CMD="qemu-aarch64-static ./jrvc"
+fi
+
 for f in $(find . -name "*.jrv"); do
     echo "Compiling $f..."
-    ./jrvc "$f" > /dev/null
+    $JRV_CMD "$f" > /dev/null
 done
 
 # 3. Documentation Check
