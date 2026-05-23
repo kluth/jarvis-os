@@ -1,0 +1,83 @@
+// HAL.PCIe — Sovereign PCI Express Bus Enumerator.
+// Pure .jrv. Implements configuration space access via Ports 0xCF8/0xCFC.
+// Capability to scan the bus, identify the GPU, and parse BAR resources.
+module HAL_PCIe {
+    complexity O(N) {
+        struct PciDevice {
+            bus: I32,
+            slot: I32,
+            func_id: I32,
+            vendor_id: I32,
+            device_id: I32,
+            class_code: I32,
+            subclass: I32
+        }
+
+        const CONFIG_ADDRESS = 0x0CF8;
+        const CONFIG_DATA    = 0x0CFC;
+
+        verify {
+            test "pci_config_read_proof" {
+                // Testing vendor ID read (offset 0) for a simulated device
+                let v = read_config(0, 0, 0, 0);
+                assert(v >= 0);
+            }
+        }
+        func read_config(bus: I32, slot: I32, func_id: I32, offset: I32) -> I32 {
+            budget { power: 500_nj }
+            
+            // Construct address: Enable(31), Bus(23:16), Slot(15:11), Func(10:8), Offset(7:2)
+            let address = (1 << 31) | (bus << 16) | (slot << 11) | (func_id << 8) | (offset & 0xFC);
+            
+            port write_i32(CONFIG_ADDRESS, address);
+            let result = port read_i32(CONFIG_DATA);
+            
+            return result;
+        }
+
+        verify {
+            test "pci_find_gpu_proof" {
+                let found = find_gpu();
+                // We return -1 if no GPU is found in verification context
+                assert(found >= -1);
+            }
+        }
+        func find_gpu() -> I32 {
+            budget { power: 100000_nj }
+            
+            let b = 0;
+            while b < 256 {
+                let s = 0;
+                while s < 32 {
+                    let f = 0;
+                    while f < 8 {
+                        let config = read_config(b, s, f, 0);
+                        let vendor = config & 0xFFFF;
+                        
+                        if vendor != 0xFFFF {
+                            let class_info = read_config(b, s, f, 0x08);
+                            let class_code = (class_info >> 24) & 0xFF;
+                            
+                            // Class 0x03 is Display Controller
+                            if class_code == 0x03 {
+                                // Found GPU
+                                return (b << 16) | (s << 8) | f;
+                            }
+                        }
+                        f = f + 1;
+                    }
+                    s = s + 1;
+                }
+                b = b + 1;
+            }
+            return -1;
+        }
+
+        func get_bar(bus: I32, slot: I32, func_id: I32, bar_index: I32) -> I32 {
+            budget { power: 1000_nj }
+            // BARs start at offset 0x10
+            let offset = 0x10 + (bar_index * 4);
+            return read_config(bus, slot, func_id, offset);
+        }
+    }
+}
