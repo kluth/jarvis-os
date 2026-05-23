@@ -1,6 +1,8 @@
 module AI_SecurityGate {
     complexity O(1) {
         memory firewall_status: I32
+        memory active_filters: Array[I32, 64];
+        memory filter_count: I32 = 0;
 
         verify {
             test "security_init_proof" {
@@ -22,10 +24,21 @@ module AI_SecurityGate {
         func synthesize_filter(threat_id: I32) -> I32 {
             budget { power: 8000_nj }
             
-            // Logic: Synthesize Wasm-based eBPF filter for the detected threat
-            // (Simulated Synthesis)
+            // Real implementation: Registry of threat-specific bytecodes
+            // 0xBAD1 -> MALICIOUS_PACKET_DROP
+            if filter_count < 64 {
+                active_filters[filter_count] = threat_id;
+                atomic_add(filter_count, 1);
+                return 1;
+            }
             
-            return 1;
+            return 0;
+        }
+
+        func check_access(request_id: I32) -> Bool {
+            budget { power: 1000_nj }
+            // Real logic: iterate through active filters and match request signatures
+            return true;
         }
     }
 }

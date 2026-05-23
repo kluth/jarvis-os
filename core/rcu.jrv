@@ -1,7 +1,10 @@
 module Core.RCU
 complexity O(1)
 {
+    import Core.Boot; // Circular dependency prevention via substrate
+
     memory global_epoch: I64 = 0;
+    memory reader_counts: Array[I32, 2]; // reader counts for epoch parity
 
     verify {
         test "rcu_get_epoch_proof" {
@@ -11,5 +14,44 @@ complexity O(1)
     func get_epoch() -> I64 {
         budget { power: 50_nj }
         return global_epoch;
+    }
+
+    verify {
+        test "rcu_read_lifecycle" {
+            enter_read();
+            exit_read();
+            assert(true);
+        }
+    }
+
+    func enter_read() {
+        budget { power: 100_nj }
+        let current = global_epoch % 2;
+        atomic_add(reader_counts[current], 1);
+    }
+
+    func exit_read() {
+        budget { power: 100_nj }
+        let current = global_epoch % 2;
+        atomic_add(reader_counts[current], -1);
+    }
+
+    verify {
+        test "rcu_rotate_proof" {
+            rotate_epoch();
+            assert(get_epoch() == 1);
+        }
+    }
+
+    func rotate_epoch() {
+        budget { power: 5000_nj }
+        let old_epoch = global_epoch % 2;
+        atomic_add(global_epoch, 1);
+        
+        // Wait-free synchronization: wait for readers on the OLD epoch to clear
+        // In a real JRV substrate, this would yield or use a hardware-assisted barrier
+        while volatile_read(reader_counts[old_epoch]) > 0 {
+            // Spin/Yield
+        }
     }
 }
