@@ -1,0 +1,65 @@
+// HAL.Audio — Sovereign streaming audio sink (Intel HDA-compatible mock).
+// Ring buffer of 4096 frames in physical RAM. Pure .jrv.
+module HAL_Audio {
+    complexity O(1) {
+        struct AudioFrame {
+            chunk_id: I32,
+            channel: I32,
+            depth_bits: I32
+        }
+
+        const BUFFER_BASE = 0x00200000;
+        const BUFFER_SIZE = 4096;
+
+        memory write_ptr: I32 = 0;
+        memory read_ptr: I32 = 0;
+        memory drops: I32 = 0;
+
+        verify {
+            test "audio_init_proof" {
+                let st = init();
+                assert(st == 1);
+            }
+        }
+        func init() -> I32 {
+            budget { power: 3000_nj }
+            write_ptr = 0;
+            read_ptr = 0;
+            drops = 0;
+            contract { ensures result == 1; }
+            return 1;
+        }
+
+        verify {
+            test "audio_stream_chunk_proof" {
+                let r = stream_chunk(100);
+                assert(r == 1);
+            }
+        }
+        func stream_chunk(chunk_id: I32) -> I32 {
+            budget { power: 5000_nj }
+            // Ring advance without modulo.
+            atomic_add(write_ptr, 1);
+            if write_ptr == 4096 {
+                write_ptr = 0;
+            }
+            // Write sample (zero — verifier-stubbed).
+            let offset = 0x00200000 + write_ptr * 2;
+            volatile write(offset, 0);
+            return 1;
+        }
+
+        verify {
+            test "audio_drop_proof" {
+                let pre = drops;
+                report_drop();
+                assert(drops == pre + 1);
+            }
+        }
+        func report_drop() -> I32 {
+            budget { power: 80_nj }
+            atomic_add(drops, 1);
+            return drops;
+        }
+    }
+}

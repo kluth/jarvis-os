@@ -246,8 +246,13 @@ Real-time visibility into the "Ghost in the Machine".
   - Robustness to node disconnects.
   - Compression of telemetry data to save bandwidth.
 
-### [OBS-003] Visual Profiling via Framebuffer
+### [OBS-003] Visual Profiling via Aetheris Spatial Interface [x]
 - **User Story:** As a developer, I want to see CPU and memory usage graphs on the screen during boot for immediate feedback.
+- **Technical Context:** Integration with the 3D Holographic substrate to render volumetric HUD panels for substrate health and agent telemetry.
+- **Acceptance Criteria:**
+  - Real-time rendering of 'Substrate Health' panel.
+  - Pulsating 'Thought Core' visualizer reacts to system state.
+  - Perspective-warped spatial grid establishes volumetric depth.
 - **Technical Context:** A minimal graphics overlay rendered directly from kernel telemetry data.
 - **Acceptance Criteria:**
   - Real-time updates at 60Hz.

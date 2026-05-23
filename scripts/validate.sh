@@ -1,28 +1,36 @@
 #!/usr/bin/env bash
 
 # JARVIS OS - Local Validation Script
-# This script ensures that the codebase meets all quality standards before pushing.
+# This script ensures that the JRV codebase meets all quality standards.
 
 set -e
 
-echo "Starting JARVIS OS validation..."
+echo "Starting JARVIS OS validation (JRV Edition)..."
 
-# 1. Format Check
-echo "Checking formatting..."
-cargo fmt -- --check
+# 1. Bootloader Check
+echo "Checking bootloader assembly..."
+nasm -f bin boot.asm -o boot.bin
+rm boot.bin
 
-# 2. Compilation Check
-echo "Checking compilation for custom target (default features)..."
-cargo check -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec
+# 2. JRV Compilation Check
+echo "Checking JRV modules..."
+JRV_CMD="./jrvc"
+if [ "$(uname -m)" != "aarch64" ] && [ -f "/usr/bin/qemu-aarch64-static" ]; then
+    echo "Non-AArch64 host detected. Using QEMU emulation for jrvc."
+    # Use QEMU_LD_PREFIX if set, otherwise default to standard cross-path
+    PREFIX=${QEMU_LD_PREFIX:-"/usr/aarch64-linux-gnu"}
+    JRV_CMD="qemu-aarch64-static -L $PREFIX ./jrvc"
+fi
 
-echo "Checking compilation for custom target (all features)..."
-cargo check --all-features -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec
+for f in $(find . -name "*.jrv"); do
+    echo "Compiling $f..."
+    $JRV_CMD "$f" > /dev/null
+done
 
-# 3. Linting
-echo "Running Clippy (default features)..."
-cargo clippy -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
+# 3. Documentation Check
+if [ -f "GEMINI.md" ]; then
+    echo "GEMINI.md found."
+fi
 
-echo "Running Clippy (all features)..."
-cargo clippy --all-features -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
-
-echo "Validation successful! All checks passed (Build skipped due to local resource constraints)."
+echo "Validation successful! All JRV modules compiled and bootloader is valid."
+rm -f output.elf

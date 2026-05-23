@@ -1,0 +1,26 @@
+module Math3D
+complexity O(1)
+{
+    verify {
+        test "project_proof" {
+            assert(project_x(10, 5) == 15);
+        }
+    }
+    func project_x(x: I32, z: I32) -> I32 {
+        budget { power: 100_nj }
+        // Simple perspective projection simulation: x' = x + depth
+        let res = x + z;
+        return res;
+    }
+
+    verify {
+        test "project_y_proof" {
+            assert(project_y(10, 5) == 15);
+        }
+    }
+    func project_y(y: I32, z: I32) -> I32 {
+        budget { power: 100_nj }
+        let res = y + z;
+        return res;
+    }
+}

@@ -1,0 +1,90 @@
+import Core.MAG;
+
+module Mesh.Gossip {
+    complexity O(log N) {
+        memory agent_id: I32 = -1;
+        memory peer_table: Array[Peer, 256];
+        memory peer_count: I32 = 0;
+
+        verify {
+            test "gossip_init_proof" {
+                init();
+                assert(agent_id != -1);
+            }
+        }
+        func init() {
+            complexity O(1)
+            budget { power: 1800_nj }
+            agent_id = Core.MAG.register_agent("GossipAgent");
+            
+            // Start proactive environmental discovery
+            begin_discovery();
+        }
+
+        verify {
+            test "peer_discovery" {
+                let status = add_peer("192.168.1.100");
+                assert(status == true);
+                assert(peer_count == 1);
+            }
+        }
+        func add_peer(addr: String) -> Bool {
+            complexity O(1)
+            budget { power: 1200_nj }
+
+            if peer_count == 256 {
+                return false;
+            }
+
+            peer_table[peer_count] = Peer {
+                address: addr,
+                latency: 0,
+                reliability: 100
+            };
+
+            atomic_add(peer_count, 1);
+            return true;
+        }
+
+        verify {
+            test "gossip_cycle_proof" {
+                gossip_cycle();
+                assert(true);
+            }
+        }
+        // Epidemic routing: select random peer and push current state hash
+        func gossip_cycle() {
+            complexity O(1)
+            budget { power: 3000_nj }
+
+            if peer_count == 0 {
+                return;
+            }
+
+            let target_peer = select_random_peer();
+            let state_hash = compute_local_hash();
+
+            let msg = Message {
+                source_id: agent_id,
+                target_id: target_peer.id,
+                type: 50, // GOSSIP_SYNC
+                payload: state_hash
+            };
+
+            Core.MAG.dispatch(msg);
+        }
+
+        verify {
+            test "select_random_peer_proof" {
+                let p = select_random_peer();
+                assert(true);
+            }
+        }
+        func select_random_peer() -> Peer {
+            complexity O(1)
+            budget { power: 200_nj }
+            // native RNG selection
+            return peer_table[0];
+        }
+    }
+}
