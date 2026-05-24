@@ -4,8 +4,7 @@
 ; This is a minimal Stage-1 loader. Its ONLY job is to:
 ; 1. Set VBE mode 0x11b (1280x1024x24).
 ; 2. Enter 32-bit Protected Mode.
-; 3. Jump to the JRV-compiled Kernel Entry Point.
-; ALL UI rendering and logic is handled by pure JRV.
+; 3. Jump to the JRV-compiled Kernel Entry Point at 0x10000.
 ; ==========================================================
 
 [org 0x7c00]
@@ -20,17 +19,30 @@ start:
     mov sp, 0x7c00
     sti
 
-    ; 1. Query and Set VBE 1280x1024x24 (LFB)
+    ; 1. Query and Set VBE 1280x1024x24
     mov ax, 0x4f01
     mov cx, 0x11b
     mov di, 0x9000
     int 0x10
-
     mov ax, 0x4f02
     mov bx, 0x411b
     int 0x10
 
-    ; 2. Enter Protected Mode
+    ; 2. Load the JRV Kernel (Sector 2 onwards) into 0x1000:0000 (0x10000)
+    ; We'll load 127 sectors (approx 64KB) which is plenty for the kernel payload.
+    mov ax, 0x1000
+    mov es, ax
+    xor bx, bx
+    
+    mov ah, 0x02
+    mov al, 127             ; Read 127 sectors
+    mov ch, 0
+    mov cl, 2               ; Sector 2
+    mov dh, 0
+    mov dl, 0x80            ; HDD 1
+    int 0x13
+
+    ; 3. Enter Protected Mode
     cli
     in al, 0x92
     or al, 2
@@ -39,7 +51,7 @@ start:
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-    jmp 0x08:kernel_entry
+    jmp 0x08:kernel_entry_jump
 
 gdt_start:
     dq 0
@@ -56,7 +68,7 @@ times 510-($-$$) db 0
 dw 0xaa55
 
 [bits 32]
-kernel_entry:
+kernel_entry_jump:
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -65,8 +77,5 @@ kernel_entry:
     mov ss, ax
     mov esp, 0x90000
 
-    ; 3. Jump to the JRV Kernel (Assuming loaded at 0x10000 by jrvc payload)
-    ; In a real deployment, jrvc generates the machine code.
+    ; Jump to the entry point of the JRV kernel binary
     jmp 0x10000
-
-times 16896-($-$$) db 0

@@ -40,17 +40,58 @@ module UI.HolographicCore {
 
         func draw_grid(offset: I32) {
             budget { power: 50000_nj }
-            // Logic for grid rendering in pure JRV
+            bind(y, 0);
+            while(y < 1024, func() {
+                bind(x, 0);
+                while(x < 1280, func() {
+                    bind(gx, x + offset);
+                    branch((gx % 64 == 0) || (y % 64 == 0),
+                        func() { UI.Rasterizer.draw_pixel(x, y, GRID_COLOR) },
+                        func() { yield() }
+                    );
+                    x = x + 1;
+                });
+                y = y + 1;
+            })
         }
 
-        func draw_core(x: I32, y: I32, r: I32) {
+        func draw_core(cx: I32, cy: I32, r: I32) {
             budget { power: 20000_nj }
-            // Ray-sphere intersection logic ported to pure JRV
+            bind(y, cy - r);
+            while(y < cy + r, func() {
+                bind(x, cx - r);
+                while(x < cx + r, func() {
+                    bind(dist_sq, (x - cx)**2 + (y - cy)**2);
+                    branch(dist_sq <= r**2,
+                        func() { 
+                            // Additive glow logic based on distance
+                            bind(intensity, (r**2 - dist_sq) / 512);
+                            UI.Rasterizer.draw_pixel(x, y, CORE_COLOR + intensity);
+                        },
+                        func() { yield() }
+                    );
+                    x = x + 1;
+                });
+                y = y + 1;
+            })
         }
 
         func draw_health_panel(violations: I32) {
             budget { power: 10000_nj }
-            // Dynamic bar chart of system health
+            // Render 320x320 panel at (128, 128)
+            bind(h_top, 448 - (violations * 16));
+            bind(y, 128);
+            while(y < 448, func() {
+                bind(x, 128);
+                while(x < 448, func() {
+                    branch(y < h_top,
+                        func() { UI.Rasterizer.draw_pixel(x, y, BG_COLOR) },
+                        func() { UI.Rasterizer.draw_pixel(x, y, 0x00b4abff) } // ERROR_TINT
+                    );
+                    x = x + 1;
+                });
+                y = y + 1;
+            })
         }
     }
 }
