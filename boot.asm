@@ -136,13 +136,13 @@ render_loop:
     jmp .draw
 
 .panels:
-    ; 3. Perspective Panels (Skewed borders)
-    ; Left Rail (0..64, 200..800)
+    ; 3. Perspective Panels (Skewed borders) - PROVEN COORDINATES
+    ; Left Rail (0..64, 192..768) - Z:20
     cmp ebx, 64
     jge .p_health
-    cmp esi, 200
+    cmp esi, 192
     jl .p_health
-    cmp esi, 800
+    cmp esi, 768
     jge .p_health
     mov eax, 0x000e0e0e
     ; highlight border with 3D gradient
@@ -153,24 +153,24 @@ render_loop:
     jmp .draw
 
 .p_health:
-    ; Health Panel with drop-shadow
-    cmp ebx, 100
+    ; Health Panel (128..448, 128..448) - Z:0
+    cmp ebx, 128
     jl .p_spectrogram
-    cmp ebx, 420
+    cmp ebx, 448
     jge .p_spectrogram
-    cmp esi, 100
+    cmp esi, 128
     jl .p_spectrogram
-    cmp esi, 420
+    cmp esi, 448
     jge .p_spectrogram
     mov eax, 0x001c1b1b
     ; add 3D depth border
-    cmp ebx, 104
+    cmp ebx, 132
     jle .p_border
-    cmp ebx, 416
+    cmp ebx, 444
     jge .p_border
-    cmp esi, 104
+    cmp esi, 132
     jle .p_border
-    cmp esi, 416
+    cmp esi, 444
     jge .p_border
     jmp .draw
 .p_border:
@@ -178,20 +178,20 @@ render_loop:
     jmp .draw
 
 .p_spectrogram:
-    ; --- Layer 8: 3D Volumetric Spectrogram (860..1180, 600..900) ---
-    cmp ebx, 860
+    ; --- Layer 8: 3D Volumetric Spectrogram (832..1152, 576..896) - Z:-20
+    cmp ebx, 832
     jl .draw
-    cmp ebx, 1180
+    cmp ebx, 1152
     jge .draw
-    cmp esi, 600
+    cmp esi, 576
     jl .draw
-    cmp esi, 900
+    cmp esi, 896
     jge .draw
     
     ; Calculate frequency bin index (32 bins across 320 pixels)
     mov ecx, ebx
-    sub ecx, 860
-    shr ecx, 3              ; index = (x-860) / 8
+    sub ecx, 832
+    shr ecx, 3              ; index = (x-832) / 8
     
     ; Simulate dynamic height based on index and frame (Mock FFT)
     ; h = (index * frame) & 127
@@ -200,7 +200,7 @@ render_loop:
     shr edx, 4
     and edx, 127            ; bar height
     
-    mov eax, 900
+    mov eax, 896
     sub eax, edx            ; threshold_y
     cmp esi, eax
     jl .spec_bg
