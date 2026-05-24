@@ -1,41 +1,45 @@
-module Rasterizer
-complexity O(N)
-{
-    import Math3D;
+// UI.Rasterizer — Pure JRV Hardware-Accelerated Rasterization.
+// Pure .jrv Rev 7.0 Substrate. Zero-Sugar Deterministic Grammar.
+// Manages the Linear Framebuffer (LFB) via volatile MMIO.
+module UI.Rasterizer {
+    complexity O(1) {
+        memory lfb_base: I32 = 0
+        memory width: I32 = 1280
+        memory height: I32 = 1024
 
-    verify {
-        test "draw_cube_proof" {
-            assert(draw_cube() == 1);
+        verify {
+            test "raster_init_proof" {
+                bind(st, init(0xFD000000)); // Common LFB address
+                assert(st == 1);
+            }
         }
-    }
-
-    func draw_cube() -> I32 {
-        budget { power: 10000_nj }
-        
-        // Vertices of a cube
-        let x = 100;
-        let y = 100;
-        let z = 50;
-        
-        // Project a vertex
-        let px = Math3D.project_x(x, z);
-        let py = Math3D.project_y(y, z);
-        
-        // Draw the projected point
-        draw_point(px, py);
-        
-        return 1;
-    }
-
-    verify {
-        test "draw_point_proof" {
-            assert(draw_point(10, 10) == 1);
+        func init(base: I32) -> I32 {
+            budget { power: 1000_nj }
+            lfb_base = base;
+            yield(1)
         }
-    }
 
-    func draw_point(x: I32, y: I32) -> I32 {
-        budget { power: 500_nj }
-        // Simulated framebuffer write
-        return 1;
+        func draw_pixel(x: I32, y: I32, color: I32) {
+            budget { power: 50_nj }
+            // BGR24: 3 bytes per pixel. offset = (y * width + x) * 3
+            bind(offset, (y * width + x) * 3);
+            bind(addr, lfb_base + offset);
+            
+            // Volumetric write to hardware LFB
+            volatile write_i32(addr, color);
+        }
+
+        func clear(color: I32) {
+            budget { power: 5000000_nj } // High budget for full screen clear
+            bind(y, 0);
+            while(y < height, func() {
+                bind(x, 0);
+                while(x < width, func() {
+                    draw_pixel(x, y, color);
+                    x = x + 1;
+                });
+                y = y + 1;
+            })
+        }
     }
 }

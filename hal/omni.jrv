@@ -16,16 +16,23 @@ module HAL.Omni {
         }
         func assimilate_graphics() -> I32 {
             budget { power: 10000_nj }
-            
+
             // Zero-Cost Abstraction: These branches are resolved at AOT/JIT time 
             // by the Verifier to avoid runtime overhead.
             branch(HAL.GPU_AMD.is_present(),
                 func() { 
                     HAL.GPU_AMD.init();
                     active_driver_id = 1; 
+
+                    // PUSH TELEMETRY: Assimilation bitmask (Bit 0 = GPU)
+                    volatile write_i32(0x8008, 0x01);
+
                     yield(1) 
                 },
-                func() { yield(0) }
+                func() { 
+                    volatile write_i32(0x8008, 0x00);
+                    yield(0) 
+                }
             )
         }
 

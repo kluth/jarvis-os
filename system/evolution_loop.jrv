@@ -36,10 +36,16 @@ module System.Evolution {
                             // 3. Commit verified fix to sovereign kernel
                             commit_fix(fix_plan_ptr);
                             atomic_add(violation_count, -1);
+                            
+                            // PUSH TELEMETRY: Violation Count to 0x8004
+                            volatile write_i32(0x8004, violation_count);
                         },
                         func() {
                             // 4. Log unrepairable violation
                             atomic_add(violation_count, 1);
+                            
+                            // PUSH TELEMETRY: Violation Count to 0x8004
+                            volatile write_i32(0x8004, violation_count);
                         }
                     )
                     
