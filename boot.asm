@@ -1,14 +1,8 @@
 ; ==========================================================
-; JARVIS OS - Aetheris Spatial Interface v10 (PERFECTION)
+; JARVIS OS - Aetheris Spatial Interface v15 (PIXEL-PERFECT)
 ; ----------------------------------------------------------
 ; Resolution: 1280x1024x24
-; Verified: Absolute Pixel-by-Pixel Ground Truth Sync
-; ----------------------------------------------------------
-; Palette (Stitch Fixed-Dim):
-;   obsidian       = 0x0e0e0e
-;   glass          = 0x131a1d
-;   primary_blue   = 0xffc6b8 (BGR: #b8c6ff)
-;   outline        = 0x4c493b
+; Methodology: Formal CSS Specification Synchronization
 ; ==========================================================
 
 [org 0x7c00]
@@ -77,74 +71,88 @@ start32:
 
 render_loop:
     inc ebp
-    mov edi, [0x9028]
+    mov edi, [0x9028]       ; LFB
     xor esi, esi
 
 .y_loop:
     xor ebx, ebx
 
 .x_loop:
-    ; Base Background: obsidian
-    mov eax, 0x000e0e0e
+    ; 1. Surface Background (#131313)
+    mov eax, 0x00131313
 
-    ; 1. Spatial Layout (Z-shifted for volumetric look)
-    ; Header: y in [0..102]
-    cmp esi, 102
-    jge .core
-    mov eax, 0x00131a1d
-    cmp esi, 100
-    jge .border
-    jmp .draw
+    ; 2. Spatial Grid (64px interval, #353534)
+    test ebx, 63
+    jz .grid_hit
+    test esi, 63
+    jnz .L2
+.grid_hit:
+    mov eax, 0x00343535
 
-.core:
-    ; 2. Thought Core (Scaled Ground Truth: 1140, 467)
+.L2:
+    ; 3. Thought Core (Absolute Center: 640, 512, r=128)
     mov ecx, ebx
-    sub ecx, 1140
+    sub ecx, 640
     imul ecx, ecx
     mov edx, esi
-    sub edx, 467
+    sub edx, 512
     imul edx, edx
     add ecx, edx
 
-    cmp ecx, 10000          ; r=100
-    jg .glass
-    mov eax, 0x00ffc6b8     ; Primary Blue (BGR)
-    jmp .draw
-
-.glass:
-    ; 3. Main Glass Substrate (Bounds: 40..1238, 102..958)
-    cmp ebx, 40
-    jl .grid
-    cmp ebx, 1238
-    jge .grid
-    cmp esi, 102
-    jl .grid
-    cmp esi, 958
-    jge .grid
-    mov eax, 0x00131a1d
+    cmp ecx, 16384          ; r=128
+    jg .panels
     
-    ; Border check
-    cmp ebx, 42
-    jle .border
-    cmp ebx, 1236
-    jge .border
-    cmp esi, 104
-    jle .border
-    cmp esi, 956
-    jge .border
+    ; Primary Glow (#c3f5ff)
+    mov eax, 0x00fff5c3
+    cmp ecx, 14400          ; r=120
+    jge .draw
+    mov eax, 0x00131313     ; Center substrate
     jmp .draw
 
-.grid:
-    ; 4. Grid Lattice (Only in non-glass areas)
-    test ebx, 63
-    jz .grid_line
-    test esi, 63
-    jnz .draw
-.grid_line:
-    mov eax, 0x00171718
+.panels:
+    ; 4. Glass Panels (#131313 with #3b494c outline)
+    ; Health: 128..448, 128..448
+    cmp ebx, 128
+    jl .p_spectrogram
+    cmp ebx, 448
+    jge .p_spectrogram
+    cmp esi, 128
+    jl .p_spectrogram
+    cmp esi, 448
+    jge .p_spectrogram
+    mov eax, 0x00131313
+    cmp ebx, 130
+    jle .p_border
+    cmp ebx, 446
+    jge .p_border
+    cmp esi, 130
+    jle .p_border
+    cmp esi, 446
+    jge .p_border
     jmp .draw
 
-.border:
+.p_spectrogram:
+    ; Spectrogram: 832..1152, 576..896
+    cmp ebx, 832
+    jl .draw
+    cmp ebx, 1152
+    jge .draw
+    cmp esi, 576
+    jl .draw
+    cmp esi, 896
+    jge .draw
+    mov eax, 0x00131313
+    cmp ebx, 834
+    jle .p_border
+    cmp ebx, 1150
+    jge .p_border
+    cmp esi, 578
+    jle .p_border
+    cmp esi, 894
+    jge .p_border
+    jmp .draw
+
+.p_border:
     mov eax, 0x004c493b
 
 .draw:
