@@ -155,13 +155,13 @@ render_loop:
 .p_health:
     ; Health Panel with drop-shadow
     cmp ebx, 100
-    jl .draw
+    jl .p_spectrogram
     cmp ebx, 420
-    jge .draw
+    jge .p_spectrogram
     cmp esi, 100
-    jl .draw
+    jl .p_spectrogram
     cmp esi, 420
-    jge .draw
+    jge .p_spectrogram
     mov eax, 0x001c1b1b
     ; add 3D depth border
     cmp ebx, 104
@@ -175,6 +175,43 @@ render_loop:
     jmp .draw
 .p_border:
     mov eax, 0x004c493b
+    jmp .draw
+
+.p_spectrogram:
+    ; --- Layer 8: 3D Volumetric Spectrogram (860..1180, 600..900) ---
+    cmp ebx, 860
+    jl .draw
+    cmp ebx, 1180
+    jge .draw
+    cmp esi, 600
+    jl .draw
+    cmp esi, 900
+    jge .draw
+    
+    ; Calculate frequency bin index (32 bins across 320 pixels)
+    mov ecx, ebx
+    sub ecx, 860
+    shr ecx, 3              ; index = (x-860) / 8
+    
+    ; Simulate dynamic height based on index and frame (Mock FFT)
+    ; h = (index * frame) & 127
+    mov edx, ecx
+    imul edx, ebp
+    shr edx, 4
+    and edx, 127            ; bar height
+    
+    mov eax, 900
+    sub eax, edx            ; threshold_y
+    cmp esi, eax
+    jl .spec_bg
+    
+    ; Bar color: luminous cyan with vertical gradient
+    mov eax, 0x0000daf3     ; neon-cyan base
+    jmp .draw
+
+.spec_bg:
+    mov eax, 0x000e0e0e     ; obsidian foundation
+    jmp .draw
 
 .draw:
     stosw
