@@ -1,10 +1,7 @@
 ; ==========================================================
-; JARVIS OS - Sovereign Minimal Bootloader (Rev 7.0)
+; JARVIS OS - Sovereign Minimal Bootloader (Rev 7.1)
 ; ----------------------------------------------------------
-; This is a minimal Stage-1 loader. Its ONLY job is to:
-; 1. Set VBE mode 0x11b (1280x1024x24).
-; 2. Enter 32-bit Protected Mode.
-; 3. Jump to the JRV-compiled Kernel Entry Point at 0x10000.
+; Hardened loader with drive-ID persistence and VBE retry.
 ; ==========================================================
 
 [org 0x7c00]
@@ -19,30 +16,38 @@ start:
     mov sp, 0x7c00
     sti
 
-    ; 1. Query and Set VBE 1280x1024x24
+    ; 1. Save Drive ID
+    mov [boot_drive], dl
+
+    ; 2. Set VBE mode 0x115 (800x600x24) for max compatibility
     mov ax, 0x4f01
-    mov cx, 0x11b
+    mov cx, 0x115
     mov di, 0x9000
     int 0x10
-    mov ax, 0x4f02
-    mov bx, 0x411b
-    int 0x10
+    cmp ax, 0x004f
+    jne .vbe_error
 
-    ; 2. Load the JRV Kernel (Sector 2 onwards) into 0x1000:0000 (0x10000)
-    ; We'll load 127 sectors (approx 64KB) which is plenty for the kernel payload.
+    mov ax, 0x4f02
+    mov bx, 0x4115          ; 0x115 + LFB bit
+    int 0x10
+    cmp ax, 0x004f
+    jne .vbe_error
+
+    ; 3. Load the JRV Kernel (Sector 2 onwards)
     mov ax, 0x1000
     mov es, ax
     xor bx, bx
     
     mov ah, 0x02
-    mov al, 127             ; Read 127 sectors
+    mov al, 64              ; Read 64 sectors (32KB)
     mov ch, 0
     mov cl, 2               ; Sector 2
     mov dh, 0
-    mov dl, 0x80            ; HDD 1
+    mov dl, [boot_drive]
     int 0x13
+    jc .disk_error
 
-    ; 3. Enter Protected Mode
+    ; 4. Enter Protected Mode
     cli
     in al, 0x92
     or al, 2
@@ -52,6 +57,20 @@ start:
     or eax, 1
     mov cr0, eax
     jmp 0x08:kernel_entry_jump
+
+.vbe_error:
+    mov ah, 0x0e
+    mov al, 'V'
+    int 0x10
+    jmp $
+
+.disk_error:
+    mov ah, 0x0e
+    mov al, 'D'
+    int 0x10
+    jmp $
+
+boot_drive: db 0
 
 gdt_start:
     dq 0
@@ -77,5 +96,13 @@ kernel_entry_jump:
     mov ss, ax
     mov esp, 0x90000
 
-    ; Jump to the entry point of the JRV kernel binary
+    ; Check if LFB address was populated
+    mov eax, [0x9028]
+    test eax, eax
+    jz .no_lfb
+
+    ; Jump to kernel
     jmp 0x10000
+
+.no_lfb:
+    jmp $
