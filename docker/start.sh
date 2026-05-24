@@ -18,6 +18,8 @@ qemu-system-x86_64 \
     -net nic,model=virtio -net user \
     -serial mon:stdio \
     -monitor unix:/tmp/qemu-monitor.sock,server,nowait \
+    -audiodev none,id=snd0 \
+    -device virtio-sound-pci,audiodev=snd0 \
     &
 
 # Poll for QEMU readiness instead of fixed sleep
