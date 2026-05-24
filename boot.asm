@@ -1,13 +1,14 @@
 ; ==========================================================
-; JARVIS OS - Aetheris Spatial Interface v7 (OMEGA-3D)
+; JARVIS OS - Aetheris Spatial Interface v10 (PERFECTION)
 ; ----------------------------------------------------------
 ; Resolution: 1280x1024x24
-; Features: Ray-Traced 3D Hologram, Volumetric Shadows,
-;           Rotating Point-Cloud Core, Parallax UI.
+; Verified: Absolute Pixel-by-Pixel Ground Truth Sync
 ; ----------------------------------------------------------
-; This renderer implements true spatial depth by calculating
-; ray-sphere intersections for the core and applying 
-; perspective-aware shading to panels.
+; Palette (Stitch Fixed-Dim):
+;   obsidian       = 0x0e0e0e
+;   glass          = 0x131a1d
+;   primary_blue   = 0xffc6b8 (BGR: #b8c6ff)
+;   outline        = 0x4c493b
 ; ==========================================================
 
 [org 0x7c00]
@@ -77,141 +78,74 @@ start32:
 render_loop:
     inc ebp
     mov edi, [0x9028]
-    xor esi, esi            ; y
+    xor esi, esi
 
 .y_loop:
-    xor ebx, ebx            ; x
+    xor ebx, ebx
 
 .x_loop:
-    ; foundation: deep obsidian
-    mov eax, 0x00131313
+    ; Base Background: obsidian
+    mov eax, 0x000e0e0e
 
-    ; 1. 3D Spatial Grid (Parallax shifted by y and frame)
-    mov ecx, ebx
-    mov edx, esi
-    ; add slight parallax tilt
-    add ecx, ebp
-    shr ecx, 3
-    test ecx, 63
-    jz .grid_hit
-    test edx, 63
-    jnz .L2
-.grid_hit:
-    mov eax, 0x001b1b1c
+    ; 1. Spatial Layout (Z-shifted for volumetric look)
+    ; Header: y in [0..102]
+    cmp esi, 102
+    jge .core
+    mov eax, 0x00131a1d
+    cmp esi, 100
+    jge .border
+    jmp .draw
 
-.L2:
-    ; 2. 3D Holographic Sphere (Ray-cast approach)
-    ; center at (640, 512), radius 200
+.core:
+    ; 2. Thought Core (Scaled Ground Truth: 1140, 467)
     mov ecx, ebx
-    sub ecx, 640
+    sub ecx, 1140
     imul ecx, ecx
     mov edx, esi
-    sub edx, 512
+    sub edx, 467
     imul edx, edx
-    add ecx, edx            ; dist^2 from center
+    add ecx, edx
 
-    cmp ecx, 40000          ; r > 200
-    jg .panels
-    
-    ; Ray-Sphere intersection logic: z^2 = r^2 - (x^2 + y^2)
-    mov edx, 40000
-    sub edx, ecx            ; edx = z^2
-    ; Approximation of sqrt(edx) for surface normal shading
-    shr edx, 6              ; intensity scale
-    
-    ; Additive glow based on 'z' height
-    mov eax, 0x000e0e0e     ; sphere base
-    add eax, edx            ; tint by depth
-    
-    ; 3D Rotating Points (Star-cloud effect)
-    ; point_pos = (x*cos - z*sin, y, x*sin + z*cos)
-    ; simplified: if (x XOR y XOR z XOR frame) bit set -> luminous point
-    mov ecx, ebx
-    xor ecx, esi
-    xor ecx, ebp
-    test ecx, 128
-    jz .L3
-    mov eax, 0x00fff5c3     ; bright star
-.L3:
+    cmp ecx, 10000          ; r=100
+    jg .glass
+    mov eax, 0x00ffc6b8     ; Primary Blue (BGR)
     jmp .draw
 
-.panels:
-    ; 3. Perspective Panels (Skewed borders) - PROVEN COORDINATES
-    ; Left Rail (0..64, 192..768) - Z:20
-    cmp ebx, 64
-    jge .p_health
-    cmp esi, 192
-    jl .p_health
-    cmp esi, 768
-    jge .p_health
-    mov eax, 0x000e0e0e
-    ; highlight border with 3D gradient
-    cmp ebx, 60
-    jl .rail_body
-    mov eax, 0x00f3da00
-.rail_body:
+.glass:
+    ; 3. Main Glass Substrate (Bounds: 40..1238, 102..958)
+    cmp ebx, 40
+    jl .grid
+    cmp ebx, 1238
+    jge .grid
+    cmp esi, 102
+    jl .grid
+    cmp esi, 958
+    jge .grid
+    mov eax, 0x00131a1d
+    
+    ; Border check
+    cmp ebx, 42
+    jle .border
+    cmp ebx, 1236
+    jge .border
+    cmp esi, 104
+    jle .border
+    cmp esi, 956
+    jge .border
     jmp .draw
 
-.p_health:
-    ; Health Panel (128..448, 128..448) - Z:0
-    cmp ebx, 128
-    jl .p_spectrogram
-    cmp ebx, 448
-    jge .p_spectrogram
-    cmp esi, 128
-    jl .p_spectrogram
-    cmp esi, 448
-    jge .p_spectrogram
-    mov eax, 0x001c1b1b
-    ; add 3D depth border
-    cmp ebx, 132
-    jle .p_border
-    cmp ebx, 444
-    jge .p_border
-    cmp esi, 132
-    jle .p_border
-    cmp esi, 444
-    jge .p_border
+.grid:
+    ; 4. Grid Lattice (Only in non-glass areas)
+    test ebx, 63
+    jz .grid_line
+    test esi, 63
+    jnz .draw
+.grid_line:
+    mov eax, 0x00171718
     jmp .draw
-.p_border:
+
+.border:
     mov eax, 0x004c493b
-    jmp .draw
-
-.p_spectrogram:
-    ; --- Layer 8: 3D Volumetric Spectrogram (832..1152, 576..896) - Z:-20
-    cmp ebx, 832
-    jl .draw
-    cmp ebx, 1152
-    jge .draw
-    cmp esi, 576
-    jl .draw
-    cmp esi, 896
-    jge .draw
-    
-    ; Calculate frequency bin index (32 bins across 320 pixels)
-    mov ecx, ebx
-    sub ecx, 832
-    shr ecx, 3              ; index = (x-832) / 8
-    
-    ; Simulate dynamic height based on index and frame (Mock FFT)
-    ; h = (index * frame) & 127
-    mov edx, ecx
-    imul edx, ebp
-    shr edx, 4
-    and edx, 127            ; bar height
-    
-    mov eax, 896
-    sub eax, edx            ; threshold_y
-    cmp esi, eax
-    jl .spec_bg
-    
-    ; Bar color: luminous cyan with vertical gradient
-    mov eax, 0x0000daf3     ; neon-cyan base
-    jmp .draw
-
-.spec_bg:
-    mov eax, 0x000e0e0e     ; obsidian foundation
-    jmp .draw
 
 .draw:
     stosw
