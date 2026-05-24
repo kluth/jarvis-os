@@ -13,10 +13,12 @@ kernel_main:
 
 render_loop:
     inc ebp
-    mov edi, [0x9028]       ; LFB
+    mov edi, [0x9028]       ; LFB from VBE block
     test edi, edi
-    jz .hang
+    jnz .start_render
+    mov edi, 0xFD000000     ; FALLBACK for QEMU std-vga
 
+.start_render:
     xor esi, esi            ; y
 .y_loop:
     xor ebx, ebx            ; x
@@ -24,15 +26,15 @@ render_loop:
     ; Background
     mov eax, 0x00131313
     
-    ; Thought Core (Centered 400, 300 for 800x600)
+    ; Thought Core (Centered 512, 384 for 1024x768)
     mov ecx, ebx
-    sub ecx, 400
+    sub ecx, 512
     imul ecx, ecx
     mov edx, esi
-    sub edx, 300
+    sub edx, 384
     imul edx, edx
     add ecx, edx
-    cmp ecx, 10000
+    cmp ecx, 16384          ; r=128
     jg .draw
     mov eax, 0x00fff5c3
     
@@ -41,10 +43,10 @@ render_loop:
     shr eax, 16
     stosb
     inc ebx
-    cmp ebx, 800
+    cmp ebx, 1024
     jl .x_loop
     inc esi
-    cmp esi, 600
+    cmp esi, 768
     jl .y_loop
 
     ; VSync wait
@@ -55,5 +57,3 @@ render_loop:
     jz .wait
     jmp render_loop
 
-.hang:
-    jmp $
