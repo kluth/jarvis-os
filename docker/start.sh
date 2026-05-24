@@ -11,10 +11,10 @@ fi
 touch "$LOCKFILE"
 
 qemu-system-x86_64 \
-    -m 512 \
+    -m 1024 \
     -drive format=raw,file=/app/jarvis-os.img \
     -vnc 0.0.0.0:0 \
-    -vga virtio \
+    -vga std \
     -net nic,model=virtio -net user \
     -serial mon:stdio \
     -monitor unix:/tmp/qemu-monitor.sock,server,nowait \
