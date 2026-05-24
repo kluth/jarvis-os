@@ -1,0 +1,74 @@
+// UI.LayoutProofs — Formal Mathematical Verification of Spatial Alignment.
+// Pure .jrv. Codifies the Stitch Design System constraints into formal proofs.
+// Guaranteed Grid-Lattice alignment (64px) and non-overlapping panel state.
+module UI_LayoutProofs {
+    complexity O(1) {
+        struct Rect {
+            x: I32,
+            y: I32,
+            w: I32,
+            h: I32
+        }
+
+        // Panel Definitions
+        func rail_bounds() -> Rect {
+            budget { power: 10_nj }
+            return Rect { x: 0, y: 192, w: 64, h: 576 };
+        }
+
+        func health_bounds() -> Rect {
+            budget { power: 10_nj }
+            return Rect { x: 128, y: 128, w: 320, h: 320 };
+        }
+
+        func spectrogram_bounds() -> Rect {
+            budget { power: 10_nj }
+            return Rect { x: 832, y: 576, w: 320, h: 320 };
+        }
+
+        // --- FORMAL PROOFS ---
+
+        verify {
+            test "proof_rail_grid_alignment" {
+                let r = rail_bounds();
+                assert(r.x % 64 == 0);
+                assert(r.y % 64 == 0);
+                assert(r.w % 64 == 0);
+                assert(r.h % 64 == 0);
+            }
+
+            test "proof_health_grid_alignment" {
+                let r = health_bounds();
+                assert(r.x % 64 == 0);
+                assert(r.y % 64 == 0);
+                assert(r.w % 64 == 0);
+                assert(r.h % 64 == 0);
+            }
+
+            test "proof_spectrogram_grid_alignment" {
+                let r = spectrogram_bounds();
+                assert(r.x % 64 == 0);
+                assert(r.y % 64 == 0);
+                assert(r.w % 64 == 0);
+                assert(r.h % 64 == 0);
+            }
+
+            test "proof_non_overlapping_state" {
+                let r1 = health_bounds();
+                let r2 = spectrogram_bounds();
+                let r3 = rail_bounds();
+
+                // Non-overlap check: A.x+A.w <= B.x OR B.x+B.w <= A.x OR A.y+A.h <= B.y OR B.y+B.h <= A.y
+                
+                // Health vs Spectrogram
+                assert((r1.x + r1.w <= r2.x) || (r2.x + r2.w <= r1.x) || (r1.y + r1.h <= r2.y) || (r2.y + r2.h <= r1.y));
+                
+                // Health vs Rail
+                assert((r1.x + r1.w <= r3.x) || (r3.x + r3.w <= r1.x) || (r1.y + r1.h <= r3.y) || (r3.y + r3.h <= r1.y));
+
+                // Spectrogram vs Rail
+                assert((r2.x + r2.w <= r3.x) || (r3.x + r3.w <= r2.x) || (r2.y + r2.h <= r3.y) || (r3.y + r3.h <= r2.y));
+            }
+        }
+    }
+}
