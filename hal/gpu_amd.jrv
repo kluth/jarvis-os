@@ -2,7 +2,7 @@
 // Pure .jrv. Implements direct MMIO register access, GART initialization,
 // and PM4 Command Processor (CP) ring buffer submission.
 // Optimized for 3D primitive assembly and Vertex Buffer Objects (VBO).
-module HAL_GPU_AMD {
+module HAL.GPU_AMD {
     import HAL_PCIe;
 
     complexity O(1) {
@@ -28,30 +28,35 @@ module HAL_GPU_AMD {
 
         verify {
             test "gpu_init_sequence" {
-                let status = init();
+                bind(status, init());
                 assert(status >= 0);
             }
         }
         func init() -> I32 {
             budget { power: 8000_nj }
             
-            gpu_bus = HAL_PCIe.find_gpu();
-            if gpu_bus == -1 { return -1; }
+            bind(found_bus, HAL_PCIe.find_gpu());
+            gpu_bus = found_bus;
+            
+            branch(gpu_bus == -1,
+                func() { yield(-1) },
+                func() {
+                    bind(b, (gpu_bus >> 16) & 0xFF);
+                    bind(s, (gpu_bus >> 8) & 0xFF);
+                    bind(f, gpu_bus & 0xFF);
 
-            let b = (gpu_bus >> 16) & 0xFF;
-            let s = (gpu_bus >> 8) & 0xFF;
-            let f = gpu_bus & 0xFF;
+                    vram_base = HAL_PCIe.get_bar(b, s, f, 0) & 0xFFFFFFF0;
+                    mmio_base = HAL_PCIe.get_bar(b, s, f, 2) & 0xFFFFFFF0;
 
-            vram_base = HAL_PCIe.get_bar(b, s, f, 0) & 0xFFFFFFF0;
-            mmio_base = HAL_PCIe.get_bar(b, s, f, 2) & 0xFFFFFFF0;
+                    // 1. CP Ring Buffer setup
+                    write_reg(mmCP_RB0_BASE, ring_buffer_phys >> 8);
+                    write_reg(mmCP_RB0_CNTL, (18 << 0) | 1);
 
-            // 1. CP Ring Buffer setup
-            write_reg(mmCP_RB0_BASE, ring_buffer_phys >> 8);
-            write_reg(mmCP_RB0_CNTL, (18 << 0) | 1);
-
-            // 2. 3D Pipeline Reset & Config
-            write_reg(mmPA_SC_WINDOW_OFFSET, 0);
-            return 1;
+                    // 2. 3D Pipeline Reset & Config
+                    write_reg(mmPA_SC_WINDOW_OFFSET, 0);
+                    yield(1)
+                }
+            )
         }
 
         func write_reg(offset: I32, value: I32) {
@@ -70,7 +75,7 @@ module HAL_GPU_AMD {
             budget { power: 5000_nj }
             
             // PM4 Packet Type 3: WRITE_DATA (0x37)
-            let pkt_hdr = (3 << 30) | (3 << 16) | (0x37 << 8);
+            bind(pkt_hdr, (3 << 30) | (3 << 16) | (0x37 << 8));
             submit_packet(pkt_hdr);
             submit_packet(0x00000000); // Dest address low (GART)
             submit_packet(0x00000000); // Dest address high
@@ -79,7 +84,7 @@ module HAL_GPU_AMD {
 
         func submit_packet(data: I32) {
             budget { power: 1000_nj }
-            let addr = ring_buffer_phys + ring_wptr * 4;
+            bind(addr, ring_buffer_phys + ring_wptr * 4);
             volatile write_i32(addr, data);
             ring_wptr = (ring_wptr + 1) % 262144;
             
@@ -91,7 +96,7 @@ module HAL_GPU_AMD {
         func set_primitive_type(p_type: I32) {
             budget { power: 500_nj }
             // PM4: SET_CONFIG_REG
-            let pkt = (3 << 30) | (1 << 16) | (0x28 << 8);
+            bind(pkt, (3 << 30) | (1 << 16) | (0x28 << 8));
             submit_packet(pkt);
             submit_packet(mmVGT_PRIMITIVE_TYPE);
             submit_packet(p_type);
@@ -100,11 +105,18 @@ module HAL_GPU_AMD {
         func dispatch_compute(shader_id: I32, buffer_addr: I32) {
             budget { power: 8000_nj }
             // PM4: DISPATCH_DIRECT (0x15)
-            let pkt_hdr = (3 << 30) | (3 << 16) | (0x15 << 8);
+            bind(pkt_hdr, (3 << 30) | (3 << 16) | (0x15 << 8));
             submit_packet(pkt_hdr);
             submit_packet(shader_id);   // Compiled FFT Shader ISA
             submit_packet(buffer_addr); // Source PCM buffer
             submit_packet(0x00000001); // Thread groups
+        }
+
+        // ADDED: For HAL_Omni assimilation
+        func is_present() -> Bool {
+            budget { power: 500_nj }
+            bind(b, HAL_PCIe.find_gpu());
+            yield(b != -1)
         }
     }
 }

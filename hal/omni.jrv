@@ -1,11 +1,11 @@
 // HAL.Omni — Sovereign Target-Generic Hardware Abstraction.
 // Pure .jrv Rev 7.0 Substrate. Zero-Cost Abstraction Mandate.
 // Dynamically assimilates vendor-specific drivers (AMD, Intel, VirtIO).
-module HAL_Omni {
-    import HAL_GPU_AMD;
-    import HAL_VirtIO_Sound;
+module HAL.Omni {
+    import HAL.GPU_AMD;
+    import HAL.VirtIO_Sound;
 
-    complexity O(log N) {
+    complexity O(1) {
         memory active_driver_id: I32 = 0
 
         verify {
@@ -19,9 +19,9 @@ module HAL_Omni {
             
             // Zero-Cost Abstraction: These branches are resolved at AOT/JIT time 
             // by the Verifier to avoid runtime overhead.
-            branch(HAL_GPU_AMD.is_present(),
+            branch(HAL.GPU_AMD.is_present(),
                 func() { 
-                    HAL_GPU_AMD.init();
+                    HAL.GPU_AMD.init();
                     active_driver_id = 1; 
                     yield(1) 
                 },
@@ -33,7 +33,7 @@ module HAL_Omni {
             budget { power: 500_nj }
             // Static dispatch based on assimilated driver
             branch(active_driver_id == 1,
-                func() { HAL_GPU_AMD.submit_packet(data) },
+                func() { HAL.GPU_AMD.submit_packet(data) },
                 func() { yield() }
             )
         }

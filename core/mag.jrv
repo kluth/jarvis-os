@@ -1,7 +1,7 @@
 // Core.MAG — Sovereign Multi-Agent Gateway.
 // Pure .jrv Rev 7.0 Substrate. Zero-Sugar Deterministic Grammar.
-module Core_MAG {
-    import Core_RCU;
+module Core.MAG {
+    import Core.RCU;
 
     const MAX_AGENTS = 1024;
     const AGENT_STATUS_ACTIVE = 1;
@@ -19,17 +19,21 @@ module Core_MAG {
     func register_agent(name: String) -> I32 {
         budget { power: 1000_nj }
 
-        branch(active_agent_count == MAX_AGENTS, 
-            func() { yield(ERR_REGISTRY_FULL) },
+        // LOCK-FREE SLOT ALLOCATION
+        bind(id, atomic_add(active_agent_count, 1));
+        
+        branch(id >= MAX_AGENTS, 
+            func() { 
+                atomic_add(active_agent_count, -1); // Rollback
+                yield(ERR_REGISTRY_FULL) 
+            },
             func() {
-                bind(id, active_agent_count);
                 agent_registry[id] = Agent {
                     id: id,
                     name: name,
                     status: AGENT_STATUS_ACTIVE,
-                    last_epoch: Core_RCU.get_epoch()
+                    last_epoch: Core.RCU.get_epoch()
                 };
-                atomic_add(active_agent_count, 1);
                 yield(id)
             }
         )
@@ -45,25 +49,26 @@ module Core_MAG {
     func dispatch(msg: Message) -> Bool {
         budget { power: 2500_nj }
 
-        Core_RCU.enter_read();
+        Core.RCU.enter_read();
         
         bind(target_id, msg.target_id);
         
-        branch(target_id == MAX_AGENTS,
+        // FIX: Insufficient bounds check (was ==, now >=)
+        branch(target_id >= MAX_AGENTS,
             func() { 
-                Core_RCU.exit_read(); 
+                Core.RCU.exit_read(); 
                 yield(false) 
             },
             func() {
                 bind(target_agent, agent_registry[target_id]);
                 branch(target_agent.status != AGENT_STATUS_ACTIVE,
                     func() { 
-                        Core_RCU.exit_read(); 
+                        Core.RCU.exit_read(); 
                         yield(false) 
                     },
                     func() {
                         push_stream(target_agent.stream_ptr, msg);
-                        Core_RCU.exit_read();
+                        Core.RCU.exit_read();
                         yield(true)
                     }
                 )
