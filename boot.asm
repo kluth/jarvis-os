@@ -1,8 +1,11 @@
 ; ==========================================================
-; JARVIS OS - Aetheris Spatial Interface v15 (PIXEL-PERFECT)
+; JARVIS OS - Sovereign Minimal Bootloader (Rev 7.0)
 ; ----------------------------------------------------------
-; Resolution: 1280x1024x24
-; Methodology: Formal CSS Specification Synchronization
+; This is a minimal Stage-1 loader. Its ONLY job is to:
+; 1. Set VBE mode 0x11b (1280x1024x24).
+; 2. Enter 32-bit Protected Mode.
+; 3. Jump to the JRV-compiled Kernel Entry Point.
+; ALL UI rendering and logic is handled by pure JRV.
 ; ==========================================================
 
 [org 0x7c00]
@@ -17,14 +20,7 @@ start:
     mov sp, 0x7c00
     sti
 
-    mov ah, 0x02
-    mov al, 32
-    mov ch, 0
-    mov cl, 2
-    mov dh, 0
-    mov bx, 0x7e00
-    int 0x13
-
+    ; 1. Query and Set VBE 1280x1024x24 (LFB)
     mov ax, 0x4f01
     mov cx, 0x11b
     mov di, 0x9000
@@ -34,6 +30,7 @@ start:
     mov bx, 0x411b
     int 0x10
 
+    ; 2. Enter Protected Mode
     cli
     in al, 0x92
     or al, 2
@@ -42,7 +39,7 @@ start:
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-    jmp 0x08:start32
+    jmp 0x08:kernel_entry
 
 gdt_start:
     dq 0
@@ -59,7 +56,7 @@ times 510-($-$$) db 0
 dw 0xaa55
 
 [bits 32]
-start32:
+kernel_entry:
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -67,110 +64,9 @@ start32:
     mov gs, ax
     mov ss, ax
     mov esp, 0x90000
-    xor ebp, ebp
 
-render_loop:
-    inc ebp
-    mov edi, [0x9028]       ; LFB
-    xor esi, esi
-
-.y_loop:
-    xor ebx, ebx
-
-.x_loop:
-    ; 1. Surface Background (#131313)
-    mov eax, 0x00131313
-
-    ; 2. Spatial Grid (64px interval, #353534)
-    test ebx, 63
-    jz .grid_hit
-    test esi, 63
-    jnz .L2
-.grid_hit:
-    mov eax, 0x00343535
-
-.L2:
-    ; 3. Thought Core (Absolute Center: 640, 512, r=128)
-    mov ecx, ebx
-    sub ecx, 640
-    imul ecx, ecx
-    mov edx, esi
-    sub edx, 512
-    imul edx, edx
-    add ecx, edx
-
-    cmp ecx, 16384          ; r=128
-    jg .panels
-    
-    ; Primary Glow (#c3f5ff)
-    mov eax, 0x00fff5c3
-    cmp ecx, 14400          ; r=120
-    jge .draw
-    mov eax, 0x00131313     ; Center substrate
-    jmp .draw
-
-.panels:
-    ; 4. Glass Panels (#131313 with #3b494c outline)
-    ; Health: 128..448, 128..448
-    cmp ebx, 128
-    jl .p_spectrogram
-    cmp ebx, 448
-    jge .p_spectrogram
-    cmp esi, 128
-    jl .p_spectrogram
-    cmp esi, 448
-    jge .p_spectrogram
-    mov eax, 0x00131313
-    cmp ebx, 130
-    jle .p_border
-    cmp ebx, 446
-    jge .p_border
-    cmp esi, 130
-    jle .p_border
-    cmp esi, 446
-    jge .p_border
-    jmp .draw
-
-.p_spectrogram:
-    ; Spectrogram: 832..1152, 576..896
-    cmp ebx, 832
-    jl .draw
-    cmp ebx, 1152
-    jge .draw
-    cmp esi, 576
-    jl .draw
-    cmp esi, 896
-    jge .draw
-    mov eax, 0x00131313
-    cmp ebx, 834
-    jle .p_border
-    cmp ebx, 1150
-    jge .p_border
-    cmp esi, 578
-    jle .p_border
-    cmp esi, 894
-    jge .p_border
-    jmp .draw
-
-.p_border:
-    mov eax, 0x004c493b
-
-.draw:
-    stosw
-    shr eax, 16
-    stosb
-    inc ebx
-    cmp ebx, 1280
-    jl .x_loop
-    inc esi
-    cmp esi, 1024
-    jl .y_loop
-
-    mov edx, 0x3DA
-.wait:
-    in al, dx
-    test al, 8
-    jz .wait
-    jmp render_loop
+    ; 3. Jump to the JRV Kernel (Assuming loaded at 0x10000 by jrvc payload)
+    ; In a real deployment, jrvc generates the machine code.
+    jmp 0x10000
 
 times 16896-($-$$) db 0

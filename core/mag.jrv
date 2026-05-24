@@ -34,6 +34,10 @@ module Core.MAG {
                     status: AGENT_STATUS_ACTIVE,
                     last_epoch: Core.RCU.get_epoch()
                 };
+                
+                // PUSH TELEMETRY: Active Agent Count to 0x8000
+                volatile write_i32(0x8000, active_agent_count + 1);
+                
                 yield(id)
             }
         )
@@ -74,5 +78,15 @@ module Core.MAG {
                 )
             }
         )
+    }
+
+    func cycle() {
+        budget { power: 5000_nj }
+
+        Core.RCU.rotate_epoch();
+        
+        // PUSH TELEMETRY: Total system energy (Budget-based proxy)
+        // Static upper bound summed from all active substrate modules.
+        volatile write_i32(0x800C, 105100); 
     }
 }
