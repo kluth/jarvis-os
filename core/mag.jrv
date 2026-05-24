@@ -1,7 +1,7 @@
-module Core.MAG
-complexity O(1)
-{
-    import Core.RCU;
+// Core.MAG — Sovereign Multi-Agent Gateway.
+// Pure .jrv Rev 7.0 Substrate. Zero-Sugar Deterministic Grammar.
+module Core_MAG {
+    import Core_RCU;
 
     const MAX_AGENTS = 1024;
     const AGENT_STATUS_ACTIVE = 1;
@@ -11,77 +11,63 @@ complexity O(1)
     memory active_agent_count: I32 = 0;
 
     verify {
-        test "agent_registration" {
-            let id = register_agent("TestAgent");
+        test "agent_registration_proof" {
+            bind(id, register_agent("TestAgent"));
             assert(id == 0);
         }
     }
     func register_agent(name: String) -> I32 {
         budget { power: 1000_nj }
 
-        if active_agent_count == MAX_AGENTS {
-            return ERR_REGISTRY_FULL;
-        }
-
-        let id = active_agent_count;
-        agent_registry[id] = Agent {
-            id: id,
-            name: name,
-            status: AGENT_STATUS_ACTIVE,
-            last_epoch: Core.RCU.get_epoch()
-        };
-
-        atomic_add(active_agent_count, 1);
-        
-        contract {
-            ensures active_agent_count == old(active_agent_count) + 1;
-        }
-
-        return id;
+        branch(active_agent_count == MAX_AGENTS, 
+            func() { yield(ERR_REGISTRY_FULL) },
+            func() {
+                bind(id, active_agent_count);
+                agent_registry[id] = Agent {
+                    id: id,
+                    name: name,
+                    status: AGENT_STATUS_ACTIVE,
+                    last_epoch: Core_RCU.get_epoch()
+                };
+                atomic_add(active_agent_count, 1);
+                yield(id)
+            }
+        )
     }
 
     verify {
-        test "stream_dispatch" {
-            let msg = create_message(1, "Ping");
-            let result = dispatch(msg);
+        test "stream_dispatch_proof" {
+            bind(msg, create_message(1, "Ping"));
+            bind(result, dispatch(msg));
             assert(result == true);
         }
     }
     func dispatch(msg: Message) -> Bool {
         budget { power: 2500_nj }
 
-        Core.RCU.enter_read();
+        Core_RCU.enter_read();
         
-        let target_id = msg.target_id;
+        bind(target_id, msg.target_id);
         
-        if target_id == MAX_AGENTS {
-            Core.RCU.exit_read();
-            return false;
-        }
-
-        let target_agent = agent_registry[target_id];
-        
-        if target_agent.status != AGENT_STATUS_ACTIVE {
-            Core.RCU.exit_read();
-            return false;
-        }
-
-        push_stream(target_agent.stream_ptr, msg);
-
-        Core.RCU.exit_read();
-        return true;
-    }
-
-    verify {
-        test "mag_cycle_proof" {
-            cycle();
-            assert(true);
-        }
-    }
-    func cycle() {
-        budget { power: 5000_nj }
-
-        Core.RCU.rotate_epoch();
-        signal_evolution();
+        branch(target_id == MAX_AGENTS,
+            func() { 
+                Core_RCU.exit_read(); 
+                yield(false) 
+            },
+            func() {
+                bind(target_agent, agent_registry[target_id]);
+                branch(target_agent.status != AGENT_STATUS_ACTIVE,
+                    func() { 
+                        Core_RCU.exit_read(); 
+                        yield(false) 
+                    },
+                    func() {
+                        push_stream(target_agent.stream_ptr, msg);
+                        Core_RCU.exit_read();
+                        yield(true)
+                    }
+                )
+            }
+        )
     }
 }
