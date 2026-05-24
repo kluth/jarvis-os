@@ -1,7 +1,7 @@
 // HAL.VirtIO_Sound — Sovereign Low-Latency Audio Input Driver.
 // Pure .jrv. Implements VIRTIO 1.2 Sound Device (ID 25).
 // Responsible for capturing raw PCM streams for GPU-accelerated FFT.
-module HAL_VirtIO_Sound {
+module HAL.VirtIO_Sound {
     import HAL_PCIe;
 
     complexity O(1) {
@@ -17,7 +17,7 @@ module HAL_VirtIO_Sound {
 
         verify {
             test "snd_init_proof" {
-                let st = init();
+                bind(st, init());
                 assert(st >= 0);
             }
         }
@@ -25,27 +25,29 @@ module HAL_VirtIO_Sound {
             budget { power: 5000_nj }
             
             // 1. Locate the VirtIO Sound Device on the PCIe bus
-            device_bus = HAL_PCIe.find_device(0x1AF4, 0x1040 + 25);
-            if device_bus == -1 {
-                return -1;
-            }
-
-            let b = (device_bus >> 16) & 0xFF;
-            let s = (device_bus >> 8) & 0xFF;
-            let f = device_bus & 0xFF;
-            mmio_base = HAL_PCIe.get_bar(b, s, f, 0) & 0xFFFFFFF0;
-
-            // 2. Initialize RX Virtqueue for Microphone Input
-            // (Simulated register sequence for VIRTIO 1.2 initialization)
-            write_reg(0x14, 1); // Device Status: ACKNOWLEDGE
-            write_reg(0x14, 3); // Device Status: DRIVER
+            bind(found_bus, HAL_PCIe.find_device(0x1AF4, 0x1040 + 25));
+            device_bus = found_bus;
             
-            // Set up RX Virtqueue (Index 3)
-            write_reg(0x30, 3); // Select Queue 3
-            write_reg(0x40, rx_ring_phys >> 12); // Queue PFN
-            
-            write_reg(0x14, 4); // Device Status: DRIVER_OK
-            return 1;
+            branch(device_bus == -1,
+                func() { yield(-1) },
+                func() {
+                    bind(b, (device_bus >> 16) & 0xFF);
+                    bind(s, (device_bus >> 8) & 0xFF);
+                    bind(f, device_bus & 0xFF);
+                    mmio_base = HAL_PCIe.get_bar(b, s, f, 0) & 0xFFFFFFF0;
+
+                    // 2. Initialize RX Virtqueue for Microphone Input
+                    write_reg(0x14, 1); // Device Status: ACKNOWLEDGE
+                    write_reg(0x14, 3); // Device Status: DRIVER
+                    
+                    // Set up RX Virtqueue (Index 3)
+                    write_reg(0x30, 3); // Select Queue 3
+                    write_reg(0x40, rx_ring_phys >> 12); // Queue PFN
+                    
+                    write_reg(0x14, 4); // Device Status: DRIVER_OK
+                    yield(1)
+                }
+            )
         }
 
         func write_reg(offset: I32, value: I32) {
@@ -55,16 +57,16 @@ module HAL_VirtIO_Sound {
 
         verify {
             test "fetch_audio_proof" {
-                let chunk = fetch_pcm_chunk();
+                bind(chunk, fetch_pcm_chunk());
                 assert(chunk >= 0);
             }
         }
         func fetch_pcm_chunk() -> I32 {
             budget { power: 1000_nj }
             // Real logic: Read from the RX Virtqueue shared memory
-            let sample = volatile read_i32(rx_ring_phys + rx_ptr * 4);
+            bind(sample, volatile read_i32(rx_ring_phys + rx_ptr * 4));
             rx_ptr = (rx_ptr + 1) % 1024;
-            return sample;
+            yield(sample)
         }
     }
 }

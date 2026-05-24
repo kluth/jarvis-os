@@ -1,12 +1,12 @@
-// System.EvolutionLoop — Sovereign Self-Healing & Optimization Engine.
+// System.Evolution — Sovereign Self-Healing & Optimization Engine.
 // Pure .jrv Rev 7.0 Substrate. Consumes structured Fix Plans from the Verifier.
-module System_EvolutionLoop {
-    import Core_WasmRuntime;
-    import Core_MAG;
+module System.Evolution {
+    import Core.WasmRuntime;
+    import Core.MAG;
 
-    complexity O(1) {
+    complexity O(N) {
         memory violation_count: I32 = 0
-        memory healing_active: Bool = false
+        memory healing_lock: I32 = 0 // 0: Idle, 1: Locked
 
         verify {
             test "evolution_init_proof" {
@@ -21,16 +21,15 @@ module System_EvolutionLoop {
         func process_violation(fix_plan_ptr: I32) {
             budget { power: 100000_nj }
             
-            branch(healing_active,
+            // FIX: RACE CONDITION (Use atomic test-and-set)
+            branch(atomic_exchange(healing_lock, 1) == 1,
                 func() { yield() }, // Already healing
                 func() {
-                    healing_active = true;
-                    
                     // 1. Initialize Sandboxed Pre-Flight Environment
-                    bind(sandbox_id, Core_WasmRuntime.create_instance());
+                    bind(sandbox_id, Core.WasmRuntime.create_instance());
                     
                     // 2. Load and Verify Fix Plan in Sandbox
-                    bind(success, Core_WasmRuntime.execute(sandbox_id, fix_plan_ptr));
+                    bind(success, Core.WasmRuntime.execute(sandbox_id, fix_plan_ptr));
                     
                     branch(success,
                         func() {
@@ -44,7 +43,7 @@ module System_EvolutionLoop {
                         }
                     )
                     
-                    healing_active = false;
+                    atomic_set(healing_lock, 0); // Release lock
                 }
             )
         }
