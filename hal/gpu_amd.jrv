@@ -96,5 +96,15 @@ module HAL_GPU_AMD {
             submit_packet(mmVGT_PRIMITIVE_TYPE);
             submit_packet(p_type);
         }
+
+        func dispatch_compute(shader_id: I32, buffer_addr: I32) {
+            budget { power: 8000_nj }
+            // PM4: DISPATCH_DIRECT (0x15)
+            let pkt_hdr = (3 << 30) | (3 << 16) | (0x15 << 8);
+            submit_packet(pkt_hdr);
+            submit_packet(shader_id);   // Compiled FFT Shader ISA
+            submit_packet(buffer_addr); // Source PCM buffer
+            submit_packet(0x00000001); // Thread groups
+        }
     }
 }
