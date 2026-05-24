@@ -47,15 +47,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install QEMU
-        run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
+      - name: Install Dependencies (QEMU & AArch64 Libs)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
 
       - name: Build Sovereign Payload
-        run: ./scripts/build.sh
+        run: |
+          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
+          # Need to make jrvc arch-aware or wrap it
+          # For now, manually using qemu-aarch64-static -L /usr/aarch64-linux-gnu ./jrvc
+          # Better: Update scripts/build.sh to be arch-aware like validate.sh
+          ./scripts/build.sh
 
       - name: Run Integration Test
         run: |
-          # Note: Basic test until direct-boot issues are resolved in jrvc
           timeout 10s qemu-system-x86_64 \
             -kernel jarvis-os.img \
             -machine ${{ matrix.machine }} \
@@ -74,8 +80,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Install Dependencies (QEMU & AArch64 Libs)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
+
       - name: Build Sovereign Payload
-        run: ./scripts/build.sh
+        run: |
+          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
+          ./scripts/build.sh
 
       - name: Set up QEMU for multi-arch
         uses: docker/setup-qemu-action@v3
