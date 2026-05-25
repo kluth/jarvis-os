@@ -54,7 +54,8 @@ impl TtsEngine for SoftwareTts {
                 let harmonic = (t * freq * 2.0 * core::f32::consts::TAU).sin() * self.volume * 0.3 * envelope;
                 let mixed = sample + harmonic;
 
-                let clamped = (mixed * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+                let clamped =
+                    (mixed * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
 
                 if self.channels == 1 {
                     pcm.push(clamped);
