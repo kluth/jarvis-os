@@ -1,7 +1,6 @@
 use crate::storage::vfs::Result;
 use alloc::vec::Vec;
 use core::f32;
-use libm::F32Ext;
 
 /// The Text-to-Speech (TTS) engine trait.
 pub trait TtsEngine {
@@ -42,18 +41,18 @@ impl TtsEngine for SoftwareTts {
 
         for (idx, ch) in text.bytes().enumerate() {
             // Base frequency from character value (200-1200 Hz range)
-            let base_freq = 200.0 + (ch as f32).fract() * 4.0;
+            let base_freq = 200.0 + libm::fmodf(ch as f32, 1.0) * 4.0;
             // Frequency modulation for natural variation
             let freq = base_freq + (idx as f32 * 1.5) % 100.0;
 
             for i in 0..samples_per_char {
                 let t = i as f32 / self.sample_rate as f32;
                 let envelope = 1.0 - (i as f32 / samples_per_char as f32); // Linear decay
-                let sample = (t * freq * core::f32::consts::TAU).sin() * self.volume * envelope;
+                let sample = libm::sinf(t * freq * core::f32::consts::TAU) * self.volume * envelope;
 
                 // Apply slight harmonic for richness
                 let harmonic =
-                    (t * freq * 2.0 * core::f32::consts::TAU).sin() * self.volume * 0.3 * envelope;
+                    libm::sinf(t * freq * 2.0 * core::f32::consts::TAU) * self.volume * 0.3 * envelope;
                 let mixed = sample + harmonic;
 
                 let clamped =
