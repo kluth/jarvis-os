@@ -97,10 +97,10 @@ pub struct TtsManager {
 
 impl TtsManager {
     pub fn new() -> Self {
-        let mut manager = Self::default();
         // Auto-inject the software TTS as default fallback
-        manager.engine = Some(alloc::boxed::Box::new(SoftwareTts::new()));
-        manager
+        Self {
+            engine: Some(alloc::boxed::Box::new(SoftwareTts::new())),
+        }
     }
 
     pub fn set_engine(&mut self, engine: alloc::boxed::Box<dyn TtsEngine>) {
