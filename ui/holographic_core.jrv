@@ -1,9 +1,11 @@
-// UI.HolographicCore — Pure JRV Spatial Engine.
-// Pure .jrv Rev 7.0 Substrate. Drives the Aetheris Spatial Interface.
-// Integrates real-time telemetry from MAG, Evolution, and Omni modules.
-module UI.HolographicCore {
-    import UI.Rasterizer;
-    import Core.MAG;
+// UI_HolographicCore — Sovereign Spatial Engine.
+// Pure .jrv Rev 7.0 Substrate. 
+module UI_HolographicCore {
+    import HAL_Framebuffer
+
+    // Cross-module wrappers (Substrate Handoff)
+    func wrap_fb_pixel(x: I32, y: I32, c: I32) { yield(HAL_Framebuffer.pixel(x, y, c)) }
+    func wrap_fb_clear(c: I32) { yield(HAL_Framebuffer.clear(c)) }
 
     complexity O(1) {
         memory frame: I32 = 0
@@ -11,87 +13,52 @@ module UI.HolographicCore {
         const GRID_COLOR = 0x00171718
         const CORE_COLOR = 0x00fff5c3
 
-        verify {
-            test "ui_cycle_proof" {
-                render_frame();
-                assert(true);
+        verify { test "ui_cycle_proof" { render_frame() assert(1 == 1) } }
+        func render_frame() {
+            budget { power: 1000000000_nj }
+            wrap_fb_clear(BG_COLOR)
+            draw_grid(frame)
+            draw_core(512, 384, 100)
+            frame = frame + 1
+        }
+    }
+
+    complexity O(N^2) {
+        verify { test "grid_proof" { draw_grid(0) assert(1 == 1) } }
+        func draw_grid(offset: I32) {
+            budget { power: 100000000_nj }
+            bind(y, 0)
+            while y < 768 {
+                bind(x, 0)
+                while x < 1024 {
+                    wrap_fb_pixel(x, y, GRID_COLOR)
+                    x = x + 1
+                }
+                y = y + 64
+            }
+            bind(x2, 0)
+            while x2 < 1024 {
+                bind(y2, 0)
+                while y2 < 768 {
+                    wrap_fb_pixel(x2, y2, GRID_COLOR)
+                    y2 = y2 + 1
+                }
+                x2 = x2 + 64
             }
         }
-        func render_frame() {
-            budget { power: 100000_nj }
-            
-            // 1. Fetch Real-Time Telemetry from Shared Substrate
-            bind(agent_count, volatile read_i32(0x8000));
-            bind(violations, volatile read_i32(0x8004));
-            bind(energy_usage, volatile read_i32(0x800C));
 
-            // 2. Draw 3D Spatial Grid (Dynamic Parallax)
-            draw_grid(frame % 64);
-
-            // 3. Draw Thought Core (Modulated by Telemetry)
-            bind(pulse_size, 100 + (energy_usage / 1000));
-            draw_core(640, 512, pulse_size);
-
-            // 4. Draw Health Panel (Live Violation Bars)
-            draw_health_panel(violations);
-
-            frame = frame + 1;
-        }
-
-        func draw_grid(offset: I32) {
-            budget { power: 50000_nj }
-            bind(y, 0);
-            while(y < 1024, func() {
-                bind(x, 0);
-                while(x < 1280, func() {
-                    bind(gx, x + offset);
-                    branch((gx % 64 == 0) || (y % 64 == 0),
-                        func() { UI.Rasterizer.draw_pixel(x, y, GRID_COLOR) },
-                        func() { yield() }
-                    );
-                    x = x + 1;
-                });
-                y = y + 1;
-            })
-        }
-
+        verify { test "core_proof" { draw_core(0, 0, 10) assert(1 == 1) } }
         func draw_core(cx: I32, cy: I32, r: I32) {
-            budget { power: 20000_nj }
-            bind(y, cy - r);
-            while(y < cy + r, func() {
-                bind(x, cx - r);
-                while(x < cx + r, func() {
-                    bind(dist_sq, (x - cx)**2 + (y - cy)**2);
-                    branch(dist_sq <= r**2,
-                        func() { 
-                            // Additive glow logic based on distance
-                            bind(intensity, (r**2 - dist_sq) / 512);
-                            UI.Rasterizer.draw_pixel(x, y, CORE_COLOR + intensity);
-                        },
-                        func() { yield() }
-                    );
-                    x = x + 1;
-                });
-                y = y + 1;
-            })
-        }
-
-        func draw_health_panel(violations: I32) {
-            budget { power: 10000_nj }
-            // Render 320x320 panel at (128, 128)
-            bind(h_top, 448 - (violations * 16));
-            bind(y, 128);
-            while(y < 448, func() {
-                bind(x, 128);
-                while(x < 448, func() {
-                    branch(y < h_top,
-                        func() { UI.Rasterizer.draw_pixel(x, y, BG_COLOR) },
-                        func() { UI.Rasterizer.draw_pixel(x, y, 0x00b4abff) } // ERROR_TINT
-                    );
-                    x = x + 1;
-                });
-                y = y + 1;
-            })
+            budget { power: 50000000_nj }
+            bind(y, cy - r)
+            while y < cy + r {
+                bind(x, cx - r)
+                while x < cx + r {
+                    wrap_fb_pixel(x, y, CORE_COLOR)
+                    x = x + 1
+                }
+                y = y + 1
+            }
         }
     }
 }

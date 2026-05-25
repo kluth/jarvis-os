@@ -1,183 +1,42 @@
-// HAL.Framebuffer — Sovereign VBE 800x600x24bpp linear framebuffer driver.
-// Pure .jrv. Typed primitive draw API (pixel, rect, rect_border, circle, ring,
-// line_h, add_blend) over the VBE 0x115 BGR24 LFB. Replaces hand-written
-// Stage-2 boot.asm pixel work.
+// HAL_Framebuffer — Sovereign VBE 1024x768x32bpp linear framebuffer driver.
+// Pure _jrv. 
 module HAL_Framebuffer {
-    complexity O(N) {
-        struct LfbView {
-            base: I32,
-            stride: I32,
-            width: I32,
-            height: I32
-        }
+    const LFB_BASE   = 0xFD000000
+    const LFB_WIDTH  = 1024
+    const LFB_HEIGHT = 768
 
-        struct Color {
-            r: I32,
-            g: I32,
-            b: I32
-        }
-
-        const LFB_BASE   = 0xFD000000;
-        const LFB_STRIDE = 2400;
-        const LFB_WIDTH  = 800;
-        const LFB_HEIGHT = 600;
-
-        memory frame_count: I32 = 0;
-
-        verify {
-            test "fb_init_proof" {
-                let st = init();
-                assert(st == 1);
-            }
-        }
+    complexity O(1) {
+        verify { test "init_proof" { bind(st, init()) assert(st == 1) } }
         func init() -> I32 {
             budget { power: 2000_nj }
-            // LFB geometry is sourced from Boot.Handoff in production.
-            // The values above are the QEMU `-vga std` defaults at 0x115.
-            contract { ensures result == 1; }
-            return 1;
+            yield(1)
         }
 
-        verify {
-            test "fb_view_proof" {
-                let v = view();
-                assert(v.width == 800);
-                assert(v.height == 600);
-            }
+        verify { test "pixel_proof" { bind(n, pixel(0, 0, 0x00FF0000)) assert(n == 1) } }
+        func pixel(x: I32, y: I32, color: I32) -> I32 {
+            budget { power: 500_nj }
+            // 32bpp: 4 bytes per pixel. offset = (y * width + x) * 4
+            bind(offset, (y * 1024 + x) * 4)
+            bind(addr, 0xFD000000 + offset)
+            volatile write(addr, color)
+            yield(1)
         }
-        func view() -> LfbView {
-            budget { power: 50_nj }
-            let v = LfbView { base: 0xFD000000, stride: 2400, width: 800, height: 600 };
-            return v;
-        }
+    }
 
-        verify {
-            test "fb_pixel_bgr24_proof" {
-                let n = pixel(0, 0, 243, 218, 0);
-                assert(n == 1);
-            }
-        }
-        func pixel(x: I32, y: I32, r: I32, g: I32, b: I32) -> I32 {
-            budget { power: 200_nj }
-            let offset = 0xFD000000 + y * 2400 + x * 3;
-            volatile write(offset, b);
-            volatile write(offset + 1, g);
-            volatile write(offset + 2, r);
-            return 1;
-        }
-
-        verify {
-            test "fb_rect_proof" {
-                let n = rect(0, 0, 8, 8, 14, 14, 14);
-                assert(n == 1);
-            }
-        }
-        func rect(x: I32, y: I32, w: I32, h: I32, r: I32, g: I32, b: I32) -> I32 {
-            budget { power: 8000_nj }
-            let row = 0;
-            while row < h {
-                let col = 0;
-                while col < w {
-                    pixel(x + col, y + row, r, g, b);
-                    col = col + 1;
+    complexity O(N^2) {
+        verify { test "clear_proof" { bind(n, clear(0)) assert(n == 1) } }
+        func clear(color: I32) -> I32 {
+            budget { power: 500000000_nj }
+            bind(y, 0)
+            while y < 768 {
+                bind(x, 0)
+                while x < 1024 {
+                    pixel(x, y, color)
+                    x = x + 1
                 }
-                row = row + 1;
+                y = y + 1
             }
-            return 1;
-        }
-
-        verify {
-            test "fb_rect_border_proof" {
-                let n = rect_border(0, 0, 16, 16, 0, 218, 243, 1);
-                assert(n == 1);
-            }
-        }
-        func rect_border(x: I32, y: I32, w: I32, h: I32, r: I32, g: I32, b: I32, t: I32) -> I32 {
-            budget { power: 4000_nj }
-            rect(x, y, w, t, r, g, b);
-            rect(x, y + h - t, w, t, r, g, b);
-            rect(x, y, t, h, r, g, b);
-            rect(x + w - t, y, t, h, r, g, b);
-            return 1;
-        }
-
-        verify {
-            test "fb_circle_proof" {
-                let n = circle(400, 280, 16, 0, 218, 243);
-                assert(n == 1);
-            }
-        }
-        func circle(cx: I32, cy: I32, radius: I32, r: I32, g: I32, b: I32) -> I32 {
-            budget { power: 12000_nj }
-            let rsq = radius * radius;
-            let dy = 0 - radius;
-            while dy <= radius {
-                let dx = 0 - radius;
-                while dx <= radius {
-                    let d = dx * dx + dy * dy;
-                    if d <= rsq {
-                        pixel(cx + dx, cy + dy, r, g, b);
-                    }
-                    dx = dx + 1;
-                }
-                dy = dy + 1;
-            }
-            return 1;
-        }
-
-        verify {
-            test "fb_ring_proof" {
-                let n = ring(400, 280, 20, 16, 0, 218, 243);
-                assert(n == 1);
-            }
-        }
-        func ring(cx: I32, cy: I32, r_outer: I32, r_inner: I32, r: I32, g: I32, b: I32) -> I32 {
-            budget { power: 14000_nj }
-            let ro2 = r_outer * r_outer;
-            let ri2 = r_inner * r_inner;
-            let dy = 0 - r_outer;
-            while dy <= r_outer {
-                let dx = 0 - r_outer;
-                while dx <= r_outer {
-                    let d = dx * dx + dy * dy;
-                    if d <= ro2 {
-                        if d >= ri2 {
-                            pixel(cx + dx, cy + dy, r, g, b);
-                        }
-                    }
-                    dx = dx + 1;
-                }
-                dy = dy + 1;
-            }
-            return 1;
-        }
-
-        verify {
-            test "fb_line_h_proof" {
-                let n = line_h(0, 300, 16, 0, 255, 255);
-                assert(n == 1);
-            }
-        }
-        func line_h(x: I32, y: I32, w: I32, r: I32, g: I32, b: I32) -> I32 {
-            budget { power: 2000_nj }
-            let col = 0;
-            while col < w {
-                pixel(x + col, y, r, g, b);
-                col = col + 1;
-            }
-            return 1;
-        }
-
-        verify {
-            test "fb_present_proof" {
-                let n = present();
-                assert(n >= 1);
-            }
-        }
-        func present() -> I32 {
-            budget { power: 100_nj }
-            atomic_add(frame_count, 1);
-            return frame_count;
+            yield(1)
         }
     }
 }

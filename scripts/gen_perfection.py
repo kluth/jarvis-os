@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 
-img = Image.open('design_v10_scaled.png').convert('RGB')
+img = Image.open('stitch_design.png').convert('RGB')
 arr = np.array(img)
 
 def color_to_asm(c):
