@@ -1,6 +1,7 @@
 use crate::storage::vfs::Result;
 use alloc::vec::Vec;
 use core::f32;
+use libm::F32Ext;
 
 /// The Text-to-Speech (TTS) engine trait.
 pub trait TtsEngine {
