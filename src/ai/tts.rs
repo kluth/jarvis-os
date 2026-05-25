@@ -51,8 +51,10 @@ impl TtsEngine for SoftwareTts {
                 let sample = libm::sinf(t * freq * core::f32::consts::TAU) * self.volume * envelope;
 
                 // Apply slight harmonic for richness
-                let harmonic =
-                    libm::sinf(t * freq * 2.0 * core::f32::consts::TAU) * self.volume * 0.3 * envelope;
+                let harmonic = libm::sinf(t * freq * 2.0 * core::f32::consts::TAU)
+                    * self.volume
+                    * 0.3
+                    * envelope;
                 let mixed = sample + harmonic;
 
                 let clamped =
