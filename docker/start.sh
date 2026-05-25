@@ -12,7 +12,7 @@ touch "$LOCKFILE"
 
 qemu-system-x86_64 \
     -m 1024 \
-    -drive format=raw,file=/app/jarvis-os.img \
+    -kernel /app/jarvis-os.img \
     -vnc 0.0.0.0:0 \
     -vga std \
     -net nic,model=virtio -net user \

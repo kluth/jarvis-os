@@ -27,10 +27,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Dependencies (NASM, QEMU & AArch64 Libs)
+      - name: Install Dependencies (QEMU & AArch64 Libs)
         run: |
           sudo apt-get update
-          sudo apt-get install -y nasm qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
+          sudo apt-get install -y qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
 
       - name: Run Validation Script (via QEMU)
         run: |
@@ -47,20 +47,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install NASM & QEMU
-        run: sudo apt-get update && sudo apt-get install -y nasm qemu-system-x86
-
-      - name: Build Boot Image
+      - name: Install Dependencies (QEMU & AArch64 Libs)
         run: |
-          nasm -f bin boot.asm -o boot.bin
-          # Create a 1.44MB floppy image
-          dd if=/dev/zero of=jarvis-os.img bs=1024 count=1440
-          dd if=boot.bin of=jarvis-os.img conv=notrunc
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
+
+      - name: Build Sovereign Payload
+        run: |
+          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
+          # Need to make jrvc arch-aware or wrap it
+          # For now, manually using qemu-aarch64-static -L /usr/aarch64-linux-gnu ./jrvc
+          # Better: Update scripts/build.sh to be arch-aware like validate.sh
+          ./scripts/build.sh
 
       - name: Run Integration Test
         run: |
           timeout 10s qemu-system-x86_64 \
-            -drive format=raw,file=jarvis-os.img \
+            -kernel jarvis-os.img \
             -machine ${{ matrix.machine }} \
             -display none \
             -serial stdio || [ $? -eq 124 ]
@@ -77,14 +80,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install NASM
-        run: sudo apt-get update && sudo apt-get install -y nasm
-
-      - name: Build Boot Image
+      - name: Install Dependencies (QEMU & AArch64 Libs)
         run: |
-          nasm -f bin boot.asm -o boot.bin
-          dd if=/dev/zero of=jarvis-os.img bs=1024 count=1440
-          dd if=boot.bin of=jarvis-os.img conv=notrunc
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
+
+      - name: Build Sovereign Payload
+        run: |
+          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
+          ./scripts/build.sh
 
       - name: Set up QEMU for multi-arch
         uses: docker/setup-qemu-action@v3
