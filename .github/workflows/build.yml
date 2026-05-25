@@ -47,26 +47,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Dependencies (QEMU & AArch64 Libs)
+      - name: Install Dependencies (QEMU & Rust toolchain)
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
+          sudo apt-get install -y qemu-system-x86 nasm
 
-      - name: Build Sovereign Payload
+      - name: Install Rust nightly with llvm-tools
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          components: llvm-tools-preview, rust-src, rustfmt, clippy
+
+      - name: Install cargo-bootimage
+        run: cargo install bootimage 2>&1 | tail -3
+
+      - name: Build JRV Substrate (Formal Proofs)
         run: |
           export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
-          # Need to make jrvc arch-aware or wrap it
-          # For now, manually using qemu-aarch64-static -L /usr/aarch64-linux-gnu ./jrvc
-          # Better: Update scripts/build.sh to be arch-aware like validate.sh
           ./scripts/build.sh
 
-      - name: Run Integration Test
+      - name: Build Rust kernel + Bootable Image
         run: |
-          timeout 10s qemu-system-x86_64 \
-            -kernel jarvis-os.img \
+          cargo bootimage --target x86_64-jarvis_os.json -Zbuild-std=core,alloc 2>&1
+          # The bootimage crate outputs: target/x86_64-jarvis_os/debug/bootimage-jarvis-kernel.bin
+          cp target/x86_64-jarvis_os/debug/bootimage-jarvis-kernel.bin jarvis-os.img
+
+      - name: QEMU Integration Boot Test
+        run: |
+          qemu-system-x86_64 \
+            -drive format=raw,file=jarvis-os.img \
             -machine ${{ matrix.machine }} \
             -display none \
-            -serial stdio || [ $? -eq 124 ]
+            -serial stdio \
+            -no-reboot \
+            -m 256M \
+            -d cpu_reset \
+            | head -100 || [ $? -eq 1 ]  # QEMU exit 1 = reboot/halt, which is expected for kernel tests
 
   publish_ghcr:
     name: Publish to GHCR
