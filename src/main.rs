@@ -64,18 +64,40 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     serial_println!("Status: Core memory initialized.");
 
-    // 5. Initialize Device Discovery
-    if let Some(rsdp_addr) = boot_info.rsdp_addr.into_option() {
-        jarvis_kernel::acpi::init(PhysAddr::new(rsdp_addr));
-    }
+    // 5. Initialize ACPI for hardware discovery
+    let rsdp_addr = boot_info.rsdp_addr.into_option();
+    jarvis_kernel::acpi::init(rsdp_addr, phys_mem_offset.as_u64());
+    serial_println!("Status: ACPI initialized.");
 
+    // 6. Initialize PCI subsystem (scans all buses, registers devices with DeviceManager)
     serial_println!("Scanning PCI bus...");
-    jarvis_kernel::pci::scan_bus();
+    jarvis_kernel::pci::init();
+
+    // 7. Initialize I2C subsystem (for DDC/EDID, sensor, audio, EC communication)
+    jarvis_kernel::i2c::init();
+    serial_println!("Status: I2C subsystem initialized.");
+
+    // 8. Probe and initialize all drivers
+    jarvis_kernel::device_manager::probe_all();
+    jarvis_kernel::device_manager::init_all();
+
+    // 8. Initialize GPU Subsystem
+    #[cfg(feature = "gui")]
+    {
+        use jarvis_kernel::gpu::GpuManager;
+        let mut gpu_manager = GpuManager::new();
+        gpu_manager.scan_pci();
+        let _ = gpu_manager.select_and_init(1280, 720);
+        serial_println!("GPU: {} display device(s) detected", gpu_manager.devices.len());
+        for dev in &gpu_manager.devices {
+            serial_println!("GPU:   - {}", dev.name);
+        }
+    }
 
     #[cfg(feature = "network")]
     jarvis_kernel::net::init();
 
-    // 6. Initialize Services
+    // 9. Initialize Services
     #[cfg(feature = "storage")]
     {
         use jarvis_kernel::storage;
@@ -84,7 +106,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         let mut _file = jfs.create("audio_log.raw").expect("Failed to create file");
     }
 
-    // 6. Start Multitasking
+    // 10. Start Multitasking
     let mut executor = Executor::new();
 
     #[cfg(feature = "storage")]
@@ -125,7 +147,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         executor.spawn(Task::new(net::onion::onion_task()));
     }
 
-    // 7. Initialize UI
+    // 11. Initialize UI
     #[cfg(feature = "gui")]
     gui::init_ui();
 
@@ -161,10 +183,10 @@ fn test_pci_discovery() {
     jarvis_kernel::serial_print!("test_pci_discovery... ");
     let devices = jarvis_kernel::device_manager::MANAGER.lock();
     assert!(
-        !devices.get_devices().is_empty(),
+        !devices.devices.is_empty(),
         "No devices registered in Device Manager"
     );
-    serial_println!("[ok] (found {} devices)", devices.get_devices().len());
+    serial_println!("[ok] (found {} devices)", devices.devices.len());
 }
 
 #[cfg(feature = "test")]

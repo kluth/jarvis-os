@@ -49,6 +49,10 @@ test = ["default"]
 
 [dev-dependencies]
 
+[package.metadata.bootloader]
+# Pin the bootloader version to match bootloader_api
+bootloader-version = "0.11.15"
+
 [profile.dev]
 panic = "abort"
 

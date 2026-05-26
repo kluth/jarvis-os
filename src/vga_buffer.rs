@@ -170,6 +170,16 @@ impl FramebufferWriter {
         self.info
     }
 
+    /// Get raw access to the framebuffer bytes (for compositing/post-processing)
+    pub fn raw_bytes(&self) -> &[u8] {
+        self.framebuffer
+    }
+
+    /// Get mutable raw access to the framebuffer bytes
+    pub fn raw_bytes_mut(&mut self) -> &mut [u8] {
+        self.framebuffer
+    }
+
     fn newline(&mut self) {
         self.y_pos += 16;
         self.x_pos = 0;

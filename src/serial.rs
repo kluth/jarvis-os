@@ -17,21 +17,12 @@ pub fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    // 1. Print to Serial (Always) and VGA (if enabled)
+    // Print only to Serial. GUI handles its own display via dedicated panels.
     interrupts::without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)
             .expect("Printing to serial failed");
-
-        #[cfg(feature = "gui")]
-        {
-            if let Some(mut writer) = crate::vga_buffer::WRITER.try_lock() {
-                if let Some(w) = writer.as_mut() {
-                    let _ = w.write_fmt(args);
-                }
-            }
-        }
     });
 }
 

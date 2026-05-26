@@ -63,7 +63,7 @@ impl VoiceShell {
                 self.respond("Hello. I am JARVIS. How can I help you?");
             }
             Intent::ListDevices => {
-                let count = device_manager::MANAGER.lock().get_devices().len();
+                let count = device_manager::MANAGER.lock().devices.len();
                 println!("JARVIS: Found {} devices in registry.", count);
                 self.respond("Displaying all discovered hardware on the HUD.");
             }
@@ -122,6 +122,7 @@ pub async fn shell_task() {
         //    shell.handle_command(&text);
         // }
 
-        core::future::ready(()).await;
+        // Yield to allow other tasks to run
+        crate::task::yield_now().await;
     }
 }

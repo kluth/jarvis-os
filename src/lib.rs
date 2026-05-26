@@ -13,11 +13,15 @@ pub mod allocator;
 pub mod apic;
 pub mod device_manager;
 pub mod gdt;
+pub mod i2c;
 #[cfg(feature = "gui")]
 pub mod gui;
 #[cfg(feature = "gui")]
 pub mod gui_3d;
+pub mod mem;
 pub mod interrupts;
+pub mod gpu;
+pub mod renderer;
 pub mod memory;
 #[cfg(feature = "network")]
 pub mod net;
