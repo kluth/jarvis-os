@@ -16,6 +16,11 @@ pub enum TelemetryData {
     },
     SystemStatus(&'static str),
     AIIntentDetected(&'static str),
+    Trace {
+        component: &'static str,
+        message: &'static str,
+        value: u64,
+    },
 }
 
 const BUFFER_SIZE: usize = 256;
@@ -59,6 +64,17 @@ lazy_static! {
 
 pub fn log(data: TelemetryData) {
     HUB.lock().log(data);
+}
+
+#[macro_export]
+macro_rules! trace {
+    ($comp:expr, $msg:expr, $val:expr) => {
+        $crate::telemetry::log($crate::telemetry::TelemetryData::Trace {
+            component: $comp,
+            message: $msg,
+            value: $val,
+        });
+    };
 }
 
 /// A background task that monitors system telemetry and reports critical states.
@@ -132,6 +148,17 @@ pub async fn telemetry_task() {
             }
 
             last_swarm_broadcast_tick = current_ticks;
+        }
+
+        // 3. Anomalous Pattern Detection (OBS-004)
+        if HUB.lock().get_latest(10).iter().any(|d| match d {
+            TelemetryData::CpuLoad(l) => *l > 95,
+            _ => false
+        }) {
+            crate::notifications::CENTER.push(
+                "ANOMALOUS CPU LOAD DETECTED",
+                crate::notifications::Priority::Critical,
+            );
         }
 
         // Yield to other tasks

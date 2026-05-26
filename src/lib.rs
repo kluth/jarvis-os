@@ -37,10 +37,12 @@ pub mod sensors;
 pub mod serial;
 #[cfg(feature = "storage")]
 pub mod storage;
+pub mod sync;
 pub mod task;
 #[cfg(feature = "telemetry")]
 pub mod telemetry;
 pub mod vga_buffer;
+pub mod wasm;
 
 pub use vga_buffer::WRITER;
 

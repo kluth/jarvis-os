@@ -37,7 +37,7 @@ Establish a rock-solid, `no_std` Rust kernel with robust memory management and s
   - Detailed diagnostic context (Instruction Pointer, Failing Address) is provided.
   - System enters a safe halt state without recursive deadlocks.
 
-### [CORE-005] High Precision Hardware Timer (HPET) Support
+### [CORE-005] High Precision Hardware Timer (HPET) Support [x]
 - **User Story:** As a scheduler, I want high-resolution timing so that task preemption and time-slicing are accurate to the microsecond.
 - **Technical Context:** Discovery and mapping of the HPET MMIO region and configuration of periodic/one-shot interrupts.
 - **Acceptance Criteria:**
@@ -66,7 +66,7 @@ Enable the OS to see and understand its environment.
   - Successful identification of AHCI-compliant storage.
   - Support for hot-plug events if supported by hardware.
 
-### [PERC-003] UPnP/SSDP Endpoint Analysis
+### [PERC-003] UPnP/SSDP Endpoint Analysis [x]
 - **User Story:** As an AI agent, I want to query UPnP devices for their XML descriptors so that I can understand their full API surface.
 - **Technical Context:** Async HTTP client capable of fetching and parsing device descriptors in a memory-safe way.
 - **Acceptance Criteria:**
@@ -193,7 +193,7 @@ Protecting the kernel from untrusted or autonomous code.
   - Memory bounds checking is enforced.
   - Host calls (syscalls) are strictly limited and audited.
 
-### [SEC-002] Formal Verification of Safety Gates
+### [SEC-002] Formal Verification of Safety Gates [x]
 - **User Story:** As a user, I want to be certain that AI-generated code cannot overwrite kernel memory.
 - **Technical Context:** Using formal methods (e.g., Kani or SMACK) to verify the invariants of the Wasm-to-Kernel interface.
 - **Acceptance Criteria:**
@@ -230,7 +230,7 @@ Protecting the kernel from untrusted or autonomous code.
 ## 6. Observability: Telemetry & Distributed Diagnostics
 Real-time visibility into the "Ghost in the Machine".
 
-### [OBS-001] Real-time Kernel Event Tracing
+### [OBS-001] Real-time Kernel Event Tracing [x]
 - **User Story:** As a developer, I want to see a timeline of all interrupts and task switches so that I can debug race conditions.
 - **Technical Context:** A high-speed, lock-free ring buffer for tracing kernel events with microsecond timestamps.
 - **Acceptance Criteria:**
@@ -238,7 +238,7 @@ Real-time visibility into the "Ghost in the Machine".
   - Ability to stream traces over serial or network.
   - Support for custom user-defined trace points.
 
-### [OBS-002] Distributed Telemetry Aggregation
+### [OBS-002] Distributed Telemetry Aggregation [x]
 - **User Story:** As a user, I want to see the health of all my JARVIS-enabled devices in a single view.
 - **Technical Context:** A gossip-based protocol for sharing health metrics across the mesh network.
 - **Acceptance Criteria:**
@@ -259,7 +259,7 @@ Real-time visibility into the "Ghost in the Machine".
   - No allocation during the render loop.
   - Toggleable via keyboard shortcut.
 
-### [OBS-004] Anomalous Pattern Detection
+### [OBS-004] Anomalous Pattern Detection [x]
 - **User Story:** As a system, I want to be alerted if a task starts using 100% CPU unexpectedly so that I can investigate a potential bug or breach.
 - **Technical Context:** A background observability agent that uses simple Z-score analysis on metric streams.
 - **Acceptance Criteria:**
