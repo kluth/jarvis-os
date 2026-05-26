@@ -609,11 +609,13 @@ pub fn init(rsdp_addr_opt: Option<u64>, phys_mem_offset: u64) {
                 None
             } else if rsdp.revision >= 2 {
                 let v2: &RsdpDescriptorV2 = ptr_at(rsdp_phys, phys_mem_offset);
-                crate::serial_println!("ACPI: Found XSDT (v2) at {:#018x}", v2.xsdt_address);
-                Some(v2.xsdt_address)
+                let xsdt_addr = v2.xsdt_address;
+                crate::serial_println!("ACPI: Found XSDT (v2) at {:#018x}", xsdt_addr);
+                Some(xsdt_addr)
             } else {
-                crate::serial_println!("ACPI: Found RSDT (v1) at {:#010x}", rsdp.rsdt_address);
-                Some(rsdp.rsdt_address as u64)
+                let rsdt_addr = rsdp.rsdt_address;
+                crate::serial_println!("ACPI: Found RSDT (v1) at {:#010x}", rsdt_addr);
+                Some(rsdt_addr as u64)
             }
         }
     } else {
