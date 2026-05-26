@@ -1,2 +1,9 @@
 /target
-Cargo.lock
+/node_modules
+*.log
+boot.bin
+jarvis-os.img
+output.elf
+mcp-bridge/node_modules
+mcp-bridge/dist
+.env

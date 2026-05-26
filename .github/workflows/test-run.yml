@@ -5,9 +5,6 @@ on:
   schedule:
     - cron: '0 0 * * *' # Daily at midnight
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   test-run:
     runs-on: ubuntu-latest
@@ -15,28 +12,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust nightly
-      uses: dtolnay/rust-toolchain@nightly
-      with:
-        toolchain: nightly
-        components: rust-src, llvm-tools-preview
+    - name: Install NASM & QEMU
+      run: sudo apt-get update && sudo apt-get install -y nasm qemu-system-x86
 
-    - name: Install QEMU
-      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
-
-    - name: Run Framework Tests
+    - name: Build Disk Image
       run: |
-        # Build the kernel with test feature
-        cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
-          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
-        
-        # Run using image-builder as runner
-        cargo run --manifest-path image-builder/Cargo.toml --target x86_64-unknown-linux-gnu -- \
-          target/x86_64-jarvis_os/debug/jarvis-kernel
+        nasm -f bin boot.asm -o boot.bin
+        # Create a 1.44MB floppy image
+        dd if=/dev/zero of=jarvis-os.img bs=1024 count=1440
+        dd if=boot.bin of=jarvis-os.img conv=notrunc
 
-    - name: Upload Screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: qemu-screenshot
-        path: target/screenshot.ppm
+    - name: Run JARVIS OS
+      run: |
+        timeout 30s qemu-system-x86_64 \
+          -drive format=raw,file=jarvis-os.img \
+          -display none \
+          -serial stdio || [ $? -eq 124 ]

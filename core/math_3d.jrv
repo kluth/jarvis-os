@@ -1,0 +1,68 @@
+// Core.Math3D — High-performance 3D linear algebra.
+// Pure .jrv. Implements 4x4 matrix transforms, perspective projection,
+// and vertex processing for the Aetheris Spatial Interface.
+module Core_Math3D
+complexity O(1)
+{
+    struct Vector3 {
+        x: F32,
+        y: F32,
+        z: F32
+    }
+
+    struct Matrix4x4 {
+        m: Array[F32, 16]
+    }
+
+    verify {
+        test "identity_proof" {
+            let mat = identity();
+            assert(mat.m[0] == 1.0);
+            assert(mat.m[5] == 1.0);
+        }
+    }
+    func identity() -> Matrix4x4 {
+        budget { power: 200_nj }
+        let mat = Matrix4x4 { m: [
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0
+        ] };
+        return mat;
+    }
+
+    func rotate_y(angle: F32) -> Matrix4x4 {
+        budget { power: 500_nj }
+        let s = sin(angle);
+        let c = cos(angle);
+        let mat = Matrix4x4 { m: [
+            c,   0.0, s,   0.0,
+            0.0, 1.0, 0.0, 0.0,
+            -s,  0.0, c,   0.0,
+            0.0, 0.0, 0.0, 1.0
+        ] };
+        return mat;
+    }
+
+    verify {
+        test "project_vertex_proof" {
+            let v = Vector3 { x: 1.0, y: 1.0, z: 10.0 };
+            let p = project(v, 1280, 1024);
+            assert(p.x > 0);
+        }
+    }
+    func project(v: Vector3, width: I32, height: I32) -> Vector3 {
+        budget { power: 1000_nj }
+        
+        // Perspective projection: P = d * (x/z, y/z)
+        // Adjust for viewport centering
+        let fov = 512.0;
+        let z_safe = v.z + 500.0; // Offset camera
+        
+        let px = (v.x * fov) / z_safe + (width / 2);
+        let py = (v.y * fov) / z_safe + (height / 2);
+        
+        return Vector3 { x: px, y: py, z: v.z };
+    }
+}

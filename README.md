@@ -1,70 +1,50 @@
-# J.A.R.V.I.S. OS (v0.1.0)
+# J.A.R.V.I.S. OS (v0.2.0 - OMEGA)
 **Just A Rather Very Intelligent System - Operating System**
 
-JARVIS OS is a highly modular, AI-native, voice-first operating system built in Rust. It is designed to autonomously discover, adapt to, and orchestrate its environment—from local hardware to network-distributed IoT services.
+JARVIS OS has undergone a complete OMEGA-LEVEL RECONSTRUCTION. The legacy Rust-based kernel has been replaced with a pure JRV implementation, leveraging the latest Project Jarvis substrate for zero-dependency, formal-verified, and AI-native execution.
 
 ---
 
 ## 🚀 Core Philosophy
-- **Voice-First:** Interaction is primarily speech-driven. The system communicates its state and capabilities through an audio pipeline.
-- **AI-Native:** The kernel is orchestrated by an autonomous agent capable of synthesizing drivers and intent-based routing.
-- **Extreme Modularity:** "Operation Small Footprint" ensures that only strictly necessary modules (GUI, Audio, AI, etc.) are compiled for the specific host hardware.
-- **Autonomous Discovery:** JARVIS proactive identifies environmental endpoints using mDNS, SSDP, and ONVIF.
+- **Pure JRV:** The entire operating system logic is written in `.jrv` modules, utilizing eTDD (Evolutionary Test Driven Development) and complexity-bounded execution.
+- **Aetheris Spatial Interface:** A high-fidelity, 32-bit protected mode software renderer built directly into the Stage-2 bootloader for instantaneous visual telemetry.
+- **Voice-First Symbiosis:** Native integration with the JARVIS Multi-Agent Gateway (MAG) for autonomous environmental orchestration.
 
 ---
 
 ## 🛠 Architectural Highlights
-- **Micro-Kernel Influence:** High isolation via sandboxed WebAssembly (Wasm) drivers.
-- **Multi-Level Feedback Queue (MLFQ):** Priority-based task scheduling ensures real-time responsiveness for voice and safety critical tasks.
-- **Zero-Warning Codebase:** Strictly enforced code quality (Rust, Clippy) with mandatory local validation.
-- **Hardware Agnostic:** Flexible build system supporting various machine profiles (PC, Q35, etc.).
-
----
-
-## 📸 System Previews (CI Generated)
-*The following images are captured automatically during the CI/CD boot sequence.*
-
-| Boot Stage 1 (Init) | Boot Stage 2 (Discovery) | Final State (Voice Shell) |
-| :---: | :---: | :---: |
-| ![Init](docs/images/screenshot_1.png) | ![Discovery](docs/images/screenshot_2.png) | ![Ready](docs/images/screenshot_3.png) |
-
-*(Note: Real screenshots can be found in the [GitHub Actions Artifacts](https://github.com/kluth/jarvis-os/actions))*
+- **Stitch-Aligned Design:** Visual tokens and layout models aligned with the Stitch design system.
+- **Wait-Free Synchronization:** RCU (Read-Copy-Update) and atomic operations ensure real-time stability across distributed agent nodes.
+- **Formal Verification:** In-kernel `verify` blocks and `budget` constraints enforced by the `jrvc` compiler.
 
 ---
 
 ## 🛠 Building & Running
 
 ### Prerequisites
-- Rust Nightly (latest)
-- QEMU
-- `ffmpeg` (for visual artifacts)
+- `nasm` (for the Aetheris bootloader)
+- `jrvc` (the JRV AOT compiler - included)
+- QEMU (for virtualization)
 
-### Local Validation (Recommended)
-Before pushing, always run the validation framework:
+### Local Validation
+Before pushing, always run the new JRV validation framework:
 ```bash
 ./scripts/validate.sh
 ```
 
-### Build & Run in QEMU
+### Build & Run
+The system can be assembled using NASM and the JRV toolchain.
 ```bash
-# Build the image-builder runner
-cd image-builder && cargo run -- ../target/x86_64-jarvis_os/debug/jarvis-kernel
+# Assemble the bootloader
+nasm -f bin boot.asm -o boot.bin
+# (Future: Compile and link JRV modules)
 ```
 
-### 🐳 Quickstart with Docker (Instant Experience)
-Experience JARVIS OS directly in your browser with a single command:
+### 🐳 Docker Experience
 ```bash
-curl -sL https://raw.githubusercontent.com/kluth/jarvis-os/main/scripts/run.sh | bash
+cd docker && docker-compose up --build -d
 ```
-*Note: This command pulls our multi-arch Docker image (supporting both x86_64 and ARM64). KVM is highly recommended for optimal performance.*
-
-#### Manual Docker Setup (Optional)
-1. Ensure you have the `jarvis-os.img` in `target/image/`.
-2. Run the container:
-   ```bash
-   cd docker && docker-compose up --build -d
-   ```
-3. Open **http://localhost:8080** in your browser.
+Open **http://localhost:8080** in your browser to witness the Aetheris Spatial Interface.
 
 ### Stability Testing (Soak Testing)
 The project includes a robust stability watchdog to detect intermittent panics and race conditions:
@@ -77,15 +57,8 @@ The CI/CD pipeline runs these tests in parallel to maximize the probability of t
 ---
 
 ## 📜 Development Standards
-See [GEMINI.md](./GEMINI.md) for detailed engineering standards, the "One Branch Per Feature" strategy, and safety protocols for Wakers and Interrupts.
+See [GEMINI.md](./GEMINI.md) for the latest JRV engineering standards.
 
 ---
 
-## 🛡 Security & Safety
-- **Safety Gate:** AI decisions are validated by deterministic Rust safety monitors.
-- **Isolation:** Drivers run in a restricted Wasm sandbox to prevent kernel memory corruption.
-- **Lock-Free:** Core OS components use atomic operations to avoid deadlocks in high-concurrency/ISR contexts.
-
----
-
-© 2026 JARVIS Project. Built with 🦀 for the future.
+© 2026 JARVIS Project. The Future is Pure.

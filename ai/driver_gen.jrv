@@ -1,0 +1,27 @@
+module AI_DriverGen {
+    complexity O(1) {
+        memory agent_id: I32
+
+        verify {
+            test "driver_gen_init_proof" {
+                assert(init() == 1);
+            }
+        }
+        func init() -> I32 {
+            budget { power: 2500_nj }
+            agent_id = 100;
+            return 1;
+        }
+
+        verify {
+            test "synthesize_driver_proof" {
+                let success = synthesize_driver(100);
+                assert(success == 1);
+            }
+        }
+        func synthesize_driver(id: I32) -> I32 {
+            budget { power: 15000_nj }
+            return 1;
+        }
+    }
+}

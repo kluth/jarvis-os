@@ -1,0 +1,73 @@
+// HAL.Audio — Sovereign streaming audio sink (Intel HDA-compatible).
+// Ring buffer of 4096 frames in physical RAM. Pure .jrv.
+module HAL_Audio {
+    complexity O(1) {
+        struct AudioFrame {
+            chunk_id: I32,
+            channel: I32,
+            depth_bits: I32
+        }
+
+        const BUFFER_BASE = 0x00200000;
+        const BUFFER_SIZE = 4096;
+
+        memory write_ptr: I32 = 0;
+        memory read_ptr: I32 = 0;
+        memory drops: I32 = 0;
+
+        verify {
+            test "audio_init_proof" {
+                let st = init();
+                assert(st == 1);
+            }
+        }
+        func init() -> I32 {
+            budget { power: 3000_nj }
+            write_ptr = 0;
+            read_ptr = 0;
+            drops = 0;
+            contract { ensures result == 1; }
+            return 1;
+        }
+
+        verify {
+            test "audio_stream_chunk_proof" {
+                let r = stream_chunk(100);
+                assert(r == 1);
+            }
+        }
+        func stream_chunk(chunk_id: I32) -> I32 {
+            budget { power: 5000_nj }
+            
+            let next_write = (write_ptr + 1) % BUFFER_SIZE;
+            
+            // Check for overflow (buffer full)
+            if next_write == volatile_read(read_ptr) {
+                atomic_add(drops, 1);
+                return 0;
+            }
+
+            // Write sample data to physical RAM
+            let offset = BUFFER_BASE + write_ptr * 4; // 4 bytes per frame
+            volatile_write(offset, chunk_id);
+            
+            // Atomic update of write pointer to ensure thread safety
+            atomic_set(write_ptr, next_write);
+            
+            return 1;
+        }
+
+        verify {
+            test "audio_drop_proof" {
+                let pre = drops;
+                report_drop();
+                assert(drops == pre + 1);
+            }
+        }
+        func report_drop() -> I32 {
+            budget { power: 80_nj }
+            atomic_add(drops, 1);
+            return drops;
+        }
+    }
+}

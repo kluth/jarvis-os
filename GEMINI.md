@@ -50,7 +50,7 @@ To maintain a pristine, easily reviewable, and perfectly linear history, we enfo
 - **Issue Management**: GitHub Issues MUST be kept up-to-date at all times. Stale issues ("Karteileichen") are strictly prohibited. Every open issue must reflect an active, prioritized task or a currently reproducible bug.
 - **Waker & ISR Safety**: NEVER use code that requires locks (e.g., `println!`, `WRITER.lock()`) inside Wakers or Interrupt Service Routines. This leads to immediate deadlocks. Use lock-free diagnostics (atomics) instead.
 - **No Magic Numbers**: Avoid hardcoded array bounds or numeric constants without a named constant (`const`). Tie array sizes to enums or common constants to ensure type safety and scalability.
-- **Error Diagnostics**: When encountering compiler errors, always use `rustc --explain <error_code>` if suggested by the compiler. This ensures we follow Rust's best practices and deeply understand the root causes.
+- **Error Diagnostics**: When encountering compiler errors, always use `jrvc --explain <error_code>` if suggested by the compiler. This ensures we follow Jarvis's best practices and deeply understand the root causes.
 
 ## Agent Operational Mandates
 
@@ -81,3 +81,4 @@ JARVIS OS is a Voice-First Operating System. All new features should consider:
 - Placeholders like `TODO`, `FIXME`, or `... (simplified)` are grounds for immediate rejection.
 - All subsystems (Networking, Crypto, Storage, AI) must use real protocols, real encryption, and real data structures.
 - This rule takes absolute precedence over all other development workflows.
+.

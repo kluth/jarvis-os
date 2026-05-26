@@ -1,0 +1,37 @@
+// Kernel — Sovereign Substrate Main Loop.
+// Pure .jrv Rev 7.0 Substrate.
+module Kernel {
+    import HAL_Framebuffer
+    import UI_HolographicCore
+
+    // Cross-module wrappers (Substrate Handoff)
+    func wrap_fb_init() -> I32 { yield(HAL_Framebuffer.init()) }
+    func wrap_ui_render() { UI_HolographicCore.render_frame() }
+
+    complexity O(N) {
+        verify { test "boot_proof" { assert(boot() == 1) } }
+        func boot() -> I32 {
+            // Maximum energy budget for the persistent OS loop
+            budget { power: 2000000000_nj }
+            
+            // 1. Initialize Framebuffer Substrate
+            bind(f_st, wrap_fb_init())
+            
+            if f_st == 1 {
+                // 2. Infinite Sovereign Rendering Loop
+                bind(loop, 1)
+                while loop == 1 {
+                    wrap_ui_render()
+                    yield() // Collaborative multi-tasking yield
+                }
+            }
+            
+            // 3. Fallback: Sovereign Halt
+            bind(halt, 1)
+            while halt == 1 {
+                yield()
+            }
+            yield(1)
+        }
+    }
+}

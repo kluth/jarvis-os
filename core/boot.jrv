@@ -1,0 +1,34 @@
+// Core.Boot — Sovereign Substrate Loader.
+// Pure .jrv Rev 7.0 Substrate. Zero-Sugar Deterministic Grammar.
+// This module replaces the legacy Stage-1/2 assembly bootloader.
+module Core.Boot {
+    import Core.RCU;
+    import Core.MAG;
+
+    complexity O(1) {
+        verify {
+            test "substrate_boot_proof" {
+                bind(st, initialize());
+                assert(st != -1);
+            }
+        }
+
+        func initialize() -> I32 {
+            budget { power: 10000_nj }
+            
+            // 1. Hardware Assimilation: Set VBE 1024x768x24
+            // MISSING: JRV intrinsic for BIOS interrupts
+            // ISSUE: https://github.com/kluth/project-jarvis/issues/501
+            
+            // 2. Memory Management: Load Kernel Segments
+            // MISSING: JRV intrinsic for raw disk sector reading
+            // ISSUE: https://github.com/kluth/project-jarvis/issues/502
+            
+            // 3. Substrate Orchestration
+            Core.RCU.rotate_epoch();
+            Core.MAG.cycle();
+            
+            yield(1)
+        }
+    }
+}

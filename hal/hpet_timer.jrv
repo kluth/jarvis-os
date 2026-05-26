@@ -1,0 +1,72 @@
+// HAL.HPET — Sovereign High Precision Event Timer.
+// Pure .jrv Rev 7.0 Substrate. Zero-Sugar Deterministic Grammar.
+// Memory-mapped at 0xFED00000. Provides microsecond-accurate system heartbeat.
+module HAL.HPET {
+    complexity O(1) {
+        const HPET_BASE           = 0xFED00000;
+        const mmGENERAL_CAPS      = 0x00;
+        const mmGENERAL_CONFIG    = 0x10;
+        const mmGENERAL_STATUS    = 0x20;
+        const mmMAIN_COUNTER      = 0xF0;
+        const mmTIMER0_CONFIG     = 0x100;
+        const mmTIMER0_COMPARE    = 0x108;
+
+        memory armed: Bool = false
+        memory current_tick: I64 = 0
+
+        verify {
+            test "hpet_init_proof" {
+                bind(st, init());
+                assert(st == 1);
+            }
+        }
+        func init() -> I32 {
+            budget { power: 2500_nj }
+
+            // 1. Stop counter before configuration
+            volatile write_i32(HPET_BASE + mmGENERAL_CONFIG, 0);
+            
+            // 2. Reset main counter (write-through)
+            volatile write_i64(HPET_BASE + mmMAIN_COUNTER, 0);
+            
+            // 3. Enable LegacyReplacement + Overall enable
+            volatile write_i32(HPET_BASE + mmGENERAL_CONFIG, 0x3);
+
+            armed = true;
+            yield(1)
+        }
+
+        verify {
+            test "read_hpet_proof" {
+                bind(v, read_counter());
+                assert(v >= 0);
+            }
+        }
+        func read_counter() -> I64 {
+            budget { power: 100_nj }
+            // Real hardware MMIO read
+            bind(val, volatile read_i64(HPET_BASE + mmMAIN_COUNTER));
+            current_tick = val;
+            yield(val)
+        }
+
+        verify {
+            test "config_periodic_proof" {
+                bind(r, config_periodic(1000));
+                assert(r == 1);
+            }
+        }
+        func config_periodic(period_us: I32) -> I32 {
+            budget { power: 2000_nj }
+            
+            // 1. Set Timer 0 to Periodic, Edge-Triggered, Interrupt Enable
+            // Bit 2: Interrupt Enable, Bit 3: Periodic, Bit 6: Set Value
+            volatile write_i64(HPET_BASE + mmTIMER0_CONFIG, 0x4C);
+            
+            // 2. Set interval
+            volatile write_i64(HPET_BASE + mmTIMER0_COMPARE, period_us);
+            
+            yield(1)
+        }
+    }
+}

@@ -1,0 +1,42 @@
+// HAL_Framebuffer — Sovereign VBE 1024x768x32bpp linear framebuffer driver.
+// Pure _jrv. 
+module HAL_Framebuffer {
+    const LFB_BASE   = 0xFD000000
+    const LFB_WIDTH  = 1024
+    const LFB_HEIGHT = 768
+
+    complexity O(1) {
+        verify { test "init_proof" { bind(st, init()) assert(st == 1) } }
+        func init() -> I32 {
+            budget { power: 2000_nj }
+            yield(1)
+        }
+
+        verify { test "pixel_proof" { bind(n, pixel(0, 0, 0x00FF0000)) assert(n == 1) } }
+        func pixel(x: I32, y: I32, color: I32) -> I32 {
+            budget { power: 500_nj }
+            // 32bpp: 4 bytes per pixel. offset = (y * width + x) * 4
+            bind(offset, (y * 1024 + x) * 4)
+            bind(addr, 0xFD000000 + offset)
+            volatile write(addr, color)
+            yield(1)
+        }
+    }
+
+    complexity O(N^2) {
+        verify { test "clear_proof" { bind(n, clear(0)) assert(n == 1) } }
+        func clear(color: I32) -> I32 {
+            budget { power: 500000000_nj }
+            bind(y, 0)
+            while y < 768 {
+                bind(x, 0)
+                while x < 1024 {
+                    pixel(x, y, color)
+                    x = x + 1
+                }
+                y = y + 1
+            }
+            yield(1)
+        }
+    }
+}

@@ -1,0 +1,92 @@
+// Core.MAG — Sovereign Multi-Agent Gateway.
+// Pure .jrv Rev 7.0 Substrate. Zero-Sugar Deterministic Grammar.
+module Core.MAG {
+    import Core.RCU;
+
+    const MAX_AGENTS = 1024;
+    const AGENT_STATUS_ACTIVE = 1;
+    const ERR_REGISTRY_FULL = 9999;
+
+    memory agent_registry: Array[Agent, MAX_AGENTS];
+    memory active_agent_count: I32 = 0;
+
+    verify {
+        test "agent_registration_proof" {
+            bind(id, register_agent("TestAgent"));
+            assert(id == 0);
+        }
+    }
+    func register_agent(name: String) -> I32 {
+        budget { power: 1000_nj }
+
+        // LOCK-FREE SLOT ALLOCATION
+        bind(id, atomic_add(active_agent_count, 1));
+        
+        branch(id >= MAX_AGENTS, 
+            func() { 
+                atomic_add(active_agent_count, -1); // Rollback
+                yield(ERR_REGISTRY_FULL) 
+            },
+            func() {
+                agent_registry[id] = Agent {
+                    id: id,
+                    name: name,
+                    status: AGENT_STATUS_ACTIVE,
+                    last_epoch: Core.RCU.get_epoch()
+                };
+                
+                // PUSH TELEMETRY: Active Agent Count to 0x8000
+                volatile write_i32(0x8000, active_agent_count + 1);
+                
+                yield(id)
+            }
+        )
+    }
+
+    verify {
+        test "stream_dispatch_proof" {
+            bind(msg, create_message(1, "Ping"));
+            bind(result, dispatch(msg));
+            assert(result == true);
+        }
+    }
+    func dispatch(msg: Message) -> Bool {
+        budget { power: 2500_nj }
+
+        Core.RCU.enter_read();
+        
+        bind(target_id, msg.target_id);
+        
+        // FIX: Insufficient bounds check (was ==, now >=)
+        branch(target_id >= MAX_AGENTS,
+            func() { 
+                Core.RCU.exit_read(); 
+                yield(false) 
+            },
+            func() {
+                bind(target_agent, agent_registry[target_id]);
+                branch(target_agent.status != AGENT_STATUS_ACTIVE,
+                    func() { 
+                        Core.RCU.exit_read(); 
+                        yield(false) 
+                    },
+                    func() {
+                        push_stream(target_agent.stream_ptr, msg);
+                        Core.RCU.exit_read();
+                        yield(true)
+                    }
+                )
+            }
+        )
+    }
+
+    func cycle() {
+        budget { power: 5000_nj }
+
+        Core.RCU.rotate_epoch();
+        
+        // PUSH TELEMETRY: Total system energy (Budget-based proxy)
+        // Static upper bound summed from all active substrate modules.
+        volatile write_i32(0x800C, 105100); 
+    }
+}

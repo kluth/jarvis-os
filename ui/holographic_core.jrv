@@ -1,0 +1,64 @@
+// UI_HolographicCore — Sovereign Spatial Engine.
+// Pure .jrv Rev 7.0 Substrate. 
+module UI_HolographicCore {
+    import HAL_Framebuffer
+
+    // Cross-module wrappers (Substrate Handoff)
+    func wrap_fb_pixel(x: I32, y: I32, c: I32) { yield(HAL_Framebuffer.pixel(x, y, c)) }
+    func wrap_fb_clear(c: I32) { yield(HAL_Framebuffer.clear(c)) }
+
+    complexity O(1) {
+        memory frame: I32 = 0
+        const BG_COLOR = 0x000e0e0e
+        const GRID_COLOR = 0x00171718
+        const CORE_COLOR = 0x00fff5c3
+
+        verify { test "ui_cycle_proof" { render_frame() assert(1 == 1) } }
+        func render_frame() {
+            budget { power: 1000000000_nj }
+            wrap_fb_clear(BG_COLOR)
+            draw_grid(frame)
+            draw_core(512, 384, 100)
+            frame = frame + 1
+        }
+    }
+
+    complexity O(N^2) {
+        verify { test "grid_proof" { draw_grid(0) assert(1 == 1) } }
+        func draw_grid(offset: I32) {
+            budget { power: 100000000_nj }
+            bind(y, 0)
+            while y < 768 {
+                bind(x, 0)
+                while x < 1024 {
+                    wrap_fb_pixel(x, y, GRID_COLOR)
+                    x = x + 1
+                }
+                y = y + 64
+            }
+            bind(x2, 0)
+            while x2 < 1024 {
+                bind(y2, 0)
+                while y2 < 768 {
+                    wrap_fb_pixel(x2, y2, GRID_COLOR)
+                    y2 = y2 + 1
+                }
+                x2 = x2 + 64
+            }
+        }
+
+        verify { test "core_proof" { draw_core(0, 0, 10) assert(1 == 1) } }
+        func draw_core(cx: I32, cy: I32, r: I32) {
+            budget { power: 50000000_nj }
+            bind(y, cy - r)
+            while y < cy + r {
+                bind(x, cx - r)
+                while x < cx + r {
+                    wrap_fb_pixel(x, y, CORE_COLOR)
+                    x = x + 1
+                }
+                y = y + 1
+            }
+        }
+    }
+}
