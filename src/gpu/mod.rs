@@ -1097,18 +1097,30 @@ impl GpuManager {
         }
         self.active_gpu = Some(self.devices[0].clone());
         self.active_driver_index = Some(0);
+
+        // Read current VBE mode from hardware (bootloader may have set it already)
+        let cur_bpp = crate::gpu::drivers::vbe_read_bpp();
+        let cur_width = crate::gpu::drivers::vbe_read_width() as usize;
+        let cur_height = crate::gpu::drivers::vbe_read_height() as usize;
+        let bpp: u8 = if cur_bpp > 0 && cur_width == desired_width && cur_height == desired_height {
+            cur_bpp as u8
+        } else {
+            24 // fallback
+        };
+        let bpp_div = (bpp as usize + 7) / 8;
+
         self.current_mode = GpuMode {
             width: desired_width,
             height: desired_height,
-            bpp: 32,
-            pitch: desired_width * 4,
+            bpp,
+            pitch: desired_width * bpp_div,
             framebuffer_addr: self.devices[0].framebuffer_base.unwrap_or(0),
-            framebuffer_size: desired_width * desired_height * 4,
+            framebuffer_size: desired_width * desired_height * bpp_div,
             double_buffered: false,
         };
         let gpu = &self.devices[0];
-        crate::serial_println!("GPU: Selected {} @ {}x{}x32bpp [Family: {:?}]",
-            gpu.name, desired_width, desired_height, gpu.family);
+        crate::serial_println!("GPU: Selected {} @ {}x{}x{}bpp [Family: {:?}]",
+            gpu.name, desired_width, desired_height, bpp, gpu.family);
         Ok(())
     }
 }

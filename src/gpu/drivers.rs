@@ -48,6 +48,30 @@ const VBE_DISPI_ID5: u16 = 0xB0C5;
 const VBE_DISPI_ENABLED: u16 = 0x01;
 const VBE_DISPI_LFB_ENABLED: u16 = 0x40;
 
+/// Read Bochs VBE framebuffer physical address from PCI BAR0.
+/// Returns 0 if the device is not found.
+#[no_mangle]
+pub fn vbe_read_phys_addr() -> u32 {
+    // QEMU places the Bochs VGA at (0:1:0) or (0:2:0).
+    // Read BAR0 at PCI config offset 0x10.
+    let bar0 = crate::pci::pci_read_config(0, 1, 0, 0x10);
+    if bar0 != 0 && bar0 != u32::MAX {
+        let addr = bar0 & 0xFFFFFFF0; // strip BAR flags
+        if addr >= 0xE0000000 && addr <= 0xFE000000 {
+            return addr;
+        }
+    }
+    // Fallback: try slot 2 (some QEMU configs)
+    let bar0 = crate::pci::pci_read_config(0, 2, 0, 0x10);
+    if bar0 != 0 && bar0 != u32::MAX {
+        let addr = bar0 & 0xFFFFFFF0;
+        if addr >= 0xE0000000 && addr <= 0xFE000000 {
+            return addr;
+        }
+    }
+    0
+}
+
 fn vbe_write(index: u16, value: u16) {
     unsafe {
         use x86_64::instructions::port::Port;
@@ -69,6 +93,21 @@ pub fn bochs_vbe_probe() -> bool {
     let id = vbe_read(VBE_DISPI_INDEX_ID);
     // Bochs VBE returns B0C5+version or B0C4+version
     id & 0xFFF0 == 0xB0C0 || id == VBE_DISPI_ID5
+}
+
+/// Read current VBE BPP (bits per pixel) from hardware registers
+pub fn vbe_read_bpp() -> u16 {
+    vbe_read(VBE_DISPI_INDEX_BPP)
+}
+
+/// Read current VBE display width
+pub fn vbe_read_width() -> u16 {
+    vbe_read(VBE_DISPI_INDEX_XRES)
+}
+
+/// Read current VBE display height
+pub fn vbe_read_height() -> u16 {
+    vbe_read(VBE_DISPI_INDEX_YRES)
 }
 
 pub struct BochsVbeDriver {
@@ -104,15 +143,27 @@ impl BochsVbeDriver {
 
 impl GpuDriver for BochsVbeDriver {
     fn init(&mut self, mode: &GpuMode) -> Result<(), &'static str> {
-        // Set mode via Bochs VBE registers
-        vbe_write(VBE_DISPI_INDEX_ENABLE, 0);
-        vbe_write(VBE_DISPI_INDEX_XRES, mode.width as u16);
-        vbe_write(VBE_DISPI_INDEX_YRES, mode.height as u16);
-        vbe_write(VBE_DISPI_INDEX_BPP, mode.bpp as u16);
-        vbe_write(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+        // Only re-init VBE if mode differs from current
+        let cur_x = vbe_read(VBE_DISPI_INDEX_XRES);
+        let cur_y = vbe_read(VBE_DISPI_INDEX_YRES);
+        let cur_bpp = vbe_read(VBE_DISPI_INDEX_BPP);
+        if cur_x != mode.width as u16 || cur_y != mode.height as u16 || cur_bpp != mode.bpp as u16 {
+            // Set mode via Bochs VBE registers
+            vbe_write(VBE_DISPI_INDEX_ENABLE, 0);
+            vbe_write(VBE_DISPI_INDEX_XRES, mode.width as u16);
+            vbe_write(VBE_DISPI_INDEX_YRES, mode.height as u16);
+            vbe_write(VBE_DISPI_INDEX_BPP, mode.bpp as u16);
+            vbe_write(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+            crate::serial_println!("VBE: Mode set {}x{}x{}bpp",
+                mode.width, mode.height, mode.bpp);
+        } else {
+            crate::serial_println!("VBE: Mode already set to {}x{}x{}bpp, skipping re-init",
+                mode.width, mode.height, mode.bpp);
+        }
 
         let vram = Self::detect_vram();
-        let size = mode.width * mode.height * 4;
+        let bpp_div = (mode.bpp as usize + 7) / 8;
+        let size = mode.width * mode.height * bpp_div;
 
         self.mode = *mode;
         self.backbuffer = alloc::vec![0u8; size];
@@ -138,9 +189,10 @@ impl GpuDriver for BochsVbeDriver {
     }
 
     fn clear(&mut self, color: Color) {
+        let bpp_div = (self.mode.bpp as usize + 7) / 8;
         for y in 0..self.mode.height {
             for x in 0..self.mode.width {
-                let off = (y * self.mode.pitch + x * 4) as usize;
+                let off = (y * self.mode.pitch + x * bpp_div) as usize;
                 if off + 3 < self.backbuffer.len() {
                     self.backbuffer[off] = color.b;
                     self.backbuffer[off + 1] = color.g;
@@ -152,7 +204,8 @@ impl GpuDriver for BochsVbeDriver {
 
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
         if x >= self.mode.width || y >= self.mode.height { return; }
-        let off = y * self.mode.pitch + x * 4;
+        let bpp_div = (self.mode.bpp as usize + 7) / 8;
+        let off = y * self.mode.pitch + x * bpp_div;
         if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
             self.backbuffer[off + 1] = color.g;

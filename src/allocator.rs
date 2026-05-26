@@ -30,7 +30,7 @@ impl<A> Locked<A> {
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 32 * 1024 * 1024; // 32 MiB (Balanced increase)
+pub const HEAP_SIZE: usize = 32 * 1024 * 1024; // 32 MiB
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,

@@ -64,6 +64,24 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     serial_println!("Status: Core memory initialized.");
 
+    // Remap framebuffer via physical memory offset (stable against frame allocator)
+    #[cfg(feature = "gui")]
+    {
+        // The bootloader maps the framebuffer at a VA that may become invalid after
+        // init_heap() reuses the bootloader's page-table pages. Re-acquire the FB
+        // physical address from PCI BAR0 and create a new writer via the stable
+        // physical-memory-offset window.
+        let fb_phys = jarvis_kernel::gpu::drivers::vbe_read_phys_addr();
+        if fb_phys != 0 {
+            unsafe {
+                jarvis_kernel::vga_buffer::reinit_via_phys_mem_offset(phys_mem_offset_raw, fb_phys as u64);
+            }
+            serial_println!("VGA: Re-mapped FB via phys mem offset (phys=0x{:x})", fb_phys);
+        } else {
+            serial_println!("VGA: FB read failed, keeping bootloader mapping");
+        }
+    }
+
     // 5. Initialize ACPI for hardware discovery
     let rsdp_addr = boot_info.rsdp_addr.into_option();
     jarvis_kernel::acpi::init(rsdp_addr, phys_mem_offset.as_u64());
@@ -150,6 +168,41 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     // 11. Initialize UI
     #[cfg(feature = "gui")]
     gui::init_ui();
+
+    // FINAL TEST: write bright pixels directly
+    #[cfg(feature = "gui")]
+    {
+        use jarvis_kernel::vga_buffer::Color;
+        if let Some(writer) = jarvis_kernel::WRITER.lock().as_mut() {
+            // Write a bright white band at rows 0-10
+            for y in 0..10 {
+                for x in 0..1280 {
+                    writer.write_pixel(x, y, Color { r: 255, g: 255, b: 0 });
+                }
+            }
+            // Write a red band at rows 200-210
+            for y in 200..210 {
+                for x in 0..1280 {
+                    writer.write_pixel(x, y, Color { r: 255, g: 0, b: 0 });
+                }
+            }
+            // Write a green band at rows 400-410  
+            for y in 400..410 {
+                for x in 0..1280 {
+                    writer.write_pixel(x, y, Color { r: 0, g: 255, b: 0 });
+                }
+            }
+            // Write a blue band at rows 600-610
+            for y in 600..610 {
+                for x in 0..1280 {
+                    writer.write_pixel(x, y, Color { r: 0, g: 0, b: 255 });
+                }
+            }
+            jarvis_kernel::serial_println!("TEST: Wrote 4 color bands to framebuffer");
+        }
+        jarvis_kernel::vga_buffer::flush_fb();
+        jarvis_kernel::serial_println!("TEST: framebuffer flushed");
+    }
 
     serial_println!("Status: System ready.");
 

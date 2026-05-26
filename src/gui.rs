@@ -146,10 +146,10 @@ fn draw_icon(writer: &mut crate::vga_buffer::FramebufferWriter, x: usize, y: usi
 pub fn init_ui() {
     if let Some(writer) = WRITER.lock().as_mut() {
         writer.clear();
-        // DEBUG: bright yellow rectangle to verify framebuffer pipeline
-        writer.fill_rect(Rect { x: 400, y: 300, width: 480, height: 120 }, Color { r: 255, g: 255, b: 0 });
         draw_static(writer);
     }
+    crate::vga_buffer::flush_fb();
+    crate::serial_println!("GUI: init complete, framebuffer flushed");
 }
 
 fn draw_static(writer: &mut crate::vga_buffer::FramebufferWriter) {
@@ -249,6 +249,8 @@ pub async fn ui_task() {
         angle += 0.06;
         tick += 1;
         if angle > core::f32::consts::TAU { angle = 0.0; }
+        // Flush framebuffer cache to make writes visible
+        crate::vga_buffer::flush_fb();
         for _ in 0..2 { crate::task::yield_now().await; }
     }
 }
