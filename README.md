@@ -46,6 +46,14 @@ cd docker && docker-compose up --build -d
 ```
 Open **http://localhost:8080** in your browser to witness the Aetheris Spatial Interface.
 
+### Stability Testing (Soak Testing)
+The project includes a robust stability watchdog to detect intermittent panics and race conditions:
+```bash
+# Run a 10-minute stability soak test locally
+./scripts/stability-watchdog.sh 600
+```
+The CI/CD pipeline runs these tests in parallel to maximize the probability of triggering latent bugs.
+
 ---
 
 ## 📜 Development Standards

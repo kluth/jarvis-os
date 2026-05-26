@@ -24,18 +24,30 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install NASM & QEMU
-      run: sudo apt-get update && sudo apt-get install -y nasm qemu-system-x86
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly
+        components: rust-src, llvm-tools-preview
 
-    - name: Build Disk Image
+    - name: Install QEMU
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
+
+    - name: Build Kernel
       run: |
-        nasm -f bin boot.asm -o boot.bin
-        # Create a 1.44MB floppy image
-        dd if=/dev/zero of=jarvis-os.img bs=1024 count=1440
-        dd if=boot.bin of=jarvis-os.img conv=notrunc
+        cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json \
+          -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
+
+    - name: Create Disk Image
+      run: |
+        cd image-builder
+        cargo run --target x86_64-unknown-linux-gnu -- \
+          ../target/x86_64-jarvis_os/debug/jarvis-kernel --no-run
 
     - name: Run Stability Watchdog
-      run: ./scripts/stability-watchdog.sh 600 jarvis-os.img
+      run: ./scripts/stability-watchdog.sh 600 target/image/jarvis-os.img
+      env:
+        RUST_BACKTRACE: 1
 
     - name: Archive Stability Logs
       if: always()

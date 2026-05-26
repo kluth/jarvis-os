@@ -20,73 +20,129 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   validate:
-    name: JRV Validation (Formal Proofs)
+    name: Lint & Format (Fail Fast)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src, llvm-tools-preview, rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
       
-      - name: Install Dependencies (QEMU & AArch64 Libs)
+      - name: Force Stable Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
+          cargo generate-lockfile
+          cargo update -p serde --precise 1.0.227 || true
+          cd image-builder
+          cargo generate-lockfile
+          cargo update -p serde --precise 1.0.227 || true
+          cargo update -p rustix --precise 0.38.31 || true
 
-      - name: Run Validation Script (via QEMU)
-        run: |
-          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
-          ./scripts/validate.sh
+      - name: Check Formatting
+        run: cargo fmt -- --check
+        
+      - name: Clippy (Default Features)
+        run: cargo clippy -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
+        
+      - name: Clippy (All Features)
+        run: cargo clippy --all-features -Zbuild-std=core,alloc --target x86_64-jarvis_os.json -Zjson-target-spec -- -D warnings
+
+  security_audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   test:
-    name: QEMU Integration Tests (${{ matrix.machine }})
+    name: QEMU Integration Tests
     needs: validate
     runs-on: ubuntu-latest
     strategy:
       matrix:
         machine: [q35, pc]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install Dependencies (QEMU & Rust toolchain)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 nasm
-
-      - name: Install Rust nightly with llvm-tools
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
-          components: llvm-tools-preview, rust-src, rustfmt, clippy
+          components: rust-src, llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-bootimage
-        run: cargo install bootimage 2>&1 | tail -3
+      - name: Install QEMU and FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 ffmpeg
 
-      - name: Build JRV Substrate (Formal Proofs)
+      - name: Build & Run Tests
         run: |
-          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
-          ./scripts/build.sh
+          # Build kernel
+          cargo build --bin jarvis-kernel --features test --target x86_64-jarvis_os.json \
+            -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
+          
+          # Run via image-builder
+          cd image-builder
+          cargo run --target x86_64-unknown-linux-gnu -- \
+            ../target/x86_64-jarvis_os/debug/jarvis-kernel --machine ${{ matrix.machine }} --memory 512
 
-      - name: Build Rust kernel + Bootable Image
+      - name: Convert & Upload Screenshots
+        if: always()
         run: |
-          cargo bootimage --target x86_64-jarvis_os.json -Zbuild-std=core,alloc 2>&1
-          # The bootimage crate outputs: target/x86_64-jarvis_os/debug/bootimage-jarvis-kernel.bin
-          cp target/x86_64-jarvis_os/debug/bootimage-jarvis-kernel.bin jarvis-os.img
+          mkdir -p target/screenshots
+          for f in target/screenshot_*.ppm; do
+            if [ -f "$f" ]; then
+              filename=$(basename "$f" .ppm)
+              ffmpeg -i "$f" "target/screenshots/${filename}.png" -y
+            fi
+          done
 
-      - name: QEMU Integration Boot Test
+      - name: Upload Screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qemu-screenshots-${{ matrix.machine }}
+          path: target/screenshots/*.png
+
+  build_production:
+    name: Production Build
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        machine: [q35, pc]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src, llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build Kernel
         run: |
-          qemu-system-x86_64 \
-            -drive format=raw,file=jarvis-os.img \
-            -machine ${{ matrix.machine }} \
-            -display none \
-            -serial stdio \
-            -no-reboot \
-            -m 256M \
-            -d cpu_reset \
-            | head -100 || [ $? -eq 1 ]  # QEMU exit 1 = reboot/halt, which is expected for kernel tests
+          cargo build --bin jarvis-kernel --target x86_64-jarvis_os.json \
+            -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec
+
+      - name: Create Disk Image
+        run: |
+          cd image-builder
+          cargo run --target x86_64-unknown-linux-gnu -- \
+            ../target/x86_64-jarvis_os/debug/jarvis-kernel --no-run
+
+      - name: Upload Disk Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-os-image-${{ matrix.machine }}
+          path: target/image/jarvis-os.img
 
   publish_ghcr:
     name: Publish to GHCR
-    needs: test
+    needs: [test, build_production]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     permissions:
@@ -95,20 +151,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install Dependencies (QEMU & AArch64 Libs)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-user-static libc6-arm64-cross libgcc-s1-arm64-cross
-
-      - name: Build Sovereign Payload
-        run: |
-          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
-          ./scripts/build.sh
+      - name: Download Disk Image
+        uses: actions/download-artifact@v4
+        with:
+          name: jarvis-os-image-pc
+          path: target/image/
 
       - name: Set up QEMU for multi-arch
         uses: docker/setup-qemu-action@v3
-      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

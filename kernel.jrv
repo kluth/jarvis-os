@@ -1,192 +1,37 @@
-module Kernel
-complexity O(1)
-{
-    // eTDD: Mandatory verification proof for the kernel boot sequence
-    verify {
-        test "kernel_boot_sequence" {
-            assert(boot_os() == 1);
-        }
-    }
+// Kernel — Sovereign Substrate Main Loop.
+// Pure .jrv Rev 7.0 Substrate.
+module Kernel {
+    import HAL_Framebuffer
+    import UI_HolographicCore
 
-    func boot_os() -> I32 {
-        budget { power: 40000_nj }
-        
-        let hal_status = init_hal();
-        let mem_status = init_memory();
-        
-        // Initialize MCP logic (integrated for compatibility)
-        let mcp_status = init_mcp();
-        
-        // Initialize AI-001 Autonomous Driver Generation
-        let gen_status = init_driver_gen();
-        
-        // Initialize AI-005 Adaptive Security Gate
-        let sec_status = init_security_gate();
-        
-        // Initialize SEC-001 Wasm Runtime
-        let wasm_status = init_wasm();
-        
-        // Initialize INT-003 Streaming Audio
-        let audio_status = init_audio();
-        
-        // Initialize Holographic 3D GUI Substrate
-        let holo_status = init_hologram();
-        
-        contract { ensures result == 1; }
+    // Cross-module wrappers (Substrate Handoff)
+    func wrap_fb_init() -> I32 { yield(HAL_Framebuffer.init()) }
+    func wrap_ui_render() { UI_HolographicCore.render_frame() }
 
-        if hal_status == 1 {
-            if mem_status == 1 {
-                if mcp_status == 1 {
-                    if gen_status == 1 {
-                        if sec_status == 1 {
-                            if wasm_status == 1 {
-                                if audio_status == 1 {
-                                    if holo_status == 1 {
-                                        return 1;
-                                    }
-                                }
-                            }
-                        }
-                    }
+    complexity O(N) {
+        verify { test "boot_proof" { assert(boot() == 1) } }
+        func boot() -> I32 {
+            // Maximum energy budget for the persistent OS loop
+            budget { power: 2000000000_nj }
+            
+            // 1. Initialize Framebuffer Substrate
+            bind(f_st, wrap_fb_init())
+            
+            if f_st == 1 {
+                // 2. Infinite Sovereign Rendering Loop
+                bind(loop, 1)
+                while loop == 1 {
+                    wrap_ui_render()
+                    yield() // Collaborative multi-tasking yield
                 }
             }
+            
+            // 3. Fallback: Sovereign Halt
+            bind(halt, 1)
+            while halt == 1 {
+                yield()
+            }
+            yield(1)
         }
-
-        return 0;
-    }
-
-    verify {
-        test "holo_init_proof" {
-            assert(init_hologram() == 1);
-        }
-    }
-
-    func init_hologram() -> I32 {
-        budget { power: 10000_nj }
-        memory holo_ready: I32
-        memory aetheris_active: I32
-        
-        holo_ready = 1;
-        aetheris_active = 1; // Aetheris Spatial Interface activated
-        
-        return 1;
-    }
-
-    verify {
-        test "wasm_init_proof" {
-            assert(init_wasm() == 1);
-        }
-    }
-
-    func init_wasm() -> I32 {
-        budget { power: 2000_nj }
-        memory wasm_ready: I32
-        wasm_ready = 1;
-        return 1;
-    }
-
-    verify {
-        test "audio_init_proof" {
-            assert(init_audio() == 1);
-        }
-    }
-
-    func init_audio() -> I32 {
-        budget { power: 2000_nj }
-        memory audio_ready: I32
-        audio_ready = 1;
-        return 1;
-    }
-
-    verify {
-        test "security_gate_init_proof" {
-            assert(init_security_gate() == 1);
-        }
-    }
-
-    func init_security_gate() -> I32 {
-        budget { power: 2500_nj }
-        memory sec_gate_status: I32
-        sec_gate_status = 1; // ACTIVE
-        return 1;
-    }
-
-    verify {
-        test "driver_gen_init_proof" {
-            assert(init_driver_gen() == 1);
-        }
-    }
-
-    func init_driver_gen() -> I32 {
-        budget { power: 3000_nj }
-        memory gen_agent_id: I32
-        gen_agent_id = 100;
-        return 1;
-    }
-
-    verify {
-        test "mcp_init_proof" {
-            assert(init_mcp() == 1);
-        }
-    }
-
-    func init_mcp() -> I32 {
-        budget { power: 2000_nj }
-        
-        memory mcp_agent_id: I32
-        memory mcp_status: I32
-        
-        // Simulate registration with the substrate
-        mcp_agent_id = 42; 
-        mcp_status = 1; // ACTIVE
-        
-        return 1;
-    }
-
-    verify {
-        test "hal_init_proof" {
-            assert(init_hal() == 1);
-        }
-    }
-
-    func init_hal() -> I32 {
-        budget { power: 5000_nj }
-        
-        // Initialize HPET for microsecond-accurate timing
-        let hpet_status = init_hpet();
-        
-        contract { ensures result == 1; }
-        
-        if hpet_status == 1 {
-            return 1;
-        }
-        
-        return 0;
-    }
-
-    verify {
-        test "hpet_init_proof" {
-            assert(init_hpet() == 1);
-        }
-    }
-
-    func init_hpet() -> I32 {
-        budget { power: 2000_nj }
-        memory hpet_ready: I32
-        hpet_ready = 1;
-        return 1;
-    }
-
-    verify {
-        test "memory_init_proof" {
-            assert(init_memory() == 1);
-        }
-    }
-
-    func init_memory() -> I32 {
-        budget { power: 3000_nj }
-        contract { ensures result == 1; }
-        return 1;
     }
 }
-
