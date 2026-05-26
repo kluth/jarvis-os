@@ -20,8 +20,8 @@ pub struct PbrMaterial {
     pub albedo: Vec3,
     pub metallic: f32,
     pub roughness: f32,
-    pub ao: f32,          // Ambient occlusion
-    pub emissive: f32,    // Emissive intensity (0 = none)
+    pub ao: f32,       // Ambient occlusion
+    pub emissive: f32, // Emissive intensity (0 = none)
     pub emissive_color: Vec3,
     pub opacity: f32,
 }
@@ -77,9 +77,20 @@ impl PbrMaterial {
 // ============================================================================
 #[derive(Debug, Clone, Copy)]
 pub enum LightType {
-    Directional { direction: Vec3 },
-    Point { position: Vec3, radius: f32 },
-    Spot { position: Vec3, direction: Vec3, inner_angle: f32, outer_angle: f32, radius: f32 },
+    Directional {
+        direction: Vec3,
+    },
+    Point {
+        position: Vec3,
+        radius: f32,
+    },
+    Spot {
+        position: Vec3,
+        direction: Vec3,
+        inner_angle: f32,
+        outer_angle: f32,
+        radius: f32,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -92,7 +103,9 @@ pub struct Light {
 impl Light {
     pub fn directional(dir: Vec3, r: f32, g: f32, b: f32, intensity: f32) -> Self {
         Self {
-            light_type: LightType::Directional { direction: dir.normalize() },
+            light_type: LightType::Directional {
+                direction: dir.normalize(),
+            },
             color: Vec3::new(r, g, b),
             intensity,
         }
@@ -100,18 +113,33 @@ impl Light {
 
     pub fn point(pos: Vec3, r: f32, g: f32, b: f32, intensity: f32, radius: f32) -> Self {
         Self {
-            light_type: LightType::Point { position: pos, radius },
+            light_type: LightType::Point {
+                position: pos,
+                radius,
+            },
             color: Vec3::new(r, g, b),
             intensity,
         }
     }
 
-    pub fn spot(pos: Vec3, dir: Vec3, r: f32, g: f32, b: f32, intensity: f32,
-                inner: f32, outer: f32, radius: f32) -> Self {
+    pub fn spot(
+        pos: Vec3,
+        dir: Vec3,
+        r: f32,
+        g: f32,
+        b: f32,
+        intensity: f32,
+        inner: f32,
+        outer: f32,
+        radius: f32,
+    ) -> Self {
         Self {
             light_type: LightType::Spot {
-                position: pos, direction: dir.normalize(),
-                inner_angle: inner, outer_angle: outer, radius,
+                position: pos,
+                direction: dir.normalize(),
+                inner_angle: inner,
+                outer_angle: outer,
+                radius,
             },
             color: Vec3::new(r, g, b),
             intensity,
@@ -136,7 +164,9 @@ impl Default for SphericalHarmonics {
 
 impl SphericalHarmonics {
     pub fn new() -> Self {
-        Self { c: [Vec3::zero(); 9] }
+        Self {
+            c: [Vec3::zero(); 9],
+        }
     }
 
     /// Evaluate SH at given direction
@@ -179,7 +209,8 @@ impl SphericalHarmonics {
             (top.x + bottom.x) * 0.5,
             (top.y + bottom.y) * 0.5,
             (top.z + bottom.z) * 0.5,
-        ).scale(1.0 / 0.282095);
+        )
+        .scale(1.0 / 0.282095);
 
         // L10 - vertical gradient (Y direction)
         let diff = top.sub(bottom);
@@ -226,8 +257,13 @@ fn fresnel_schlick(cos_theta: f32, f0: Vec3) -> Vec3 {
 
 /// Evaluate Cook-Torrance BRDF at a shading point
 /// Returns the reflected radiance contribution
-pub fn eval_brdf(normal: Vec3, view_dir: Vec3, light_dir: Vec3,
-                 material: &PbrMaterial, light: &Light) -> Vec3 {
+pub fn eval_brdf(
+    normal: Vec3,
+    view_dir: Vec3,
+    light_dir: Vec3,
+    material: &PbrMaterial,
+    light: &Light,
+) -> Vec3 {
     let n = normal.normalize();
     let v = view_dir.normalize();
     let l = light_dir.normalize();
@@ -265,31 +301,50 @@ pub fn eval_brdf(normal: Vec3, view_dir: Vec3, light_dir: Vec3,
 
     // Light color & intensity
     let radiance = radiance.scale(light.intensity);
-    Vec3::new(radiance.x * light.color.x, radiance.y * light.color.y, radiance.z * light.color.z)
+    Vec3::new(
+        radiance.x * light.color.x,
+        radiance.y * light.color.y,
+        radiance.z * light.color.z,
+    )
 }
 
 /// Evaluate direct lighting from all lights
-pub fn eval_direct_lights(position: Vec3, normal: Vec3, view_dir: Vec3,
-                          material: &PbrMaterial, lights: &[Light]) -> Vec3 {
+pub fn eval_direct_lights(
+    position: Vec3,
+    normal: Vec3,
+    view_dir: Vec3,
+    material: &PbrMaterial,
+    lights: &[Light],
+) -> Vec3 {
     let mut result = Vec3::zero();
 
     for light in lights {
         let light_dir = match light.light_type {
             LightType::Directional { direction } => direction.normalize(),
-            LightType::Point { position: pos, radius: _ } => {
-                pos.sub(position).normalize()
-            }
-            LightType::Spot { position: pos, direction: dir, inner_angle, outer_angle, radius: _ } => {
+            LightType::Point {
+                position: pos,
+                radius: _,
+            } => pos.sub(position).normalize(),
+            LightType::Spot {
+                position: pos,
+                direction: dir,
+                inner_angle,
+                outer_angle,
+                radius: _,
+            } => {
                 let to_light = pos.sub(position).normalize();
                 let cos_outer = libm::cosf(outer_angle);
                 let cos_inner = libm::cosf(inner_angle);
                 let cos_theta = dir.dot(to_light);
 
                 // Spot falloff
-                let falloff = ((cos_theta - cos_outer) / (cos_inner - cos_outer)).max(0.0).min(1.0);
+                let falloff = ((cos_theta - cos_outer) / (cos_inner - cos_outer))
+                    .max(0.0)
+                    .min(1.0);
                 let atten = falloff * falloff;
 
-                result = result.add(eval_brdf(normal, view_dir, to_light, material, light).scale(atten));
+                result =
+                    result.add(eval_brdf(normal, view_dir, to_light, material, light).scale(atten));
                 continue;
             }
         };
@@ -301,8 +356,12 @@ pub fn eval_direct_lights(position: Vec3, normal: Vec3, view_dir: Vec3,
 }
 
 /// Evaluate IBL (Image-Based Lighting) contribution
-pub fn eval_ibl(normal: Vec3, view_dir: Vec3, material: &PbrMaterial,
-                irradiance_sh: &SphericalHarmonics) -> Vec3 {
+pub fn eval_ibl(
+    normal: Vec3,
+    view_dir: Vec3,
+    material: &PbrMaterial,
+    irradiance_sh: &SphericalHarmonics,
+) -> Vec3 {
     let n = normal.normalize();
     let v = view_dir.normalize();
 
@@ -320,14 +379,22 @@ pub fn eval_ibl(normal: Vec3, view_dir: Vec3, material: &PbrMaterial,
     let f = fresnel_schlick(n_dot_v.max(0.0), f0);
 
     let one2 = Vec3::new(1.0, 1.0, 1.0);
-    let kd = one2.sub(f).scale(1.0 - material.metallic).scale(1.0 / core::f32::consts::PI);
+    let kd = one2
+        .sub(f)
+        .scale(1.0 - material.metallic)
+        .scale(1.0 / core::f32::consts::PI);
     let ks = f;
 
     // Diffuse IBL * albedo * AO
     let diffuse = {
         let s = irradiance.scale(kd.x);
-        Vec3::new(s.x * material.albedo.x, s.y * material.albedo.y, s.z * material.albedo.z)
-    }.scale(material.ao);
+        Vec3::new(
+            s.x * material.albedo.x,
+            s.y * material.albedo.y,
+            s.z * material.albedo.z,
+        )
+    }
+    .scale(material.ao);
 
     // Specular IBL (simplified: use irradiance color as rough specular)
     let specular = specular_ibl.scale(ks.x).scale(material.roughness * 0.5);
@@ -339,9 +406,14 @@ pub fn eval_ibl(normal: Vec3, view_dir: Vec3, material: &PbrMaterial,
 }
 
 /// Full PBR evaluation: direct + IBL
-pub fn shade_pbr(position: Vec3, normal: Vec3, view_dir: Vec3,
-                 material: &PbrMaterial, lights: &[Light],
-                 irradiance_sh: &SphericalHarmonics) -> Vec3 {
+pub fn shade_pbr(
+    position: Vec3,
+    normal: Vec3,
+    view_dir: Vec3,
+    material: &PbrMaterial,
+    lights: &[Light],
+    irradiance_sh: &SphericalHarmonics,
+) -> Vec3 {
     let direct = eval_direct_lights(position, normal, view_dir, material, lights);
     let ibl = eval_ibl(normal, view_dir, material, irradiance_sh);
     direct.add(ibl)

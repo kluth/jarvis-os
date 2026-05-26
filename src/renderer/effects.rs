@@ -46,11 +46,7 @@ pub fn tone_map_reinhard(hdr_r: f32, hdr_g: f32, hdr_b: f32) -> (u8, u8, u8) {
     let r = hdr_r.max(0.0) / (1.0 + hdr_r.max(0.0));
     let g = hdr_g.max(0.0) / (1.0 + hdr_g.max(0.0));
     let b = hdr_b.max(0.0) / (1.0 + hdr_b.max(0.0));
-    (
-        (r * 255.0) as u8,
-        (g * 255.0) as u8,
-        (b * 255.0) as u8,
-    )
+    ((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8)
 }
 
 /// Generic tone map an ARGB HDR buffer to sRGB
@@ -104,7 +100,8 @@ impl BloomPass {
                 let sr = (r * excess) as u32;
                 let sg = (g * excess) as u32;
                 let sb = (b * excess) as u32;
-                self.scratch[i] = 0xFF000000 | (sr.min(255) << 16) | (sg.min(255) << 8) | sb.min(255);
+                self.scratch[i] =
+                    0xFF000000 | (sr.min(255) << 16) | (sg.min(255) << 8) | sb.min(255);
             } else {
                 self.scratch[i] = 0;
             }
@@ -119,7 +116,9 @@ impl BloomPass {
         // 3. Composite bloom onto original
         for i in 0..size {
             let bloom = self.scratch[i];
-            if bloom == 0 { continue; }
+            if bloom == 0 {
+                continue;
+            }
             let br = ((bloom >> 16) & 0xFF) as u16;
             let bg = ((bloom >> 8) & 0xFF) as u16;
             let bb = (bloom & 0xFF) as u16;
@@ -141,10 +140,13 @@ impl BloomPass {
 
         for y in 0..self.height {
             for x in 0..self.width {
-                let mut r = 0u32; let mut g = 0u32; let mut b = 0u32;
+                let mut r = 0u32;
+                let mut g = 0u32;
+                let mut b = 0u32;
                 let mut count = 0u32;
 
-                for kx in x.saturating_sub(kernel_radius)..= (x + kernel_radius).min(self.width - 1) {
+                for kx in x.saturating_sub(kernel_radius)..=(x + kernel_radius).min(self.width - 1)
+                {
                     let c = self.scratch[y * self.width + kx];
                     if c != 0 {
                         r += (c >> 16) & 0xFF;
@@ -171,10 +173,13 @@ impl BloomPass {
 
         for y in 0..self.height {
             for x in 0..self.width {
-                let mut r = 0u32; let mut g = 0u32; let mut b = 0u32;
+                let mut r = 0u32;
+                let mut g = 0u32;
+                let mut b = 0u32;
                 let mut count = 0u32;
 
-                for ky in y.saturating_sub(kernel_radius)..= (y + kernel_radius).min(self.height - 1) {
+                for ky in y.saturating_sub(kernel_radius)..=(y + kernel_radius).min(self.height - 1)
+                {
                     let c = self.scratch[ky * self.width + x];
                     if c != 0 {
                         r += (c >> 16) & 0xFF;
@@ -215,7 +220,7 @@ pub fn apply_vignette(buffer: &mut [u32], w: usize, h: usize, strength: f32) {
             let dx = x as f32 - cx;
             let dy = y as f32 - cy;
             let dist = libm::sqrtf(dx * dx + dy * dy) / max_dist;
-            let darken = 1.0 - (dist * dist  * strength).min(0.8);
+            let darken = 1.0 - (dist * dist * strength).min(0.8);
             let idx = y * w + x;
             let c = buffer[idx];
             let r = (((c >> 16) & 0xFF) as f32 * darken) as u32;
@@ -254,8 +259,16 @@ pub fn apply_chromatic_aberration(buffer: &mut [u32], w: usize, h: usize, streng
             let r_idx = y * w + (x + shift) as usize;
             let b_idx = y * w + (x - shift) as usize;
 
-            let r_c = if r_idx < buffer.len() { buffer[r_idx] } else { buffer[idx] };
-            let b_c = if b_idx < buffer.len() { buffer[b_idx] } else { buffer[idx] };
+            let r_c = if r_idx < buffer.len() {
+                buffer[r_idx]
+            } else {
+                buffer[idx]
+            };
+            let b_c = if b_idx < buffer.len() {
+                buffer[b_idx]
+            } else {
+                buffer[idx]
+            };
             let g_c = buffer[idx];
 
             let r = (r_c >> 16) & 0xFF;

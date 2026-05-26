@@ -36,7 +36,7 @@ pub struct AcpiSdtHeader {
 
 #[repr(C, packed)]
 pub struct RsdpDescriptor {
-    pub signature: [u8; 8],           // "RSD PTR "
+    pub signature: [u8; 8], // "RSD PTR "
     pub checksum: u8,
     pub oem_id: [u8; 6],
     pub revision: u8,
@@ -271,7 +271,9 @@ impl AcpiData {
 fn acpi_checksum(data: *const u8, length: usize) -> bool {
     let mut sum: u8 = 0;
     for i in 0..length {
-        unsafe { sum = sum.wrapping_add(*data.add(i)); }
+        unsafe {
+            sum = sum.wrapping_add(*data.add(i));
+        }
     }
     sum == 0
 }
@@ -346,7 +348,8 @@ unsafe fn parse_rsdt(rsdt_addr: u64, phys_mem_offset: u64, data: &mut AcpiData) 
     }
 
     let num_tables = (header.length as usize - mem::size_of::<AcpiSdtHeader>()) / 4;
-    let table_ptrs = (phys_mem_offset + rsdt_addr + mem::size_of::<AcpiSdtHeader>() as u64) as *const u32;
+    let table_ptrs =
+        (phys_mem_offset + rsdt_addr + mem::size_of::<AcpiSdtHeader>() as u64) as *const u32;
 
     for i in 0..num_tables {
         let table_phys = *table_ptrs.add(i) as u64;
@@ -363,7 +366,8 @@ unsafe fn parse_xsdt(xsdt_addr: u64, phys_mem_offset: u64, data: &mut AcpiData) 
     }
 
     let num_tables = (header.length as usize - mem::size_of::<AcpiSdtHeader>()) / 8;
-    let table_ptrs = (phys_mem_offset + xsdt_addr + mem::size_of::<AcpiSdtHeader>() as u64) as *const u64;
+    let table_ptrs =
+        (phys_mem_offset + xsdt_addr + mem::size_of::<AcpiSdtHeader>() as u64) as *const u64;
 
     for i in 0..num_tables {
         let table_phys = *table_ptrs.add(i);
@@ -441,7 +445,11 @@ unsafe fn parse_madt(madt_phys: u64, phys_mem_offset: u64, data: &mut AcpiData) 
         entry_phys += entry_header.record_length as u64;
     }
 
-    crate::serial_println!("ACPI: MADT parsed: {} CPUs, {} IOAPICs", data.processor_count, data.io_apic_count);
+    crate::serial_println!(
+        "ACPI: MADT parsed: {} CPUs, {} IOAPICs",
+        data.processor_count,
+        data.io_apic_count
+    );
 }
 
 /// Parse MCFG (PCI Express Memory-Mapped Config Space)
@@ -454,18 +462,25 @@ unsafe fn parse_mcfg(mcfg_phys: u64, phys_mem_offset: u64, data: &mut AcpiData) 
     }
 
     let mcfg: &McfgFull = ptr_at(mcfg_phys, phys_mem_offset);
-    let num_alloc = (mcfg.header.length as usize - mem::size_of::<McfgFull>()) / mem::size_of::<McfgAllocation>();
+    let num_alloc = (mcfg.header.length as usize - mem::size_of::<McfgFull>())
+        / mem::size_of::<McfgAllocation>();
     let alloc_start = mcfg_phys + mem::size_of::<McfgFull>() as u64;
 
     for i in 0..num_alloc {
-        let alloc: &McfgAllocation = ptr_at(alloc_start + (i * mem::size_of::<McfgAllocation>()) as u64, phys_mem_offset);
+        let alloc: &McfgAllocation = ptr_at(
+            alloc_start + (i * mem::size_of::<McfgAllocation>()) as u64,
+            phys_mem_offset,
+        );
         let alloc_segment = alloc.pci_segment_group;
         let alloc_base = alloc.base_address;
         let alloc_start_bus = alloc.start_bus;
         let alloc_end_bus = alloc.end_bus;
         crate::serial_println!(
             "ACPI: MCFG ECAM segment={} base={:#018x} bus={}-{}",
-            alloc_segment, alloc_base, alloc_start_bus, alloc_end_bus,
+            alloc_segment,
+            alloc_base,
+            alloc_start_bus,
+            alloc_end_bus,
         );
 
         // Store the first ECAM config space
@@ -502,13 +517,16 @@ unsafe fn parse_fadt(fadt_phys: u64, phys_mem_offset: u64, data: &mut AcpiData) 
         data.dsdt_present = true;
         crate::serial_println!(
             "ACPI: DSDT at {:#010x}, length {}",
-            data.dsdt_address, dsdt_len,
+            data.dsdt_address,
+            dsdt_len,
         );
     }
 
     crate::serial_println!(
         "ACPI: FADT parsed: PM timer={:#x}, reset={:#x}/{}",
-        data.pm_timer_block, data.reset_port, data.reset_value,
+        data.pm_timer_block,
+        data.reset_port,
+        data.reset_value,
     );
 }
 

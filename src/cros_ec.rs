@@ -27,7 +27,7 @@ impl CrosEc {
         let mut buf = [0u8; 32];
         // EC_CMD_GET_VERSION = 0x02
         crate::i2c::smbus_read_block(self.bus_id, EC_I2C_ADDR, 0x02, &mut buf)?;
-        
+
         let len = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
         Ok(alloc::string::String::from_utf8_lossy(&buf[..len]).into_owned())
     }
@@ -44,7 +44,7 @@ pub fn init() {
     serial_println!("EC: Initializing Chromebook EC driver...");
     // The EC is usually on the primary SMBus (bus 0)
     let ec = CrosEc::new(0);
-    
+
     match ec.get_version() {
         Ok(ver) => serial_println!("EC: Found ChromeOS EC, Version: {}", ver),
         Err(_) => serial_println!("EC: ChromeOS EC not found or not responsive on I2C 0x1E"),

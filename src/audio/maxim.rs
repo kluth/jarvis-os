@@ -7,7 +7,7 @@
 //!   - Speaker protection (thermal/excursion)
 //! ============================================================================
 
-use crate::i2c::{I2cResult, I2cError};
+use crate::i2c::{I2cError, I2cResult};
 use crate::serial_println;
 
 pub const MAXIM_I2C_ADDR_L: u8 = 0x38;
@@ -24,14 +24,17 @@ impl Max98390 {
     }
 
     pub fn init(&self) -> I2cResult<()> {
-        serial_println!("AUDIO: Initializing Maxim Smart Amp at 0x{:02X}...", self.addr);
-        
+        serial_println!(
+            "AUDIO: Initializing Maxim Smart Amp at 0x{:02X}...",
+            self.addr
+        );
+
         // 1. Reset
         self.write_reg(0x2000, 0x01)?;
-        
+
         // 2. Enable Amp
         self.write_reg(0x2001, 0x01)?;
-        
+
         serial_println!("AUDIO: Maxim Smart Amp ready.");
         Ok(())
     }

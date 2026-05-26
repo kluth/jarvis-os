@@ -8,7 +8,7 @@
 //!   - Headset/Mic detection
 //! ============================================================================
 
-use crate::i2c::{I2cResult, I2cError};
+use crate::i2c::{I2cError, I2cResult};
 use crate::serial_println;
 
 pub const RT5682_I2C_ADDR: u8 = 0x1A;
@@ -30,17 +30,17 @@ impl Rt5682 {
 
     pub fn init(&self) -> I2cResult<()> {
         serial_println!("AUDIO: Initializing RT5682 codec...");
-        
+
         // 1. Reset codec
         self.write_reg(REG_RESET, 0x0000)?;
-        
+
         // 2. Check Chip ID (Expected: 0x6419 or similar)
         let id = self.read_reg(REG_CHIP_ID)?;
         serial_println!("AUDIO: RT5682 Chip ID: 0x{:04X}", id);
-        
+
         // 3. Basic power on
         self.write_reg(REG_PWR_MGMT_1, 0x8000)?; // Enable main power
-        
+
         serial_println!("AUDIO: RT5682 codec ready.");
         Ok(())
     }

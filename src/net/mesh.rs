@@ -48,7 +48,6 @@ impl MeshNode {
         let mut seed = [0u8; 32];
         crate::entropy::fill_entropy(&mut seed);
 
-
         let mut rng = ChaCha20Rng::from_seed(seed);
         let mut secret_bytes = [0u8; 32];
         rng.fill_bytes(&mut secret_bytes);

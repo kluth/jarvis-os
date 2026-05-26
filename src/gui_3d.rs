@@ -27,7 +27,13 @@ pub struct Face {
 impl Face {
     fn new(v0: Point3D, v1: Point3D, v2: Point3D, color: Color) -> Self {
         let avg_z = (v0.z + v1.z + v2.z) / 3.0;
-        Face { v0, v1, v2, color, avg_z }
+        Face {
+            v0,
+            v1,
+            v2,
+            color,
+            avg_z,
+        }
     }
 }
 
@@ -47,14 +53,46 @@ impl Mesh3D {
         // Vertices: [bottom-back-left, bottom-back-right, bottom-front-right, bottom-front-left,
         //             top-back-left, top-back-right, top-front-right, top-front-left]
         let verts = alloc::vec![
-            Point3D { x: -w, y: h_bot, z: -d },  // 0
-            Point3D { x:  w, y: h_bot, z: -d },  // 1
-            Point3D { x:  w, y: h_bot, z:  d },  // 2
-            Point3D { x: -w, y: h_bot, z:  d },  // 3
-            Point3D { x: -w, y: h_top, z: -d },  // 4
-            Point3D { x:  w, y: h_top, z: -d },  // 5
-            Point3D { x:  w, y: h_top, z:  d },  // 6
-            Point3D { x: -w, y: h_top, z:  d },  // 7
+            Point3D {
+                x: -w,
+                y: h_bot,
+                z: -d
+            }, // 0
+            Point3D {
+                x: w,
+                y: h_bot,
+                z: -d
+            }, // 1
+            Point3D {
+                x: w,
+                y: h_bot,
+                z: d
+            }, // 2
+            Point3D {
+                x: -w,
+                y: h_bot,
+                z: d
+            }, // 3
+            Point3D {
+                x: -w,
+                y: h_top,
+                z: -d
+            }, // 4
+            Point3D {
+                x: w,
+                y: h_top,
+                z: -d
+            }, // 5
+            Point3D {
+                x: w,
+                y: h_top,
+                z: d
+            }, // 6
+            Point3D {
+                x: -w,
+                y: h_top,
+                z: d
+            }, // 7
         ];
 
         // Shading factors: front=1.0 (brightest), top=0.7, side=0.5
@@ -91,7 +129,10 @@ impl Mesh3D {
         faces.push(Face::new(verts[0], verts[1], verts[2], bottom_light));
         faces.push(Face::new(verts[0], verts[2], verts[3], bottom_light));
 
-        Mesh3D { vertices: verts, faces }
+        Mesh3D {
+            vertices: verts,
+            faces,
+        }
     }
 
     /// Create a solid shaded sphere using triangle strips
@@ -99,8 +140,8 @@ impl Mesh3D {
         let mut verts = Vec::new();
         // Generate vertices via latitude/longitude
         for i in 0..=segments {
-            let lat = (core::f32::consts::PI * i as f32) / segments as f32
-                - core::f32::consts::PI / 2.0;
+            let lat =
+                (core::f32::consts::PI * i as f32) / segments as f32 - core::f32::consts::PI / 2.0;
             let sin_lat = libm::sinf(lat);
             let cos_lat = libm::cosf(lat);
             for j in 0..segments {
@@ -140,7 +181,10 @@ impl Mesh3D {
             }
         }
 
-        Mesh3D { vertices: verts, faces }
+        Mesh3D {
+            vertices: verts,
+            faces,
+        }
     }
 }
 
@@ -171,7 +215,11 @@ impl HologramRenderer {
 
     fn project(&self, p: Point3D) -> Point2D {
         let z = p.z + self.viewer_distance;
-        let factor = if z > 0.1 { self.fov / z } else { self.fov / 0.1 };
+        let factor = if z > 0.1 {
+            self.fov / z
+        } else {
+            self.fov / 0.1
+        };
         Point2D {
             x: (p.x * factor) as isize + (self.width as isize / 2),
             y: (p.y * factor) as isize + (self.height as isize / 2),
@@ -223,10 +271,22 @@ impl HologramRenderer {
         let mut projected_faces: Vec<(Face, Point2D, Point2D, Point2D)> = Vec::new();
         for face in &mesh.faces {
             // Find indices in the mesh's vertices list
-            let idx0 = mesh.vertices.iter().position(|v| v.x == face.v0.x && v.y == face.v0.y && v.z == face.v0.z).unwrap_or(0);
-            let idx1 = mesh.vertices.iter().position(|v| v.x == face.v1.x && v.y == face.v1.y && v.z == face.v1.z).unwrap_or(0);
-            let idx2 = mesh.vertices.iter().position(|v| v.x == face.v2.x && v.y == face.v2.y && v.z == face.v2.z).unwrap_or(0);
-            
+            let idx0 = mesh
+                .vertices
+                .iter()
+                .position(|v| v.x == face.v0.x && v.y == face.v0.y && v.z == face.v0.z)
+                .unwrap_or(0);
+            let idx1 = mesh
+                .vertices
+                .iter()
+                .position(|v| v.x == face.v1.x && v.y == face.v1.y && v.z == face.v1.z)
+                .unwrap_or(0);
+            let idx2 = mesh
+                .vertices
+                .iter()
+                .position(|v| v.x == face.v2.x && v.y == face.v2.y && v.z == face.v2.z)
+                .unwrap_or(0);
+
             if idx0 >= projected.len() || idx1 >= projected.len() || idx2 >= projected.len() {
                 continue;
             }
@@ -248,7 +308,9 @@ impl HologramRenderer {
 
         // Sort by depth (painter's algorithm: back to front = farthest first)
         projected_faces.sort_by(|a, b| {
-            b.0.avg_z.partial_cmp(&a.0.avg_z).unwrap_or(core::cmp::Ordering::Equal)
+            b.0.avg_z
+                .partial_cmp(&a.0.avg_z)
+                .unwrap_or(core::cmp::Ordering::Equal)
         });
 
         // Draw filled triangles
@@ -259,17 +321,31 @@ impl HologramRenderer {
 }
 
 /// Scanline triangle fill algorithm
-fn fill_triangle(writer: &mut FramebufferWriter, v0: Point2D, v1: Point2D, v2: Point2D, color: Color) {
+fn fill_triangle(
+    writer: &mut FramebufferWriter,
+    v0: Point2D,
+    v1: Point2D,
+    v2: Point2D,
+    color: Color,
+) {
     let mut pts = [v0, v1, v2];
     // Sort by y ascending
-    if pts[0].y > pts[1].y { pts.swap(0, 1); }
-    if pts[1].y > pts[2].y { pts.swap(1, 2); }
-    if pts[0].y > pts[1].y { pts.swap(0, 1); }
+    if pts[0].y > pts[1].y {
+        pts.swap(0, 1);
+    }
+    if pts[1].y > pts[2].y {
+        pts.swap(1, 2);
+    }
+    if pts[0].y > pts[1].y {
+        pts.swap(0, 1);
+    }
 
     let [p0, p1, p2] = pts;
 
     let total_height = p2.y - p0.y;
-    if total_height == 0 { return; }
+    if total_height == 0 {
+        return;
+    }
 
     let bounds = writer.get_info();
     let fb_width = bounds.width as isize;
@@ -290,8 +366,12 @@ fn fill_triangle(writer: &mut FramebufferWriter, v0: Point2D, v1: Point2D, v2: P
         };
 
         let (mut x_start, mut x_end) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
-        if x_start < 0 { x_start = 0; }
-        if x_end >= fb_width { x_end = fb_width - 1; }
+        if x_start < 0 {
+            x_start = 0;
+        }
+        if x_end >= fb_width {
+            x_end = fb_width - 1;
+        }
         if y >= 0 && y < fb_height {
             for x in x_start..=x_end {
                 writer.write_pixel(x as usize, y as usize, color);
@@ -313,8 +393,12 @@ fn fill_triangle(writer: &mut FramebufferWriter, v0: Point2D, v1: Point2D, v2: P
         };
 
         let (mut x_start, mut x_end) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
-        if x_start < 0 { x_start = 0; }
-        if x_end >= fb_width { x_end = fb_width - 1; }
+        if x_start < 0 {
+            x_start = 0;
+        }
+        if x_end >= fb_width {
+            x_end = fb_width - 1;
+        }
         if y >= 0 && y < fb_height {
             for x in x_start..=x_end {
                 writer.write_pixel(x as usize, y as usize, color);
@@ -324,6 +408,8 @@ fn fill_triangle(writer: &mut FramebufferWriter, v0: Point2D, v1: Point2D, v2: P
 }
 
 fn interpolate_x(x0: isize, x1: isize, dy: isize, total_dy: isize) -> isize {
-    if total_dy == 0 { return x0; }
+    if total_dy == 0 {
+        return x0;
+    }
     x0 + (x1 - x0) * dy / total_dy
 }

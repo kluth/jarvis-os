@@ -74,9 +74,15 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         let fb_phys = jarvis_kernel::gpu::drivers::vbe_read_phys_addr();
         if fb_phys != 0 {
             unsafe {
-                jarvis_kernel::vga_buffer::reinit_via_phys_mem_offset(phys_mem_offset_raw, fb_phys as u64);
+                jarvis_kernel::vga_buffer::reinit_via_phys_mem_offset(
+                    phys_mem_offset_raw,
+                    fb_phys as u64,
+                );
             }
-            serial_println!("VGA: Re-mapped FB via phys mem offset (phys=0x{:x})", fb_phys);
+            serial_println!(
+                "VGA: Re-mapped FB via phys mem offset (phys=0x{:x})",
+                fb_phys
+            );
         } else {
             serial_println!("VGA: FB read failed, keeping bootloader mapping");
         }
@@ -89,7 +95,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     // 7. Discover and register all hardware
     jarvis_kernel::pci::init();
-    jarvis_kernel::device_manager::MANAGER.lock().discover_platform_devices();
+    jarvis_kernel::device_manager::MANAGER
+        .lock()
+        .discover_platform_devices();
     jarvis_kernel::i2c::init();
     jarvis_kernel::device_manager::probe_all();
     jarvis_kernel::device_manager::init_all();
@@ -101,7 +109,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
         let mut gpu_manager = GpuManager::new();
         gpu_manager.scan_pci();
         let _ = gpu_manager.select_and_init(1280, 720);
-        serial_println!("GPU: {} display device(s) detected", gpu_manager.devices.len());
+        serial_println!(
+            "GPU: {} display device(s) detected",
+            gpu_manager.devices.len()
+        );
         for dev in &gpu_manager.devices {
             serial_println!("GPU:   - {}", dev.name);
         }
@@ -172,7 +183,15 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
             // Write a bright white band at rows 0-10
             for y in 0..10 {
                 for x in 0..1280 {
-                    writer.write_pixel(x, y, Color { r: 255, g: 255, b: 0 });
+                    writer.write_pixel(
+                        x,
+                        y,
+                        Color {
+                            r: 255,
+                            g: 255,
+                            b: 0,
+                        },
+                    );
                 }
             }
             // Write a red band at rows 200-210
@@ -181,7 +200,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
                     writer.write_pixel(x, y, Color { r: 255, g: 0, b: 0 });
                 }
             }
-            // Write a green band at rows 400-410  
+            // Write a green band at rows 400-410
             for y in 400..410 {
                 for x in 0..1280 {
                     writer.write_pixel(x, y, Color { r: 0, g: 255, b: 0 });

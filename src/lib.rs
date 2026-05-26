@@ -36,15 +36,14 @@ pub mod cros_ec;
 pub mod device_manager;
 pub mod entropy;
 pub mod gdt;
-pub mod i2c;
+pub mod gpu;
 #[cfg(feature = "gui")]
 pub mod gui;
 #[cfg(feature = "gui")]
 pub mod gui_3d;
-pub mod mem;
+pub mod i2c;
 pub mod interrupts;
-pub mod gpu;
-pub mod renderer;
+pub mod mem;
 pub mod memory;
 #[cfg(feature = "network")]
 pub mod net;
@@ -52,6 +51,7 @@ pub mod net;
 pub mod notifications;
 pub mod pci;
 pub mod qemu;
+pub mod renderer;
 pub mod security;
 pub mod sensors;
 pub mod serial;

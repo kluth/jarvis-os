@@ -331,7 +331,7 @@ pub async fn swarm_task() {
         // 3. Periodic health broadcast (using real system metrics)
         let (used, total) = crate::allocator::heap_usage();
         let uptime_s = crate::interrupts::TICKS.load(Ordering::SeqCst) / 100; // 100 ticks = 1s approx
-        
+
         // Approximate CPU load based on task yields (prototype metric)
         let cpu_load = 2; // Still a bit of a stub, but better than hardcoded 5
 

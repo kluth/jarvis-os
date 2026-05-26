@@ -23,30 +23,44 @@ pub struct Particle {
     pub color_end: Vec3,
     pub size_start: f32,
     pub size_end: f32,
-    pub lifetime: f32,      // Total lifetime in seconds
-    pub age: f32,           // Current age in seconds
+    pub lifetime: f32, // Total lifetime in seconds
+    pub age: f32,      // Current age in seconds
     pub alive: bool,
 }
 
 impl Particle {
-    pub fn new(position: Vec3, velocity: Vec3,
-               color_start: Vec3, color_end: Vec3,
-               size_start: f32, size_end: f32,
-               lifetime: f32) -> Self {
+    pub fn new(
+        position: Vec3,
+        velocity: Vec3,
+        color_start: Vec3,
+        color_end: Vec3,
+        size_start: f32,
+        size_end: f32,
+        lifetime: f32,
+    ) -> Self {
         Self {
-            position, velocity,
-            color_start, color_end,
-            size_start, size_end,
-            lifetime, age: 0.0,
+            position,
+            velocity,
+            color_start,
+            color_end,
+            size_start,
+            size_end,
+            lifetime,
+            age: 0.0,
             alive: true,
         }
     }
 
     /// Update particle, returns false if expired
     pub fn update(&mut self, dt: f32, forces: &[Vec3]) -> bool {
-        if !self.alive { return false; }
+        if !self.alive {
+            return false;
+        }
         self.age += dt;
-        if self.age >= self.lifetime { self.alive = false; return false; }
+        if self.age >= self.lifetime {
+            self.alive = false;
+            return false;
+        }
 
         // Apply forces
         for force in forces {
@@ -90,9 +104,9 @@ impl Particle {
 // ============================================================================
 #[derive(Debug, Clone)]
 pub struct EmitterConfig {
-    pub spawn_rate: f32,         // Particles per second
+    pub spawn_rate: f32, // Particles per second
     pub position: Vec3,
-    pub spawn_radius: f32,       // Random spawn area
+    pub spawn_radius: f32, // Random spawn area
     pub velocity_min: Vec3,
     pub velocity_max: Vec3,
     pub lifetime_min: f32,
@@ -208,12 +222,18 @@ impl ParticleEmitter {
         }
     }
 
-    pub fn enable(&mut self) { self.enabled = true; }
-    pub fn disable(&mut self) { self.enabled = false; }
+    pub fn enable(&mut self) {
+        self.enabled = true;
+    }
+    pub fn disable(&mut self) {
+        self.enabled = false;
+    }
 
     /// Update all particles and spawn new ones
     pub fn update(&mut self, dt: f32) {
-        if !self.enabled { return; }
+        if !self.enabled {
+            return;
+        }
 
         // Spawn new particles
         self.spawn_accumulator += self.config.spawn_rate * dt;
@@ -239,23 +259,37 @@ impl ParticleEmitter {
         use rand_chacha::rand_core::{RngCore, SeedableRng};
         let mut rng = rand_chacha::ChaCha20Rng::from_seed([0x13; 32]);
 
-        let px = self.config.position.x + (rng.next_u32() as f32 / u32::MAX as f32 - 0.5) * self.config.spawn_radius * 2.0;
-        let py = self.config.position.y + (rng.next_u32() as f32 / u32::MAX as f32 - 0.5) * self.config.spawn_radius * 2.0;
-        let pz = self.config.position.z + (rng.next_u32() as f32 / u32::MAX as f32 - 0.5) * self.config.spawn_radius * 2.0;
+        let px = self.config.position.x
+            + (rng.next_u32() as f32 / u32::MAX as f32 - 0.5) * self.config.spawn_radius * 2.0;
+        let py = self.config.position.y
+            + (rng.next_u32() as f32 / u32::MAX as f32 - 0.5) * self.config.spawn_radius * 2.0;
+        let pz = self.config.position.z
+            + (rng.next_u32() as f32 / u32::MAX as f32 - 0.5) * self.config.spawn_radius * 2.0;
 
-        let vx = self.config.velocity_min.x + (rng.next_u32() as f32 / u32::MAX as f32) * (self.config.velocity_max.x - self.config.velocity_min.x);
-        let vy = self.config.velocity_min.y + (rng.next_u32() as f32 / u32::MAX as f32) * (self.config.velocity_max.y - self.config.velocity_min.y);
-        let vz = self.config.velocity_min.z + (rng.next_u32() as f32 / u32::MAX as f32) * (self.config.velocity_max.z - self.config.velocity_min.z);
+        let vx = self.config.velocity_min.x
+            + (rng.next_u32() as f32 / u32::MAX as f32)
+                * (self.config.velocity_max.x - self.config.velocity_min.x);
+        let vy = self.config.velocity_min.y
+            + (rng.next_u32() as f32 / u32::MAX as f32)
+                * (self.config.velocity_max.y - self.config.velocity_min.y);
+        let vz = self.config.velocity_min.z
+            + (rng.next_u32() as f32 / u32::MAX as f32)
+                * (self.config.velocity_max.z - self.config.velocity_min.z);
 
-        let lt = self.config.lifetime_min + (rng.next_u32() as f32 / u32::MAX as f32) * (self.config.lifetime_max - self.config.lifetime_min);
-        let sz = self.config.size_min + (rng.next_u32() as f32 / u32::MAX as f32) * (self.config.size_max - self.config.size_min);
+        let lt = self.config.lifetime_min
+            + (rng.next_u32() as f32 / u32::MAX as f32)
+                * (self.config.lifetime_max - self.config.lifetime_min);
+        let sz = self.config.size_min
+            + (rng.next_u32() as f32 / u32::MAX as f32)
+                * (self.config.size_max - self.config.size_min);
 
         let particle = Particle::new(
             Vec3::new(px, py, pz),
             Vec3::new(vx, vy, vz),
             self.config.color_start,
             self.config.color_end,
-            sz, sz * 0.3,
+            sz,
+            sz * 0.3,
             lt,
         );
         self.particles.push(particle);
@@ -272,13 +306,17 @@ impl ParticleEmitter {
 
             // Render as a small screen-aligned billboard
             let v0 = Vertex::new(particle.position.x - size, particle.position.y - size, z)
-                .with_color(color.x, color.y, color.z).with_alpha(alpha);
+                .with_color(color.x, color.y, color.z)
+                .with_alpha(alpha);
             let v1 = Vertex::new(particle.position.x + size, particle.position.y - size, z)
-                .with_color(color.x, color.y, color.z).with_alpha(alpha);
+                .with_color(color.x, color.y, color.z)
+                .with_alpha(alpha);
             let v2 = Vertex::new(particle.position.x + size, particle.position.y + size, z)
-                .with_color(color.x, color.y, color.z).with_alpha(alpha);
+                .with_color(color.x, color.y, color.z)
+                .with_alpha(alpha);
             let v3 = Vertex::new(particle.position.x - size, particle.position.y + size, z)
-                .with_color(color.x, color.y, color.z).with_alpha(alpha);
+                .with_color(color.x, color.y, color.z)
+                .with_alpha(alpha);
 
             renderer.draw_triangle(&v0, &v1, &v2, None, BlendMode::Alpha, ShaderType::Glow);
             renderer.draw_triangle(&v0, &v2, &v3, None, BlendMode::Alpha, ShaderType::Glow);

@@ -15,11 +15,11 @@
 //!   - particle: Particle system with emitters and forces
 //! ============================================================================
 
-pub mod pbr;
+pub mod compositor;
 pub mod deferred;
 pub mod effects;
 pub mod particle;
-pub mod compositor;
+pub mod pbr;
 pub mod ui;
 
 use crate::vga_buffer::Color;
@@ -35,17 +35,37 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub fn new(x: f32, y: f32, z: f32) -> Self { Self { x, y, z } }
-    pub fn zero() -> Self { Self { x: 0.0, y: 0.0, z: 0.0 } }
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { x, y, z }
+    }
+    pub fn zero() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
 
     pub fn add(self, other: Vec3) -> Vec3 {
-        Vec3 { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
+        Vec3 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
     }
     pub fn sub(self, other: Vec3) -> Vec3 {
-        Vec3 { x: self.x - other.x, y: self.y - other.y, z: self.z - other.z }
+        Vec3 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
     }
     pub fn scale(self, s: f32) -> Vec3 {
-        Vec3 { x: self.x * s, y: self.y * s, z: self.z * s }
+        Vec3 {
+            x: self.x * s,
+            y: self.y * s,
+            z: self.z * s,
+        }
     }
     pub fn dot(self, other: Vec3) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z
@@ -57,10 +77,16 @@ impl Vec3 {
             z: self.x * other.y - self.y * other.x,
         }
     }
-    pub fn length(self) -> f32 { libm::sqrtf(self.dot(self)) }
+    pub fn length(self) -> f32 {
+        libm::sqrtf(self.dot(self))
+    }
     pub fn normalize(self) -> Vec3 {
         let l = self.length();
-        if l > 0.0001 { self.scale(1.0 / l) } else { self }
+        if l > 0.0001 {
+            self.scale(1.0 / l)
+        } else {
+            self
+        }
     }
     pub fn lerp(a: Vec3, b: Vec3, t: f32) -> Vec3 {
         Vec3 {
@@ -90,7 +116,11 @@ impl Texture {
     }
 
     pub fn from_raw(data: alloc::vec::Vec<u32>, width: usize, height: usize) -> Self {
-        Self { width, height, data }
+        Self {
+            width,
+            height,
+            data,
+        }
     }
 
     /// Sample texture at UV coordinates with bilinear filtering
@@ -111,7 +141,8 @@ impl Texture {
             for x in 0..w {
                 let dx = x as f32 / w as f32;
                 let dy = y as f32 / h as f32;
-                let dist = libm::sqrtf((dx - 0.5)*(dx - 0.5) + (dy - 0.5)*(dy - 0.5)).min(0.5) * 2.0;
+                let dist =
+                    libm::sqrtf((dx - 0.5) * (dx - 0.5) + (dy - 0.5) * (dy - 0.5)).min(0.5) * 2.0;
                 let grid = ((x / 16) ^ (y / 16)) & 1;
                 let val = if grid == 0 { 0.8 } else { 0.2 };
                 let intensity = (dist.max(0.0) * val * 255.0) as u8;
@@ -120,10 +151,15 @@ impl Texture {
                 let r = (intensity as u16 * 20 / 255) as u8;
                 let g = (intensity as u16 * 180 / 255) as u8;
                 let b = (intensity as u16 * 255 / 255) as u8;
-                data[y * w + x] = (alpha as u32) << 24 | (r as u32) << 16 | (g as u32) << 8 | b as u32;
+                data[y * w + x] =
+                    (alpha as u32) << 24 | (r as u32) << 16 | (g as u32) << 8 | b as u32;
             }
         }
-        Self { width: w, height: h, data }
+        Self {
+            width: w,
+            height: h,
+            data,
+        }
     }
 
     /// Generate a hex grid texture
@@ -133,13 +169,18 @@ impl Texture {
             for x in 0..w {
                 let fx = x as f32 / 16.0;
                 let fy = y as f32 / 16.0;
-                let hex = (libm::sinf(fx * 0.866 + fy * 0.5) * libm::cosf(fx * 0.866 - fy * 0.5)).abs();
+                let hex =
+                    (libm::sinf(fx * 0.866 + fy * 0.5) * libm::cosf(fx * 0.866 - fy * 0.5)).abs();
                 let val = if hex < 0.3 { 180u8 } else { 30u8 };
                 let alpha = if hex < 0.3 { 120u8 } else { 0u8 };
                 data[y * w + x] = ((alpha as u32) << 24) | (val as u32) << 8 | (val as u32);
             }
         }
-        Self { width: w, height: h, data }
+        Self {
+            width: w,
+            height: h,
+            data,
+        }
     }
 
     /// Generate a procedural circuit-board texture
@@ -163,7 +204,11 @@ impl Texture {
                 y = (y as i32 + dy).max(0).min(h as i32 - 1) as usize;
             }
         }
-        Self { width: w, height: h, data }
+        Self {
+            width: w,
+            height: h,
+            data,
+        }
     }
 }
 
@@ -175,21 +220,43 @@ pub struct Vertex {
     pub x: f32,
     pub y: f32,
     pub z: f32,
-    pub u: f32,       // texture U
-    pub v: f32,       // texture V
-    pub r: f32,       // vertex color R (0-1)
+    pub u: f32, // texture U
+    pub v: f32, // texture V
+    pub r: f32, // vertex color R (0-1)
     pub g: f32,
     pub b: f32,
-    pub a: f32,       // alpha
+    pub a: f32, // alpha
 }
 
 impl Vertex {
     pub fn new(x: f32, y: f32, z: f32) -> Self {
-        Self { x, y, z, u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, a: 1.0 }
+        Self {
+            x,
+            y,
+            z,
+            u: 0.0,
+            v: 0.0,
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 1.0,
+        }
     }
-    pub fn with_uv(mut self, u: f32, v: f32) -> Self { self.u = u; self.v = v; self }
-    pub fn with_color(mut self, r: f32, g: f32, b: f32) -> Self { self.r = r; self.g = g; self.b = b; self }
-    pub fn with_alpha(mut self, a: f32) -> Self { self.a = a; self }
+    pub fn with_uv(mut self, u: f32, v: f32) -> Self {
+        self.u = u;
+        self.v = v;
+        self
+    }
+    pub fn with_color(mut self, r: f32, g: f32, b: f32) -> Self {
+        self.r = r;
+        self.g = g;
+        self.b = b;
+        self
+    }
+    pub fn with_alpha(mut self, a: f32) -> Self {
+        self.a = a;
+        self
+    }
 }
 
 // ============================================================================
@@ -234,9 +301,9 @@ pub enum ShaderType {
 pub struct Renderer {
     pub width: usize,
     pub height: usize,
-    pub framebuffer: alloc::vec::Vec<u32>,  // ARGB pixels
-    pub zbuffer: alloc::vec::Vec<f32>,      // depth buffer
-    pub backbuffer: alloc::vec::Vec<u32>,   // double buffer
+    pub framebuffer: alloc::vec::Vec<u32>, // ARGB pixels
+    pub zbuffer: alloc::vec::Vec<f32>,     // depth buffer
+    pub backbuffer: alloc::vec::Vec<u32>,  // double buffer
     pub clear_color: u32,
     pub clear_depth: f32,
     view_matrix: [[f32; 4]; 4],
@@ -306,7 +373,12 @@ impl Renderer {
         self.proj_matrix = [
             [f / aspect, 0.0, 0.0, 0.0],
             [0.0, f, 0.0, 0.0],
-            [0.0, 0.0, (far + near) / (near - far), (2.0 * far * near) / (near - far)],
+            [
+                0.0,
+                0.0,
+                (far + near) / (near - far),
+                (2.0 * far * near) / (near - far),
+            ],
             [0.0, 0.0, -1.0, 0.0],
         ];
     }
@@ -326,7 +398,7 @@ impl Renderer {
     fn transform(&self, v: &[f32; 4], m: &[[f32; 4]; 4]) -> [f32; 4] {
         let mut r = [0.0f32; 4];
         for i in 0..4 {
-            r[i] = v[0]*m[0][i] + v[1]*m[1][i] + v[2]*m[2][i] + v[3]*m[3][i];
+            r[i] = v[0] * m[0][i] + v[1] * m[1][i] + v[2] * m[2][i] + v[3] * m[3][i];
         }
         r
     }
@@ -335,7 +407,9 @@ impl Renderer {
         let p = [v.x, v.y, v.z, 1.0];
         let p = self.transform(&p, &self.view_matrix);
         let p = self.transform(&p, &self.proj_matrix);
-        if p[3].abs() < 0.0001 { return None; }
+        if p[3].abs() < 0.0001 {
+            return None;
+        }
         let inv_w = 1.0 / p[3];
         let sx = (p[0] * inv_w * 0.5 + 0.5) * self.viewport_width;
         let sy = (-p[1] * inv_w * 0.5 + 0.5) * self.viewport_height;
@@ -347,9 +421,13 @@ impl Renderer {
     // DRAW A PIXEL (with Z-test and alpha blend)
     // ========================================================================
     fn draw_pixel(&mut self, x: isize, y: isize, z: f32, color: u32, blend: BlendMode) {
-        if x < 0 || x >= self.width as isize || y < 0 || y >= self.height as isize { return; }
+        if x < 0 || x >= self.width as isize || y < 0 || y >= self.height as isize {
+            return;
+        }
         let idx = y as usize * self.width + x as usize;
-        if z >= self.zbuffer[idx] { return; }
+        if z >= self.zbuffer[idx] {
+            return;
+        }
 
         let src_a = ((color >> 24) & 0xFF) as u8;
         let src_r = ((color >> 16) & 0xFF) as u8;
@@ -375,46 +453,66 @@ impl Renderer {
                     (oa * 255.0) as u8,
                 )
             }
-            BlendMode::Add => {
-                (
-                    (src_r as u16 + dst_r as u16).min(255) as u8,
-                    (src_g as u16 + dst_g as u16).min(255) as u8,
-                    (src_b as u16 + dst_b as u16).min(255) as u8,
-                    src_a.max(dst_a),
-                )
-            }
-            BlendMode::Multiply => {
-                (
-                    (src_r as u16 * dst_r as u16 / 255) as u8,
-                    (src_g as u16 * dst_g as u16 / 255) as u8,
-                    (src_b as u16 * dst_b as u16 / 255) as u8,
-                    src_a.min(dst_a),
-                )
-            }
+            BlendMode::Add => (
+                (src_r as u16 + dst_r as u16).min(255) as u8,
+                (src_g as u16 + dst_g as u16).min(255) as u8,
+                (src_b as u16 + dst_b as u16).min(255) as u8,
+                src_a.max(dst_a),
+            ),
+            BlendMode::Multiply => (
+                (src_r as u16 * dst_r as u16 / 255) as u8,
+                (src_g as u16 * dst_g as u16 / 255) as u8,
+                (src_b as u16 * dst_b as u16 / 255) as u8,
+                src_a.min(dst_a),
+            ),
         };
 
         self.zbuffer[idx] = z;
-        self.framebuffer[idx] = (fa as u32) << 24 | (fr as u32) << 16 | (fg as u32) << 8 | fb as u32;
+        self.framebuffer[idx] =
+            (fa as u32) << 24 | (fr as u32) << 16 | (fg as u32) << 8 | fb as u32;
     }
 
     // ========================================================================
     // FILLED TRIANGLE RASTERIZER (with perspective-correct attributes)
     // ========================================================================
-    pub fn draw_triangle(&mut self, v0: &Vertex, v1: &Vertex, v2: &Vertex,
-                         texture: Option<&Texture>, blend: BlendMode, shader: ShaderType) {
+    pub fn draw_triangle(
+        &mut self,
+        v0: &Vertex,
+        v1: &Vertex,
+        v2: &Vertex,
+        texture: Option<&Texture>,
+        blend: BlendMode,
+        shader: ShaderType,
+    ) {
         // Project vertices to screen space
-        let p0 = match self.project_vertex(v0) { Some(p) => p, None => return };
-        let p1 = match self.project_vertex(v1) { Some(p) => p, None => return };
-        let p2 = match self.project_vertex(v2) { Some(p) => p, None => return };
+        let p0 = match self.project_vertex(v0) {
+            Some(p) => p,
+            None => return,
+        };
+        let p1 = match self.project_vertex(v1) {
+            Some(p) => p,
+            None => return,
+        };
+        let p2 = match self.project_vertex(v2) {
+            Some(p) => p,
+            None => return,
+        };
 
         self.rasterize_triangle(p0, p1, p2, v0, v1, v2, texture, blend, shader);
     }
 
-    fn rasterize_triangle(&mut self,
-        p0: (f32, f32, f32), p1: (f32, f32, f32), p2: (f32, f32, f32),
-        v0: &Vertex, v1: &Vertex, v2: &Vertex,
-        texture: Option<&Texture>, blend: BlendMode, shader: ShaderType) {
-
+    fn rasterize_triangle(
+        &mut self,
+        p0: (f32, f32, f32),
+        p1: (f32, f32, f32),
+        p2: (f32, f32, f32),
+        v0: &Vertex,
+        v1: &Vertex,
+        v2: &Vertex,
+        texture: Option<&Texture>,
+        blend: BlendMode,
+        shader: ShaderType,
+    ) {
         let (x0, y0, z0) = p0;
         let (x1, y1, z1) = p1;
         let (x2, y2, z2) = p2;
@@ -431,7 +529,9 @@ impl Renderer {
         };
 
         let area = edge(x0, y0, x1, y1, x2, y2);
-        if area.abs() < 0.001 { return; }
+        if area.abs() < 0.001 {
+            return;
+        }
 
         let inv_area = 1.0 / area;
 
@@ -486,7 +586,9 @@ impl Renderer {
                                 let tex_b = texel & 0xFF;
                                 let factor = if matches!(shader, ShaderType::TexturedLit) {
                                     (cr * 0.5 + 0.5).max(0.0).min(1.0)
-                                } else { 1.0 };
+                                } else {
+                                    1.0
+                                };
                                 let r = (tex_r as f32 * factor * ca) as u8;
                                 let g = (tex_g as f32 * factor * ca) as u8;
                                 let b = (tex_b as f32 * factor * ca) as u8;
@@ -520,8 +622,17 @@ impl Renderer {
     // ========================================================================
     // LINE DRAWING
     // ========================================================================
-    pub fn draw_line(&mut self, x0: f32, y0: f32, z0: f32, x1: f32, y1: f32, z1: f32,
-                     color: u32, thickness: f32) {
+    pub fn draw_line(
+        &mut self,
+        x0: f32,
+        y0: f32,
+        z0: f32,
+        x1: f32,
+        y1: f32,
+        z1: f32,
+        color: u32,
+        thickness: f32,
+    ) {
         // Bresenham-style thick line
         let dx = (x1 - x0).abs();
         let dy = -(y1 - y0).abs();
@@ -535,18 +646,32 @@ impl Renderer {
         loop {
             for ty in -t2..=t2 {
                 for tx in -t2..=t2 {
-                    let dist = libm::sqrtf((tx*tx + ty*ty) as f32);
+                    let dist = libm::sqrtf((tx * tx + ty * ty) as f32);
                     if dist <= t2 as f32 {
                         let t = ((x - x0) / (x1 - x0).max(1.0)).max(0.0).min(1.0);
                         let z = z0 + (z1 - z0) * t;
-                        self.draw_pixel(x as isize + tx, y as isize + ty, z, color, BlendMode::None);
+                        self.draw_pixel(
+                            x as isize + tx,
+                            y as isize + ty,
+                            z,
+                            color,
+                            BlendMode::None,
+                        );
                     }
                 }
             }
-            if x as isize == x1 as isize && y as isize == y1 as isize { break; }
+            if x as isize == x1 as isize && y as isize == y1 as isize {
+                break;
+            }
             let e2 = 2.0 * err;
-            if e2 >= dy { err += dy; x += sx; }
-            if e2 <= dx { err += dx; y += sy; }
+            if e2 >= dy {
+                err += dy;
+                x += sx;
+            }
+            if e2 <= dx {
+                err += dx;
+                y += sy;
+            }
         }
     }
 
@@ -571,7 +696,7 @@ impl Renderer {
     pub fn fill_circle(&mut self, cx: f32, cy: f32, r: f32, z: f32, color: u32, blend: BlendMode) {
         let r_int = r as isize;
         for dy in -r_int..=r_int {
-            let half = libm::sqrtf(((r_int*r_int - dy*dy) as f32).max(0.0)) as isize;
+            let half = libm::sqrtf(((r_int * r_int - dy * dy) as f32).max(0.0)) as isize;
             for dx in -half..=half {
                 self.draw_pixel(cx as isize + dx, cy as isize + dy, z, color, blend);
             }
@@ -587,8 +712,8 @@ impl Renderer {
         let mut bloom_buf = alloc::vec![0u32; self.width * self.height];
 
         // First pass: extract bright pixels
-        for y in 1..self.height-1 {
-            for x in 1..self.width-1 {
+        for y in 1..self.height - 1 {
+            for x in 1..self.width - 1 {
                 let idx = y * self.width + x;
                 let c = self.framebuffer[idx];
                 let r = ((c >> 16) & 0xFF) as u8;
@@ -606,10 +731,14 @@ impl Renderer {
         let kernel_size: isize = 3;
         for y in kernel_size as usize..self.height - kernel_size as usize {
             for x in kernel_size as usize..self.width - kernel_size as usize {
-                let mut r = 0u32; let mut g = 0u32; let mut b = 0u32; let mut count = 0;
+                let mut r = 0u32;
+                let mut g = 0u32;
+                let mut b = 0u32;
+                let mut count = 0;
                 for ky in -kernel_size..=kernel_size {
                     for kx in -kernel_size..=kernel_size {
-                        let idx = ((y as isize + ky) * self.width as isize + (x as isize + kx)) as usize;
+                        let idx =
+                            ((y as isize + ky) * self.width as isize + (x as isize + kx)) as usize;
                         let c = bloom_buf[idx];
                         if c != 0 {
                             r += (c >> 16) & 0xFF;
@@ -623,7 +752,8 @@ impl Renderer {
                     let avg_r = (r / count).min(255) as u8;
                     let avg_g = (g / count).min(255) as u8;
                     let avg_b = (b / count).min(255) as u8;
-                    blurred[y * self.width + x] = 0xFF000000 | (avg_r as u32) << 16 | (avg_g as u32) << 8 | avg_b as u32;
+                    blurred[y * self.width + x] =
+                        0xFF000000 | (avg_r as u32) << 16 | (avg_g as u32) << 8 | avg_b as u32;
                 }
             }
         }
@@ -670,12 +800,12 @@ impl Renderer {
     pub fn apply_vignette(&mut self, strength: f32) {
         let cx = self.width as f32 / 2.0;
         let cy = self.height as f32 / 2.0;
-        let max_dist = libm::sqrtf(cx*cx + cy*cy);
+        let max_dist = libm::sqrtf(cx * cx + cy * cy);
         for y in 0..self.height {
             for x in 0..self.width {
                 let dx = x as f32 - cx;
                 let dy = y as f32 - cy;
-                let dist = libm::sqrtf(dx*dx + dy*dy) / max_dist;
+                let dist = libm::sqrtf(dx * dx + dy * dy) / max_dist;
                 let darken = 1.0 - (dist * dist * strength).min(1.0) * 0.6;
                 let idx = y * self.width + x;
                 let c = self.framebuffer[idx];
@@ -749,9 +879,12 @@ impl Scene {
                     for tri in call.vertices.chunks(3) {
                         if tri.len() == 3 {
                             renderer.draw_triangle(
-                                &tri[0], &tri[1], &tri[2],
+                                &tri[0],
+                                &tri[1],
+                                &tri[2],
                                 call.texture.as_deref(),
-                                blend, shader,
+                                blend,
+                                shader,
                             );
                         }
                     }
@@ -759,11 +892,14 @@ impl Scene {
                 DrawMode::TriangleFan => {
                     if call.vertices.len() >= 3 {
                         let v0 = &call.vertices[0];
-                        for i in 1..call.vertices.len()-1 {
+                        for i in 1..call.vertices.len() - 1 {
                             renderer.draw_triangle(
-                                v0, &call.vertices[i], &call.vertices[i+1],
+                                v0,
+                                &call.vertices[i],
+                                &call.vertices[i + 1],
                                 call.texture.as_deref(),
-                                blend, shader,
+                                blend,
+                                shader,
                             );
                         }
                     }
@@ -771,9 +907,12 @@ impl Scene {
                 DrawMode::TriangleStrip => {
                     for i in 0..call.vertices.len().saturating_sub(2) {
                         renderer.draw_triangle(
-                            &call.vertices[i], &call.vertices[i+1], &call.vertices[i+2],
+                            &call.vertices[i],
+                            &call.vertices[i + 1],
+                            &call.vertices[i + 2],
                             call.texture.as_deref(),
-                            blend, shader,
+                            blend,
+                            shader,
                         );
                     }
                 }

@@ -250,8 +250,11 @@ pub unsafe fn reinit_via_phys_mem_offset(phys_mem_offset: u64, fb_phys_addr: u64
             y_pos: 0,
         };
         *WRITER.lock() = Some(writer);
-        crate::serial_println!("VGA: remapped @ phys+0x{:x}=VA 0x{:x}",
-            fb_phys_addr, phys_mem_offset + fb_phys_addr);
+        crate::serial_println!(
+            "VGA: remapped @ phys+0x{:x}=VA 0x{:x}",
+            fb_phys_addr,
+            phys_mem_offset + fb_phys_addr
+        );
     }
 }
 
@@ -283,9 +286,15 @@ pub unsafe fn create_writer_at(va: VirtAddr, _buf_size: usize) {
             y_pos: 0,
         };
         *WRITER.lock() = Some(writer);
-        crate::serial_println!("VGA: created writer at VA 0x{:x} ({} bytes)", va.as_u64(), byte_len);
+        crate::serial_println!(
+            "VGA: created writer at VA 0x{:x} ({} bytes)",
+            va.as_u64(),
+            byte_len
+        );
     } else {
-        crate::serial_println!("VGA ERROR: create_writer_at called but FRAMEBUFFER_SAVED_INFO is None");
+        crate::serial_println!(
+            "VGA ERROR: create_writer_at called but FRAMEBUFFER_SAVED_INFO is None"
+        );
     }
 }
 
@@ -294,11 +303,10 @@ pub fn write_nt(phys_offset: u64, data: &[u8]) {
     unsafe {
         let dst = phys_offset as *mut u8;
         for i in (0..data.len()).step_by(8) {
-            let chunk = &data[i..core::cmp::min(i+8, data.len())];
+            let chunk = &data[i..core::cmp::min(i + 8, data.len())];
             if chunk.len() == 8 {
                 let val = u64::from_ne_bytes([
-                    chunk[0], chunk[1], chunk[2], chunk[3],
-                    chunk[4], chunk[5], chunk[6], chunk[7],
+                    chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
                 ]);
                 core::arch::asm!("movnti [{addr}], {val}",
                     addr = in(reg) dst.add(i),

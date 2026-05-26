@@ -4,7 +4,7 @@ use core::arch::x86_64::{__cpuid, _rdrand64_step, _rdtsc};
 /// Follows the "No Mocks" mandate.
 pub fn get_entropy_64() -> u64 {
     let mut val: u64 = 0;
-    
+
     // Check for RDRAND support (CPUID.01H:ECX.bit30)
     let has_rdrand = unsafe {
         let result = __cpuid(0x1);
@@ -19,14 +19,14 @@ pub fn get_entropy_64() -> u64 {
             let tsc = _rdtsc();
             let stack_ptr = &val as *const _ as u64;
             let mut mix = tsc ^ stack_ptr;
-            
+
             // MurmurHash3-style finalizer for mixing
             mix ^= mix >> 33;
             mix = mix.wrapping_mul(0xff51afd7ed558ccd);
             mix ^= mix >> 33;
             mix = mix.wrapping_mul(0xc4ceb9fe1a85ec53);
             mix ^= mix >> 33;
-            
+
             mix
         }
     }

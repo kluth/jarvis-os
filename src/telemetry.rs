@@ -153,7 +153,7 @@ pub async fn telemetry_task() {
         // 3. Anomalous Pattern Detection (OBS-004)
         if HUB.lock().get_latest(10).iter().any(|d| match d {
             TelemetryData::CpuLoad(l) => *l > 95,
-            _ => false
+            _ => false,
         }) {
             crate::notifications::CENTER.push(
                 "ANOMALOUS CPU LOAD DETECTED",

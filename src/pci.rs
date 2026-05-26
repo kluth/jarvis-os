@@ -9,7 +9,7 @@
 //!   - Full device enumeration with BAR decoding (I/O, MMIO32, MMIO64)
 //! ============================================================================
 
-use crate::device_manager::{Device, DeviceClass, MmioRegion, IrqType};
+use crate::device_manager::{Device, DeviceClass, IrqType, MmioRegion};
 use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
@@ -34,9 +34,7 @@ pub fn set_ecam(base: u64, end_bus: u8) {
 }
 
 fn use_ecam() -> bool {
-    unsafe {
-        matches!(ACCESS_MODE, Some(PciAccess::Ecam { .. }))
-    }
+    unsafe { matches!(ACCESS_MODE, Some(PciAccess::Ecam { .. })) }
 }
 
 // ============================================================================
@@ -119,7 +117,13 @@ pub fn pci_write_word(bus: u8, slot: u8, func: u8, offset: u16, value: u16) {
     let shift = ((offset & 0x03) * 8) as u32;
     let orig = pci_read_config(bus, slot, func, aligned);
     let mask = (0xFFFFu32) << shift;
-    pci_write_config(bus, slot, func, aligned, (orig & !mask) | ((value as u32) << shift));
+    pci_write_config(
+        bus,
+        slot,
+        func,
+        aligned,
+        (orig & !mask) | ((value as u32) << shift),
+    );
 }
 
 /// Read 8-bit from PCI config
@@ -132,10 +136,10 @@ pub fn pci_read_byte(bus: u8, slot: u8, func: u8, offset: u16) -> u8 {
 // ============================================================================
 
 /// Standard PCI capability IDs
-pub const CAP_PM: u8 = 0x01;      // Power Management
-pub const CAP_MSI: u8 = 0x05;     // MSI (Message Signaled Interrupts)
+pub const CAP_PM: u8 = 0x01; // Power Management
+pub const CAP_MSI: u8 = 0x05; // MSI (Message Signaled Interrupts)
 pub const CAP_PCIEXPRESS: u8 = 0x10; // PCI Express Capability
-pub const CAP_MSIX: u8 = 0x11;    // MSI-X
+pub const CAP_MSIX: u8 = 0x11; // MSI-X
 
 /// Parse the capabilities list for a PCI function
 /// Returns Vec of (cap_id, cap_offset)
@@ -164,8 +168,14 @@ pub fn read_capabilities(bus: u8, slot: u8, func: u8) -> Vec<(u8, u16)> {
 // ============================================================================
 
 /// Program a device's MSI capability with a given address and data
-pub fn program_msi(bus: u8, slot: u8, func: u8, caps: &[(u8, u16)],
-                   msi_address: u64, msi_data: u16) -> bool {
+pub fn program_msi(
+    bus: u8,
+    slot: u8,
+    func: u8,
+    caps: &[(u8, u16)],
+    msi_address: u64,
+    msi_data: u16,
+) -> bool {
     for &(id, offset) in caps {
         if id == CAP_MSI {
             // Read MSI capability register
@@ -357,13 +367,22 @@ fn scan_function(bus: u8, slot: u8, func: u8, _legacy: bool) -> Option<PciFuncti
     };
 
     Some(PciFunctionInfo {
-        bus, slot, func,
+        bus,
+        slot,
+        func,
         vendor_id: vendor,
         device_id: device,
-        revision, class, subclass, prog_if,
-        subsystem_vendor, subsystem_device,
-        bars, irq_pin, irq_line,
-        is_pci_pci_bridge, secondary_bus,
+        revision,
+        class,
+        subclass,
+        prog_if,
+        subsystem_vendor,
+        subsystem_device,
+        bars,
+        irq_pin,
+        irq_line,
+        is_pci_pci_bridge,
+        secondary_bus,
         capabilities: caps,
     })
 }
@@ -411,7 +430,7 @@ pub fn scan_all_buses() -> Vec<PciFunctionInfo> {
     while let Some(bus) = buses_to_scan.pop() {
         let mut bus_functions = Vec::new();
         scan_bus(bus, is_legacy, &mut bus_functions);
-        
+
         for f in &bus_functions {
             if f.is_pci_pci_bridge && f.secondary_bus != 0 {
                 let sec_bus = f.secondary_bus;
@@ -427,7 +446,11 @@ pub fn scan_all_buses() -> Vec<PciFunctionInfo> {
     // If ECAM is available, scan any remaining buses up to end_bus (fills gaps)
     let ecam_end_bus = {
         let data = crate::acpi::get_data();
-        if data.ecam_present { Some(data.ecam_end_bus) } else { None }
+        if data.ecam_present {
+            Some(data.ecam_end_bus)
+        } else {
+            None
+        }
     };
     if let Some(end_bus) = ecam_end_bus {
         for bus in 0..=end_bus {
@@ -482,17 +505,15 @@ pub fn pci_function_to_device(info: &PciFunctionInfo) -> Device {
         (0x09, 0x01) => "Digitizer",
         (0x09, 0x02) => "Mouse Controller",
         // Serial Bus
-        (0x0C, 0x03) => {
-            match info.prog_if {
-                0x00 => "USB UHCI Controller",
-                0x10 => "USB OHCI Controller",
-                0x20 => "USB EHCI Controller",
-                0x30 => "USB xHCI Controller",
-                0x80 => "USB Controller",
-                0xFE => "USB Device",
-                _ => "USB Controller",
-            }
-        }
+        (0x0C, 0x03) => match info.prog_if {
+            0x00 => "USB UHCI Controller",
+            0x10 => "USB OHCI Controller",
+            0x20 => "USB EHCI Controller",
+            0x30 => "USB xHCI Controller",
+            0x80 => "USB Controller",
+            0xFE => "USB Device",
+            _ => "USB Controller",
+        },
         (0x0C, 0x05) => "SMBus Controller",
         // Encryption
         (0x0D, 0x00) => "Network/Computing Encryption",
@@ -501,7 +522,14 @@ pub fn pci_function_to_device(info: &PciFunctionInfo) -> Device {
         _ => "PCI Device",
     };
 
-    let mut device = Device::new(info.vendor_id, info.device_id, class, info.bus, info.slot, info.func);
+    let mut device = Device::new(
+        info.vendor_id,
+        info.device_id,
+        class,
+        info.bus,
+        info.slot,
+        info.func,
+    );
     device.name = name;
     device.id.subsystem_vendor = info.subsystem_vendor;
     device.id.subsystem_device = info.subsystem_device;
@@ -528,14 +556,21 @@ pub fn pci_function_to_device(info: &PciFunctionInfo) -> Device {
 }
 
 /// Configures MSI for a device
-pub fn configure_msi(bus: u8, slot: u8, func: u8, vector: u8, cpu_id: u8) -> Result<(), &'static str> {
+pub fn configure_msi(
+    bus: u8,
+    slot: u8,
+    func: u8,
+    vector: u8,
+    cpu_id: u8,
+) -> Result<(), &'static str> {
     // Find MSI capability offset
     let mut cap_ptr = pci_read_word(bus, slot, func, 0x34) & 0xFF;
     let mut msi_off = 0;
-    
+
     while cap_ptr != 0 {
         let cap_id = pci_read_word(bus, slot, func, cap_ptr) & 0xFF;
-        if cap_id == 0x05 { // MSI
+        if cap_id == 0x05 {
+            // MSI
             msi_off = cap_ptr;
             break;
         }
@@ -549,15 +584,15 @@ pub fn configure_msi(bus: u8, slot: u8, func: u8, vector: u8, cpu_id: u8) -> Res
     // Configure MSI
     // Message Address: 0xFEE00000 | (cpu_id << 12)
     let addr = 0xFEE00000 | ((cpu_id as u32) << 12);
-    pci_write_config(bus, slot, func, ((msi_off + 4)), addr);
+    pci_write_config(bus, slot, func, (msi_off + 4), addr);
 
     // Message Data: vector
-    pci_write_config(bus, slot, func, ((msi_off + 8)), vector as u32);
+    pci_write_config(bus, slot, func, (msi_off + 8), vector as u32);
 
     // Enable MSI: set bit 16 of Message Control
-    let mut ctrl = pci_read_word(bus, slot, func, ((msi_off + 2)));
+    let mut ctrl = pci_read_word(bus, slot, func, (msi_off + 2));
     ctrl |= 0x0001;
-    pci_write_word(bus, slot, func, ((msi_off + 2)), ctrl);
+    pci_write_word(bus, slot, func, (msi_off + 2), ctrl);
 
     Ok(())
 }
@@ -577,7 +612,8 @@ pub fn init() {
     }
 
     let functions = scan_all_buses();
-    crate::serial_println!("PCI: Found {} function(s) on {} bus(es)",
+    crate::serial_println!(
+        "PCI: Found {} function(s) on {} bus(es)",
         functions.len(),
         functions.iter().map(|f| f.bus).max().unwrap_or(0) + 1,
     );
@@ -599,7 +635,9 @@ pub fn init() {
             pci_write_word(bus, slot, func, 0x04, cmd);
             crate::serial_println!(
                 "PCI: Enabled bus mastering on [{}:{}.{}] {}",
-                bus, slot, func,
+                bus,
+                slot,
+                func,
                 pci_function_to_device(info).name,
             );
         }

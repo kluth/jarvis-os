@@ -8,12 +8,12 @@ pub enum StreamDirection {
 
 /// HDA Stream Descriptor Registers (offset from base + 0x80 * stream_id)
 /// Output streams: 0, 2, 4... Input streams: 1, 3, 5...
-const SD_CTL: usize = 0x00;   // Stream Descriptor Control (4 bytes)
-const SD_STS: usize = 0x03;   // Stream Descriptor Status (1 byte)
+const SD_CTL: usize = 0x00; // Stream Descriptor Control (4 bytes)
+const SD_STS: usize = 0x03; // Stream Descriptor Status (1 byte)
 const SD_BDLPL: usize = 0x04; // BDL Pointer Lower (4 bytes)
 const SD_BDLPU: usize = 0x08; // BDL Pointer Upper (4 bytes)
-const SD_CBL: usize = 0x0C;   // Cyclic Buffer Length (4 bytes)
-const SD_LVI: usize = 0x10;   // Last Valid Index (2 bytes)
+const SD_CBL: usize = 0x0C; // Cyclic Buffer Length (4 bytes)
+const SD_LVI: usize = 0x10; // Last Valid Index (2 bytes)
 
 // SD_CTL bits
 const SD_CTL_RUN: u32 = 1 << 0;
@@ -22,13 +22,13 @@ const SD_CTL_STRIPE: u32 = 1 << 2;
 const SD_CTL_TP: u32 = 1 << 3;
 const SD_CTL_DEIE: u32 = 1 << 4;
 const SD_CTL_FIFO_ERROR: u32 = 1 << 5;
-const SD_CTL_IOCE: u32 = 1 << 6;  // Interrupt on Completion Enable
-const SD_CTL_FEIE: u32 = 1 << 7;  // FIFO Error Interrupt Enable
+const SD_CTL_IOCE: u32 = 1 << 6; // Interrupt on Completion Enable
+const SD_CTL_FEIE: u32 = 1 << 7; // FIFO Error Interrupt Enable
 
 // SD_STS bits
-const SD_STS_BCIS: u8 = 1 << 2;   // Buffer Completion Interrupt Status
+const SD_STS_BCIS: u8 = 1 << 2; // Buffer Completion Interrupt Status
 const SD_STS_FIFO_READY: u8 = 1 << 3;
-const SD_STS_DESE: u8 = 1 << 4;   // Descriptor Error
+const SD_STS_DESE: u8 = 1 << 4; // Descriptor Error
 
 pub struct AudioStream {
     buffer: DmaBuffer,
@@ -40,7 +40,12 @@ pub struct AudioStream {
 }
 
 impl AudioStream {
-    pub fn new(buffer: DmaBuffer, direction: StreamDirection, hda_base: VirtAddr, stream_id: u8) -> Self {
+    pub fn new(
+        buffer: DmaBuffer,
+        direction: StreamDirection,
+        hda_base: VirtAddr,
+        stream_id: u8,
+    ) -> Self {
         AudioStream {
             buffer,
             _direction: direction,
@@ -107,7 +112,7 @@ impl AudioStream {
         //         bits 2-0 = rate multiplier (0 = 1x, 1 = 2x, 2 = 4x)
         let fmt_ptr = sd_base.add(0x12).cast::<u16>();
         let sample_bits = 1u16 << 14; // 16-bit samples
-        let base_rate = 0x1Fu16 << 3;  // 48kHz base
+        let base_rate = 0x1Fu16 << 3; // 48kHz base
         let channels = ((self._channels as u16) - 1) & 0xF;
         let fmt_val = sample_bits | base_rate | channels;
         fmt_ptr.write_volatile(fmt_val);

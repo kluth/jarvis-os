@@ -18,13 +18,13 @@ impl WasmModule {
 
     pub fn execute(&self) -> Result<(), &'static str> {
         println!("WASM: Executing module ({} bytes)...", self.data.len());
-        
+
         // SEC-001 Integration: Minimal no_std interpreter logic.
         // In a real system, this would be a full Wasmtime/Wasmi runtime.
         if self.data.len() < 4 || &self.data[0..4] != b"\0asm" {
             return Err("Invalid WASM magic");
         }
-        
+
         println!("WASM: Magic verified. Starting sandbox...");
         Ok(())
     }

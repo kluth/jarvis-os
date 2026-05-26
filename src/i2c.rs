@@ -25,8 +25,8 @@ use core::fmt;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum I2cError {
     BusBusy,
-    NackAddress,      // No ACK on address phase
-    NackData,         // No ACK on data phase
+    NackAddress, // No ACK on address phase
+    NackData,    // No ACK on data phase
     ArbitrationLost,
     Timeout,
     InvalidParameter,
@@ -56,10 +56,10 @@ pub type I2cResult<T> = Result<T, I2cError>;
 // ============================================================================
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum I2cSpeed {
-    Standard,   // 100 kHz
-    Fast,       // 400 kHz
-    FastPlus,   // 1 MHz
-    HighSpeed,  // 3.4 MHz
+    Standard,  // 100 kHz
+    Fast,      // 400 kHz
+    FastPlus,  // 1 MHz
+    HighSpeed, // 3.4 MHz
 }
 
 impl I2cSpeed {
@@ -78,8 +78,8 @@ impl I2cSpeed {
 // ============================================================================
 #[derive(Debug, Clone)]
 pub struct I2cMessage {
-    pub address: u8,      // 7-bit address
-    pub read: bool,       // true = read, false = write
+    pub address: u8, // 7-bit address
+    pub read: bool,  // true = read, false = write
     pub data: Vec<u8>,
 }
 
@@ -122,8 +122,8 @@ pub trait I2cMaster: Send {
 // ============================================================================
 // I2C Bus Manager — Registry of all I2C controllers
 // ============================================================================
-use spinning_top::Spinlock;
 use lazy_static::lazy_static;
+use spinning_top::Spinlock;
 
 pub struct I2cController {
     pub bus_id: usize,
@@ -241,7 +241,11 @@ pub fn init() {
     if let Some(controller) = Ich9Smbus::try_new() {
         let mut mgr = I2C_MANAGER.lock();
         let bus_id = mgr.bus_count();
-        mgr.register(I2cController::new(bus_id, "ICH9 SMBus", Box::new(controller)));
+        mgr.register(I2cController::new(
+            bus_id,
+            "ICH9 SMBus",
+            Box::new(controller),
+        ));
         serial_println!("I2C: ICH9 SMBus controller initialized");
     }
 
@@ -263,8 +267,8 @@ pub fn init() {
 /// Software I2C using two GPIO pins for SCL and SDA.
 /// Works on any platform with I/O port or MMIO GPIO access.
 pub struct GpioBitbang {
-    scl_port: u16,  // GPIO port for SCL
-    sda_port: u16,  // GPIO port for SDA
+    scl_port: u16, // GPIO port for SCL
+    sda_port: u16, // GPIO port for SDA
     speed: I2cSpeed,
 }
 
@@ -464,12 +468,12 @@ impl I2cMaster for GpioBitbang {
 // ============================================================================
 /// Intel PIIX4 SMBus I/O ports (standard at 0xB00)
 const PIIX4_SMB_BASE: u16 = 0xB00;
-const PIIX4_SMB_HST_STS: u16 = 0x00;   // Host Status
-const PIIX4_SMB_HST_CNT: u16 = 0x02;   // Host Control
-const PIIX4_SMB_HST_CMD: u16 = 0x03;   // Host Command
-const PIIX4_SMB_HST_ADD: u16 = 0x04;   // Host Address
-const PIIX4_SMB_HST_DAT0: u16 = 0x05;  // Host Data 0
-const PIIX4_SMB_HST_DAT1: u16 = 0x06;  // Host Data 1
+const PIIX4_SMB_HST_STS: u16 = 0x00; // Host Status
+const PIIX4_SMB_HST_CNT: u16 = 0x02; // Host Control
+const PIIX4_SMB_HST_CMD: u16 = 0x03; // Host Command
+const PIIX4_SMB_HST_ADD: u16 = 0x04; // Host Address
+const PIIX4_SMB_HST_DAT0: u16 = 0x05; // Host Data 0
+const PIIX4_SMB_HST_DAT1: u16 = 0x06; // Host Data 1
 const PIIX4_SMB_HST_BLKDAT: u16 = 0x07; // Host Block Data (32 bytes)
 
 // Status bits
@@ -489,7 +493,7 @@ const CNT_PEC_EN: u8 = 0x80;
 
 // Protocol commands
 const CMD_QUICK: u8 = 0x00;
-const CMD_BYTE: u8 = 0x04;     // Send/Receive Byte
+const CMD_BYTE: u8 = 0x04; // Send/Receive Byte
 const CMD_BYTE_DATA: u8 = 0x08; // Write/Read Byte
 const CMD_WORD_DATA: u8 = 0x0C; // Write/Read Word
 const CMD_BLOCK_DATA: u8 = 0x14; // Write/Read Block
@@ -505,13 +509,13 @@ impl Piix4Smbus {
         for slot in 1..32 {
             let vendor = crate::pci::pci_read_config(0, slot, 3, 0);
             let device = crate::pci::pci_read_config(0, slot, 3, 2);
-            
+
             if vendor == 0x8086 && (device & 0xFFFF) == 0x7113 {
                 // Found PIIX4 Power Management / SMBus controller
                 // SMBus base is in BAR 4
                 let bar4 = crate::pci::pci_read_config(0, slot, 3, 0x20);
                 let base_port = (bar4 & 0xFFF0) as u16;
-                
+
                 if base_port != 0 {
                     serial_println!("I2C: PIIX4 SMBus detected at port {:#06x}", base_port);
                     // Ensure SMBus host is enabled (bit 0 of HOSTC 0xD2)
@@ -520,8 +524,11 @@ impl Piix4Smbus {
                     crate::pci::pci_write_word(0, slot, 3, 0xD2, hostc);
 
                     // Reset the controller
-                    unsafe { x86_64::instructions::port::Port::new(base_port + PIIX4_SMB_HST_STS).write(0xFEu8); }
-                    
+                    unsafe {
+                        x86_64::instructions::port::Port::new(base_port + PIIX4_SMB_HST_STS)
+                            .write(0xFEu8);
+                    }
+
                     return Some(Self { base_port });
                 }
             }
@@ -553,7 +560,10 @@ impl Piix4Smbus {
         for _ in 0..10000 {
             let sts = self.smbus_read8(PIIX4_SMB_HST_STS);
             if sts & STS_INTERRUPT != 0 {
-                self.smbus_write8(PIIX4_SMB_HST_STS, STS_INTERRUPT | STS_FAILED | STS_BUS_ERR | STS_DEV_ERR | STS_BYTE_DONE);
+                self.smbus_write8(
+                    PIIX4_SMB_HST_STS,
+                    STS_INTERRUPT | STS_FAILED | STS_BUS_ERR | STS_DEV_ERR | STS_BYTE_DONE,
+                );
                 // Check for errors
                 if sts & STS_DEV_ERR != 0 {
                     return Err(I2cError::DeviceNotReady);
@@ -645,7 +655,7 @@ impl I2cMaster for Piix4Smbus {
         // Write + Read (Write Byte then Read Byte)
         if !write_buf.is_empty() && !read_buf.is_empty() {
             self.smbus_write8(PIIX4_SMB_HST_CMD, write_buf[0]); // Command = register offset
-            // Read the value
+                                                                // Read the value
             match read_buf.len() {
                 1 => {
                     self.exec_cmd(addr, write_buf[0], CMD_BYTE_DATA)?;
@@ -691,7 +701,7 @@ impl I2cMaster for Piix4Smbus {
 /// Intel ICH9 SMBus — similar to PIIX4 but with slightly different register layout
 /// and different base I/O port.
 /// ICH9 SMBus base is typically at PCI BAR 4 of device 0:0x1F.3
-const ICH9_SMB_BASE: u16 = 0xE00;  // Default if PCI BAR gives different
+const ICH9_SMB_BASE: u16 = 0xE00; // Default if PCI BAR gives different
 
 pub struct Ich9Smbus {
     base_port: u16,
@@ -702,9 +712,8 @@ impl Ich9Smbus {
         // Try to detect ICH9 via PCI (00:1f.3 is SMBus on ICH9/Q35)
         let vendor = crate::pci::pci_read_config(0, 0x1F, 3, 0);
         let device = crate::pci::pci_read_config(0, 0x1F, 3, 2);
-        let is_ich9 = vendor == 0x8086
-            && (device & 0xFFFF) >= 0x2930
-            && (device & 0xFFFF) <= 0x293C;
+        let is_ich9 =
+            vendor == 0x8086 && (device & 0xFFFF) >= 0x2930 && (device & 0xFFFF) <= 0x293C;
 
         if is_ich9 {
             // SMBus base is in BAR 4
@@ -739,7 +748,9 @@ impl I2cMaster for Ich9Smbus {
                 x86_64::instructions::port::Port::new(self.base_port + 0x03).write(write_buf[0]);
                 x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x14u8 | 0x40u8);
             }
-            for _ in 0..1000 { core::hint::spin_loop(); }
+            for _ in 0..1000 {
+                core::hint::spin_loop();
+            }
             return Ok(write_buf.len());
         }
 
@@ -749,9 +760,13 @@ impl I2cMaster for Ich9Smbus {
                 x86_64::instructions::port::Port::new(self.base_port + 0x04).write((addr << 1) | 1);
                 x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x14u8 | 0x40u8);
             }
-            for _ in 0..1000 { core::hint::spin_loop(); }
+            for _ in 0..1000 {
+                core::hint::spin_loop();
+            }
             for i in 0..read_buf.len() {
-                read_buf[i] = unsafe { x86_64::instructions::port::Port::new(self.base_port + 0x07 + i as u16).read() };
+                read_buf[i] = unsafe {
+                    x86_64::instructions::port::Port::new(self.base_port + 0x07 + i as u16).read()
+                };
             }
             return Ok(read_buf.len());
         }
@@ -764,7 +779,8 @@ impl I2cMaster for Ich9Smbus {
     fn probe(&mut self, addr: u8) -> bool {
         unsafe {
             x86_64::instructions::port::Port::new(self.base_port + 0x04).write(addr << 1);
-            x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x40u8); // QUICK + START
+            x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x40u8);
+            // QUICK + START
         }
         for _ in 0..2000 {
             let sts: u8 = unsafe { x86_64::instructions::port::Port::new(self.base_port).read() };
@@ -826,25 +842,25 @@ pub const DDC_ADDR: u8 = 0x50;
 
 // EDID byte offsets
 const EDID_HEADER: [u8; 8] = [0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00];
-const EDID_MFR_ID: usize = 8;      // 2 bytes: PNP ID
-const EDID_PROD_CODE: usize = 10;   // 2 bytes: product code
-const EDID_SERIAL: usize = 12;      // 4 bytes: serial number
+const EDID_MFR_ID: usize = 8; // 2 bytes: PNP ID
+const EDID_PROD_CODE: usize = 10; // 2 bytes: product code
+const EDID_SERIAL: usize = 12; // 4 bytes: serial number
 const EDID_WEEK: usize = 16;
-const EDID_YEAR: usize = 17;        // year - 1990
-const EDID_VERSION: usize = 18;     // 1 = EDID 1.x
+const EDID_YEAR: usize = 17; // year - 1990
+const EDID_VERSION: usize = 18; // 1 = EDID 1.x
 const EDID_REVISION: usize = 19;
 const EDID_BASIC_PARAMS: usize = 20;
-const EDID_CHROMA: usize = 25;      // 10 bytes
+const EDID_CHROMA: usize = 25; // 10 bytes
 const EDID_ESTABLISHED: usize = 35; // 3 bytes
 const EDID_STANDARD_TIMINGS: usize = 38; // 8 × 2-byte entries
-const EDID_DETAILED: usize = 54;    // 4 × 18-byte detailed timings
-const EDID_EXTENSION: usize = 126;  // Number of extension blocks
+const EDID_DETAILED: usize = 54; // 4 × 18-byte detailed timings
+const EDID_EXTENSION: usize = 126; // Number of extension blocks
 const EDID_CHECKSUM: usize = 127;
 
 /// Detailed timing descriptor (18 bytes)
 #[derive(Debug, Clone)]
 pub struct DetailedTiming {
-    pub pixel_clock: u32,       // kHz
+    pub pixel_clock: u32, // kHz
     pub h_active: u16,
     pub h_blank: u16,
     pub v_active: u16,
@@ -853,8 +869,8 @@ pub struct DetailedTiming {
     pub h_sync_pulse: u16,
     pub v_sync_offset: u8,
     pub v_sync_pulse: u8,
-    pub h_size: u16,            // mm
-    pub v_size: u16,            // mm
+    pub h_size: u16, // mm
+    pub v_size: u16, // mm
     pub h_border: u16,
     pub v_border: u16,
     pub interlaced: bool,
@@ -882,7 +898,7 @@ pub enum MonitorDesc {
 #[derive(Debug, Clone)]
 pub struct EdidInfo {
     pub valid: bool,
-    pub manufacturer: [u8; 2],   // PNP ID
+    pub manufacturer: [u8; 2], // PNP ID
     pub product_code: u16,
     pub serial: u32,
     pub week: u8,
@@ -946,30 +962,57 @@ impl fmt::Display for EdidInfo {
             return write!(f, "  (invalid / no EDID)");
         }
         let mfr = self.manufacturer;
-        write!(f, "  Manufacturer:       {}{}", mfr[0] as char, mfr[1] as char)?;
+        write!(
+            f,
+            "  Manufacturer:       {}{}",
+            mfr[0] as char, mfr[1] as char
+        )?;
         writeln!(f, "  Product:            {:04X}", self.product_code)?;
         writeln!(f, "  Serial:             {:08X}", self.serial)?;
-        writeln!(f, "  Manufactured:       {} / {} ({})", self.week, self.year, if self.digital { "Digital" } else { "Analog" })?;
-        writeln!(f, "  Size:               {} × {} cm", self.width_cm, self.height_cm)?;
+        writeln!(
+            f,
+            "  Manufactured:       {} / {} ({})",
+            self.week,
+            self.year,
+            if self.digital { "Digital" } else { "Analog" }
+        )?;
+        writeln!(
+            f,
+            "  Size:               {} × {} cm",
+            self.width_cm, self.height_cm
+        )?;
         writeln!(f, "  Gamma:              {:.1}", self.gamma)?;
-        writeln!(f, "  EDID Version:       {}.{}", self.version, self.revision)?;
+        writeln!(
+            f,
+            "  EDID Version:       {}.{}",
+            self.version, self.revision
+        )?;
 
         if let Some(name) = &self.monitor_name {
             let name_str = core::str::from_utf8(&name[..]).unwrap_or("???");
             writeln!(f, "  Monitor Name:       {}", name_str.trim_matches('\0'))?;
         }
         if let Some(pref) = &self.preferred_timing {
-            writeln!(f, "  Preferred:          {} × {} @ {:.0} Hz",
-                pref.h_active, pref.v_active,
-                pref.pixel_clock as f64 / (pref.h_active as f64 + pref.h_blank as f64) / (pref.v_active as f64 + pref.v_blank as f64) * 1000.0)?;
+            writeln!(
+                f,
+                "  Preferred:          {} × {} @ {:.0} Hz",
+                pref.h_active,
+                pref.v_active,
+                pref.pixel_clock as f64
+                    / (pref.h_active as f64 + pref.h_blank as f64)
+                    / (pref.v_active as f64 + pref.v_blank as f64)
+                    * 1000.0
+            )?;
         }
         for t in &self.detailed_timings {
-            let refresh = t.pixel_clock as f64
-                * 1000.0
+            let refresh = t.pixel_clock as f64 * 1000.0
                 / (t.h_active as f64 + t.h_blank as f64)
                 / (t.v_active as f64 + t.v_blank as f64);
-            writeln!(f, "  Timing:             {} × {} @ {:.0} Hz",
-                t.h_active, t.v_active, refresh)?;
+            writeln!(
+                f,
+                "  Timing:             {} × {} @ {:.0} Hz",
+                t.h_active, t.v_active, refresh
+            )?;
         }
         Ok(())
     }
@@ -1084,13 +1127,16 @@ fn parse_monitor_descriptor(data: &[u8; 128], offset: usize) -> Option<(MonitorD
             // Range limits
             let mut rng = [0u8; 13];
             rng.copy_from_slice(&data[offset + 5..offset + 18]);
-            Some((MonitorDesc::RangeLimits {
-                min_v: rng[0],
-                max_v: rng[1],
-                min_h: rng[2],
-                max_h: rng[3],
-                max_clock: rng[4],
-            }, tag))
+            Some((
+                MonitorDesc::RangeLimits {
+                    min_v: rng[0],
+                    max_v: rng[1],
+                    min_h: rng[2],
+                    max_h: rng[3],
+                    max_clock: rng[4],
+                },
+                tag,
+            ))
         }
         0xFE => {
             // Text string
@@ -1098,9 +1144,7 @@ fn parse_monitor_descriptor(data: &[u8; 128], offset: usize) -> Option<(MonitorD
             txt.copy_from_slice(&data[offset + 5..offset + 18]);
             Some((MonitorDesc::Text(txt), tag))
         }
-        _ => {
-            Some((MonitorDesc::Timing("unknown descriptor type"), tag))
-        }
+        _ => Some((MonitorDesc::Timing("unknown descriptor type"), tag)),
     }
 }
 
@@ -1114,9 +1158,9 @@ fn parse_standard_timing(byte1: u8, byte2: u8) -> Option<(u16, u16)> {
     let ratio_bits = (byte2 >> 5) & 0x03;
     let v_active = match ratio_bits {
         0 => h_active * 10 / 16, // 16:10
-        1 => h_active * 3 / 4,    // 4:3
-        2 => h_active * 9 / 16,   // 16:9
-        3 => h_active * 9 / 16,   // 5:4 → approximated as 16:9
+        1 => h_active * 3 / 4,   // 4:3
+        2 => h_active * 9 / 16,  // 16:9
+        3 => h_active * 9 / 16,  // 5:4 → approximated as 16:9
         _ => h_active * 3 / 4,
     };
     if h_active < 320 || v_active < 200 {
@@ -1195,11 +1239,7 @@ pub fn read_edid_block(bus_id: usize, block: u8) -> Option<[u8; 128]> {
 
     // Write offset (2 bytes for block offset)
     let offset_bytes = offset.to_be_bytes();
-    let result = controller.transfer(
-        DDC_ADDR,
-        &offset_bytes,
-        &mut data,
-    );
+    let result = controller.transfer(DDC_ADDR, &offset_bytes, &mut data);
 
     match result {
         Ok(n) if n == 128 => {
@@ -1288,7 +1328,11 @@ pub fn test_i2c() {
         let test_addrs = [0x50, 0x68, 0x1A, 0x15, 0x39];
         for &addr in &test_addrs {
             let present = bus.probe(addr);
-            serial_println!("I2C:   Probe 0x{:02X}: {}", addr, if present { "PRESENT" } else { "absent" });
+            serial_println!(
+                "I2C:   Probe 0x{:02X}: {}",
+                addr,
+                if present { "PRESENT" } else { "absent" }
+            );
         }
     }
 
@@ -1327,10 +1371,10 @@ mod tests {
         data[9] = 0x63;
         data[10] = 0x14;
         data[11] = 0x00;
-        data[16] = 1;  // Week 1
+        data[16] = 1; // Week 1
         data[17] = 20; // Year 2010
-        data[18] = 1;  // Version 1
-        data[19] = 3;  // Revision 3
+        data[18] = 1; // Version 1
+        data[19] = 3; // Revision 3
         data[20] = 0x80; // Digital
         data[21] = 48; // 48 cm width
         data[22] = 27; // 27 cm height
@@ -1354,8 +1398,10 @@ mod tests {
         data[127] = (0u8.wrapping_sub(sum));
 
         // Override timing fields with something more sensible for test
-        data[54] = 0x9C; data[55] = 0x06; // 156 MHz pixel clock
-        data[56] = 0x00; data[57] = 0x50; // h_active=0, h_blank=80
+        data[54] = 0x9C;
+        data[55] = 0x06; // 156 MHz pixel clock
+        data[56] = 0x00;
+        data[57] = 0x50; // h_active=0, h_blank=80
         data[58] = (5 << 4) | 0; // h_active=1280, h_blank=0
         data[59] = 0x10; // v_active=16 (lo)
         data[60] = 0xD0; // v_blank=208 (lo)
@@ -1394,7 +1440,10 @@ mod tests {
 
     #[test]
     fn test_i2c_error_display() {
-        assert_eq!(format!("{}", I2cError::NackAddress), "NACK on address phase");
+        assert_eq!(
+            format!("{}", I2cError::NackAddress),
+            "NACK on address phase"
+        );
         assert_eq!(format!("{}", I2cError::Timeout), "timeout");
         assert_eq!(format!("{}", I2cError::BusBusy), "I2C bus busy");
     }
@@ -1403,7 +1452,7 @@ mod tests {
     fn test_edid_pnp_id() {
         let mut data = [0u8; 128];
         data[0..8].copy_from_slice(&[0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]);
-        // PNP ID: "SAM" = Samsung = 0x19,0x0B,0x0D packed → 
+        // PNP ID: "SAM" = Samsung = 0x19,0x0B,0x0D packed →
         // S=19 (bit 0-4) → 11001
         // A=01 (bit 5-9) → 00001
         // M=0D (bit 10-14) → 01101
@@ -1413,7 +1462,8 @@ mod tests {
         // raw = (M << 10) | (A << 5) | S
         // = (13 << 10) | (1 << 5) | 25
         // = 13312 | 32 | 25 = 13369 = 0x3439
-        data[8] = 0x34; data[9] = 0x39;
+        data[8] = 0x34;
+        data[9] = 0x39;
 
         // Add valid checksum
         let sum: u8 = data[0..127].iter().fold(0u8, |a, b| a.wrapping_add(*b));

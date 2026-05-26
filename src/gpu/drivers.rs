@@ -9,8 +9,8 @@
 //!   - Hardware-accelerated 2D operations
 //! ============================================================================
 
-use crate::gpu::{GpuCaps, GpuDevice, GpuDriver, GpuFamily, GpuMode};
 use crate::gpu::mmio::MmioReg;
+use crate::gpu::{GpuCaps, GpuDevice, GpuDriver, GpuFamily, GpuMode};
 use crate::vga_buffer::{Color, Rect};
 use alloc::vec::Vec;
 
@@ -152,12 +152,23 @@ impl GpuDriver for BochsVbeDriver {
             vbe_write(VBE_DISPI_INDEX_XRES, mode.width as u16);
             vbe_write(VBE_DISPI_INDEX_YRES, mode.height as u16);
             vbe_write(VBE_DISPI_INDEX_BPP, mode.bpp as u16);
-            vbe_write(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
-            crate::serial_println!("VBE: Mode set {}x{}x{}bpp",
-                mode.width, mode.height, mode.bpp);
+            vbe_write(
+                VBE_DISPI_INDEX_ENABLE,
+                VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED,
+            );
+            crate::serial_println!(
+                "VBE: Mode set {}x{}x{}bpp",
+                mode.width,
+                mode.height,
+                mode.bpp
+            );
         } else {
-            crate::serial_println!("VBE: Mode already set to {}x{}x{}bpp, skipping re-init",
-                mode.width, mode.height, mode.bpp);
+            crate::serial_println!(
+                "VBE: Mode already set to {}x{}x{}bpp, skipping re-init",
+                mode.width,
+                mode.height,
+                mode.bpp
+            );
         }
 
         let vram = Self::detect_vram();
@@ -170,19 +181,31 @@ impl GpuDriver for BochsVbeDriver {
 
         crate::serial_println!(
             "VBE: Mode set {}x{}x{}bpp (VRAM: {}KB, LFB: {:#x})",
-            mode.width, mode.height, mode.bpp, vram / 1024, self.fb as u64,
+            mode.width,
+            mode.height,
+            mode.bpp,
+            vram / 1024,
+            self.fb as u64,
         );
         Ok(())
     }
 
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { GpuFamily::BochsVBE }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        GpuFamily::BochsVBE
+    }
 
     fn present(&mut self) {
         unsafe {
             core::ptr::copy_nonoverlapping(
-                self.backbuffer.as_ptr(), self.fb, self.backbuffer.len(),
+                self.backbuffer.as_ptr(),
+                self.fb,
+                self.backbuffer.len(),
             );
         }
     }
@@ -202,7 +225,9 @@ impl GpuDriver for BochsVbeDriver {
     }
 
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let bpp_div = (self.mode.bpp as usize).div_ceil(8);
         let off = y * self.mode.pitch + x * bpp_div;
         if off + 3 < self.backbuffer.len() {
@@ -220,8 +245,7 @@ impl GpuDriver for BochsVbeDriver {
         }
     }
 
-    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize,
-            w: usize, h: usize) {
+    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize, w: usize, h: usize) {
         for y in 0..h {
             for x in 0..w {
                 let soff = (src_y + y) * self.mode.pitch + (src_x + x) * 4;
@@ -236,7 +260,9 @@ impl GpuDriver for BochsVbeDriver {
         }
     }
 
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // ============================================================================
@@ -261,34 +287,56 @@ impl NvidiaMmioDriver {
     pub fn new(mmio_base: u64, fb_base: u64, family: GpuFamily) -> Self {
         let caps = match family {
             // GeForce 256 - GeForce 4: basic 3D
-            GpuFamily::GeForce256 | GpuFamily::GeForceDDR | GpuFamily::GeForce2MX
-            | GpuFamily::GeForce2GTS | GpuFamily::GeForce3 | GpuFamily::GeForce3Ti
-            | GpuFamily::GeForce4MX | GpuFamily::GeForce4Ti => {
-                GpuCaps::ACCEL_2D.merge(GpuCaps::ACCEL_3D).merge(GpuCaps::HARDWARE_BLT)
-                    .merge(GpuCaps::HARDWARE_Z).merge(GpuCaps::TEXTURE_UNITS)
-                    .merge(GpuCaps::DOUBLE_BUFFER).merge(GpuCaps::HARDWARE_CURSOR)
-            }
+            GpuFamily::GeForce256
+            | GpuFamily::GeForceDDR
+            | GpuFamily::GeForce2MX
+            | GpuFamily::GeForce2GTS
+            | GpuFamily::GeForce3
+            | GpuFamily::GeForce3Ti
+            | GpuFamily::GeForce4MX
+            | GpuFamily::GeForce4Ti => GpuCaps::ACCEL_2D
+                .merge(GpuCaps::ACCEL_3D)
+                .merge(GpuCaps::HARDWARE_BLT)
+                .merge(GpuCaps::HARDWARE_Z)
+                .merge(GpuCaps::TEXTURE_UNITS)
+                .merge(GpuCaps::DOUBLE_BUFFER)
+                .merge(GpuCaps::HARDWARE_CURSOR),
             // GeForce FX and later: shader model 2.0+
-            GpuFamily::GeForceFX | GpuFamily::GeForceFX5200 | GpuFamily::GeForceFX5600
-            | GpuFamily::GeForceFX5700 | GpuFamily::GeForceFX5800 | GpuFamily::GeForceFX5900 => {
-                GpuCaps::ACCEL_2D.merge(GpuCaps::ACCEL_3D).merge(GpuCaps::HARDWARE_BLT)
-                    .merge(GpuCaps::HARDWARE_Z).merge(GpuCaps::TEXTURE_UNITS)
-                    .merge(GpuCaps::TRILINEAR).merge(GpuCaps::SHADER_V2)
-                    .merge(GpuCaps::DOUBLE_BUFFER).merge(GpuCaps::HARDWARE_CURSOR)
-            }
+            GpuFamily::GeForceFX
+            | GpuFamily::GeForceFX5200
+            | GpuFamily::GeForceFX5600
+            | GpuFamily::GeForceFX5700
+            | GpuFamily::GeForceFX5800
+            | GpuFamily::GeForceFX5900 => GpuCaps::ACCEL_2D
+                .merge(GpuCaps::ACCEL_3D)
+                .merge(GpuCaps::HARDWARE_BLT)
+                .merge(GpuCaps::HARDWARE_Z)
+                .merge(GpuCaps::TEXTURE_UNITS)
+                .merge(GpuCaps::TRILINEAR)
+                .merge(GpuCaps::SHADER_V2)
+                .merge(GpuCaps::DOUBLE_BUFFER)
+                .merge(GpuCaps::HARDWARE_CURSOR),
             // Geforce 6+: full features
-            _ => {
-                GpuCaps::ACCEL_2D.merge(GpuCaps::ACCEL_3D).merge(GpuCaps::HARDWARE_BLT)
-                    .merge(GpuCaps::HARDWARE_Z).merge(GpuCaps::TEXTURE_UNITS)
-                    .merge(GpuCaps::TRILINEAR).merge(GpuCaps::ANTI_ALIASING)
-                    .merge(GpuCaps::SHADER_V2).merge(GpuCaps::VERTEX_PROGRAM)
-                    .merge(GpuCaps::DOUBLE_BUFFER).merge(GpuCaps::HARDWARE_CURSOR)
-            }
+            _ => GpuCaps::ACCEL_2D
+                .merge(GpuCaps::ACCEL_3D)
+                .merge(GpuCaps::HARDWARE_BLT)
+                .merge(GpuCaps::HARDWARE_Z)
+                .merge(GpuCaps::TEXTURE_UNITS)
+                .merge(GpuCaps::TRILINEAR)
+                .merge(GpuCaps::ANTI_ALIASING)
+                .merge(GpuCaps::SHADER_V2)
+                .merge(GpuCaps::VERTEX_PROGRAM)
+                .merge(GpuCaps::DOUBLE_BUFFER)
+                .merge(GpuCaps::HARDWARE_CURSOR),
         };
 
         Self {
             mmio: MmioReg::new(mmio_base),
-            fb: if fb_base != 0 { fb_base as *mut u8 } else { core::ptr::null_mut() },
+            fb: if fb_base != 0 {
+                fb_base as *mut u8
+            } else {
+                core::ptr::null_mut()
+            },
             mode: GpuMode::default(),
             backbuffer: Vec::new(),
             caps,
@@ -328,7 +376,9 @@ impl GpuDriver for NvidiaMmioDriver {
             self.chipset = (boot0 & 0x0FFF) | ((boot0 >> 12) & 0xF0);
             crate::serial_println!(
                 "NVIDIA: NV_PMC_BOOT_0={:#010x} chipset={:#06x} arch={:?}",
-                boot0, self.chipset, self.family,
+                boot0,
+                self.chipset,
+                self.family,
             );
 
             // Initialize FIFO if present
@@ -341,13 +391,24 @@ impl GpuDriver for NvidiaMmioDriver {
         }
 
         self.enabled = true;
-        crate::serial_println!("NVIDIA: Initialized {} @ {}x{}", gpu_name(self.family), mode.width, mode.height);
+        crate::serial_println!(
+            "NVIDIA: Initialized {} @ {}x{}",
+            gpu_name(self.family),
+            mode.width,
+            mode.height
+        );
         Ok(())
     }
 
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { self.family }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        self.family
+    }
 
     fn present(&mut self) {
         // For now, software present via backbuffer copy
@@ -355,7 +416,9 @@ impl GpuDriver for NvidiaMmioDriver {
         if !self.fb.is_null() {
             unsafe {
                 core::ptr::copy_nonoverlapping(
-                    self.backbuffer.as_ptr(), self.fb, self.backbuffer.len(),
+                    self.backbuffer.as_ptr(),
+                    self.fb,
+                    self.backbuffer.len(),
                 );
             }
         }
@@ -375,7 +438,9 @@ impl GpuDriver for NvidiaMmioDriver {
     }
 
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let off = y * self.mode.pitch + x * 4;
         if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
@@ -392,8 +457,7 @@ impl GpuDriver for NvidiaMmioDriver {
         }
     }
 
-    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize,
-            w: usize, h: usize) {
+    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize, w: usize, h: usize) {
         for y in 0..h {
             for x in 0..w {
                 let soff = (src_y + y) * self.mode.pitch + (src_x + x) * 4;
@@ -407,7 +471,9 @@ impl GpuDriver for NvidiaMmioDriver {
         }
     }
 
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // ============================================================================
@@ -428,30 +494,45 @@ unsafe impl Send for AtiMmioDriver {}
 impl AtiMmioDriver {
     pub fn new(mmio_base: u64, fb_base: u64, family: GpuFamily) -> Self {
         let caps = match family {
-            GpuFamily::RagePro | GpuFamily::RageXL | GpuFamily::Rage128 => {
-                GpuCaps::ACCEL_2D.merge(GpuCaps::ACCEL_3D).merge(GpuCaps::HARDWARE_BLT)
-                    .merge(GpuCaps::DOUBLE_BUFFER).merge(GpuCaps::HARDWARE_CURSOR)
-            }
-            GpuFamily::Radeon7000 | GpuFamily::Radeon7500 | GpuFamily::Radeon8500 |
-            GpuFamily::Radeon9000 | GpuFamily::Radeon9500 | GpuFamily::Radeon9600 |
-            GpuFamily::Radeon9700 | GpuFamily::Radeon9800 => {
-                GpuCaps::ACCEL_2D.merge(GpuCaps::ACCEL_3D).merge(GpuCaps::HARDWARE_BLT)
-                    .merge(GpuCaps::HARDWARE_Z).merge(GpuCaps::TEXTURE_UNITS)
-                    .merge(GpuCaps::DOUBLE_BUFFER).merge(GpuCaps::HARDWARE_CURSOR)
-                    .merge(GpuCaps::TRILINEAR)
-            }
+            GpuFamily::RagePro | GpuFamily::RageXL | GpuFamily::Rage128 => GpuCaps::ACCEL_2D
+                .merge(GpuCaps::ACCEL_3D)
+                .merge(GpuCaps::HARDWARE_BLT)
+                .merge(GpuCaps::DOUBLE_BUFFER)
+                .merge(GpuCaps::HARDWARE_CURSOR),
+            GpuFamily::Radeon7000
+            | GpuFamily::Radeon7500
+            | GpuFamily::Radeon8500
+            | GpuFamily::Radeon9000
+            | GpuFamily::Radeon9500
+            | GpuFamily::Radeon9600
+            | GpuFamily::Radeon9700
+            | GpuFamily::Radeon9800 => GpuCaps::ACCEL_2D
+                .merge(GpuCaps::ACCEL_3D)
+                .merge(GpuCaps::HARDWARE_BLT)
+                .merge(GpuCaps::HARDWARE_Z)
+                .merge(GpuCaps::TEXTURE_UNITS)
+                .merge(GpuCaps::DOUBLE_BUFFER)
+                .merge(GpuCaps::HARDWARE_CURSOR)
+                .merge(GpuCaps::TRILINEAR),
             // R300+ shader model 2.0
-            _ => {
-                GpuCaps::ACCEL_2D.merge(GpuCaps::ACCEL_3D).merge(GpuCaps::HARDWARE_BLT)
-                    .merge(GpuCaps::HARDWARE_Z).merge(GpuCaps::TEXTURE_UNITS)
-                    .merge(GpuCaps::TRILINEAR).merge(GpuCaps::SHADER_V2)
-                    .merge(GpuCaps::DOUBLE_BUFFER).merge(GpuCaps::HARDWARE_CURSOR)
-            }
+            _ => GpuCaps::ACCEL_2D
+                .merge(GpuCaps::ACCEL_3D)
+                .merge(GpuCaps::HARDWARE_BLT)
+                .merge(GpuCaps::HARDWARE_Z)
+                .merge(GpuCaps::TEXTURE_UNITS)
+                .merge(GpuCaps::TRILINEAR)
+                .merge(GpuCaps::SHADER_V2)
+                .merge(GpuCaps::DOUBLE_BUFFER)
+                .merge(GpuCaps::HARDWARE_CURSOR),
         };
 
         Self {
             mmio: MmioReg::new(mmio_base),
-            fb: if fb_base != 0 { fb_base as *mut u8 } else { core::ptr::null_mut() },
+            fb: if fb_base != 0 {
+                fb_base as *mut u8
+            } else {
+                core::ptr::null_mut()
+            },
             mode: GpuMode::default(),
             backbuffer: Vec::new(),
             caps,
@@ -482,19 +563,32 @@ impl GpuDriver for AtiMmioDriver {
         }
 
         self.enabled = true;
-        crate::serial_println!("ATI/AMD: Initialized {} @ {}x{}", gpu_name(self.family), mode.width, mode.height);
+        crate::serial_println!(
+            "ATI/AMD: Initialized {} @ {}x{}",
+            gpu_name(self.family),
+            mode.width,
+            mode.height
+        );
         Ok(())
     }
 
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { self.family }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        self.family
+    }
 
     fn present(&mut self) {
         if !self.fb.is_null() {
             unsafe {
                 core::ptr::copy_nonoverlapping(
-                    self.backbuffer.as_ptr(), self.fb, self.backbuffer.len(),
+                    self.backbuffer.as_ptr(),
+                    self.fb,
+                    self.backbuffer.len(),
                 );
             }
         }
@@ -514,7 +608,9 @@ impl GpuDriver for AtiMmioDriver {
     }
 
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let off = y * self.mode.pitch + x * 4;
         if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
@@ -531,8 +627,7 @@ impl GpuDriver for AtiMmioDriver {
         }
     }
 
-    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize,
-            w: usize, h: usize) {
+    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize, w: usize, h: usize) {
         for y in 0..h {
             for x in 0..w {
                 let soff = (src_y + y) * self.mode.pitch + (src_x + x) * 4;
@@ -546,7 +641,9 @@ impl GpuDriver for AtiMmioDriver {
         }
     }
 
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // ============================================================================
@@ -556,35 +653,35 @@ impl GpuDriver for AtiMmioDriver {
 /// Based on open-source tdfx/glide driver register documentation.
 /// MMIO BAR0 contains the register file. BAR1 is the LFB (linear framebuffer).
 // ========== Voodoo Banshee / Voodoo3 Core Registers ==========
-const VOODOO_H5_CORE_INIT:     u16 = 0x0000; // H5 core init / uninit
-const VOODOO_VG_FB_BASE:       u16 = 0x0200; // Framebuffer base in PCI space
-const VOODOO_VG_FB_SIZE:       u16 = 0x0202; // Framebuffer size (in MB)
-const VOODOO_VG_MODE:          u16 = 0x0204; // Display mode register
-const VOODOO_VG_VIDEO:         u16 = 0x0206; // Video configuration
+const VOODOO_H5_CORE_INIT: u16 = 0x0000; // H5 core init / uninit
+const VOODOO_VG_FB_BASE: u16 = 0x0200; // Framebuffer base in PCI space
+const VOODOO_VG_FB_SIZE: u16 = 0x0202; // Framebuffer size (in MB)
+const VOODOO_VG_MODE: u16 = 0x0204; // Display mode register
+const VOODOO_VG_VIDEO: u16 = 0x0206; // Video configuration
 const VOODOO_VG_HW_CURSOR_POS: u16 = 0x0210; // Hardware cursor X/Y position
 const VOODOO_VG_HW_CURSOR_PAT: u16 = 0x0214; // Hardware cursor pattern base (LFB offset)
-const VOODOO_VG_OVERFLOW:      u16 = 0x0218; // VGA compatibility / overflow
-const VOODOO_TRI_SETUP:        u16 = 0x4000; // Triangle setup engine start
-const VOODOO_TRI_CTRL:         u16 = 0x4002; // Triangle control / flush
-const VOODOO_TEX_MEM_BASE:     u16 = 0x4400; // Texture memory base address
-const VOODOO_TEX_MEM_CONFIG:   u16 = 0x4402; // Texture memory config
-const VOODOO_FBI_INIT:         u16 = 0x6000; // FBI (Frame Buffer Interface) init
-const VOODOO_FBI_CTRL:         u16 = 0x6002; // FBI control
+const VOODOO_VG_OVERFLOW: u16 = 0x0218; // VGA compatibility / overflow
+const VOODOO_TRI_SETUP: u16 = 0x4000; // Triangle setup engine start
+const VOODOO_TRI_CTRL: u16 = 0x4002; // Triangle control / flush
+const VOODOO_TEX_MEM_BASE: u16 = 0x4400; // Texture memory base address
+const VOODOO_TEX_MEM_CONFIG: u16 = 0x4402; // Texture memory config
+const VOODOO_FBI_INIT: u16 = 0x6000; // FBI (Frame Buffer Interface) init
+const VOODOO_FBI_CTRL: u16 = 0x6002; // FBI control
 
 // Banshee-specific register extensions
 const VOODOO_VG_DISPLAY_STRIDE: u16 = 0x0208; // Display stride (bytes per scanline)
 
 // Mode register bit fields
-const VG_MODE_ENABLE:        u16 = 0x0001; // Display enable
-const VG_MODE_VGA_PASSTHRU:  u16 = 0x0002; // VGA pass-through
-const VG_MODE_8BPP:          u16 = 0x0000; // 8 bits per pixel
-const VG_MODE_16BPP:         u16 = 0x0010; // 16 bpp (RGB 5-6-5)
-const VG_MODE_32BPP:         u16 = 0x0030; // 32 bpp (RGBA 8-8-8-8)
-const VG_MODE_RES_640:       u16 = 0x0000; // 640x480
-const VG_MODE_RES_800:       u16 = 0x0100; // 800x600
-const VG_MODE_RES_1024:      u16 = 0x0200; // 1024x768
-const VG_MODE_RES_1280:      u16 = 0x0300; // 1280x1024
-const VG_MODE_RES_1600:      u16 = 0x0400; // 1600x1200
+const VG_MODE_ENABLE: u16 = 0x0001; // Display enable
+const VG_MODE_VGA_PASSTHRU: u16 = 0x0002; // VGA pass-through
+const VG_MODE_8BPP: u16 = 0x0000; // 8 bits per pixel
+const VG_MODE_16BPP: u16 = 0x0010; // 16 bpp (RGB 5-6-5)
+const VG_MODE_32BPP: u16 = 0x0030; // 32 bpp (RGBA 8-8-8-8)
+const VG_MODE_RES_640: u16 = 0x0000; // 640x480
+const VG_MODE_RES_800: u16 = 0x0100; // 800x600
+const VG_MODE_RES_1024: u16 = 0x0200; // 1024x768
+const VG_MODE_RES_1280: u16 = 0x0300; // 1280x1024
+const VG_MODE_RES_1600: u16 = 0x0400; // 1600x1200
 
 pub struct VoodooBansheeDriver {
     mmio: MmioReg,
@@ -609,7 +706,11 @@ impl VoodooBansheeDriver {
             .merge(GpuCaps::HARDWARE_BLT);
         Self {
             mmio: MmioReg::new(mmio_base),
-            lfb: if lfb_base != 0 { lfb_base as *mut u8 } else { core::ptr::null_mut() },
+            lfb: if lfb_base != 0 {
+                lfb_base as *mut u8
+            } else {
+                core::ptr::null_mut()
+            },
             mode: GpuMode::default(),
             backbuffer: Vec::new(),
             caps,
@@ -642,9 +743,9 @@ impl VoodooBansheeDriver {
     /// Convert resolution to VG_MODE resolution bits
     fn mode_res_bits(w: usize, h: usize) -> u16 {
         match (w, h) {
-            (640, 480)   => VG_MODE_RES_640,
-            (800, 600)   => VG_MODE_RES_800,
-            (1024, 768)  => VG_MODE_RES_1024,
+            (640, 480) => VG_MODE_RES_640,
+            (800, 600) => VG_MODE_RES_800,
+            (1024, 768) => VG_MODE_RES_1024,
             (1280, 1024) => VG_MODE_RES_1280,
             (1600, 1200) => VG_MODE_RES_1600,
             _ => VG_MODE_RES_1024, // default to 1024x768
@@ -653,7 +754,7 @@ impl VoodooBansheeDriver {
 
     fn bpp_bits(bpp: usize) -> u16 {
         match bpp {
-            8  => VG_MODE_8BPP,
+            8 => VG_MODE_8BPP,
             16 => VG_MODE_16BPP,
             32 => VG_MODE_32BPP,
             _ => VG_MODE_32BPP,
@@ -673,7 +774,9 @@ impl GpuDriver for VoodooBansheeDriver {
             self.chip_rev = init_reg;
             crate::serial_println!(
                 "3DFX: H5 core init={:#06x} rev={} family={:?}",
-                init_reg, init_reg & 0x00FF, self.family,
+                init_reg,
+                init_reg & 0x00FF,
+                self.family,
             );
 
             // Wake up the core: write H5_CORE_INIT to enable
@@ -710,8 +813,14 @@ impl GpuDriver for VoodooBansheeDriver {
 
             crate::serial_println!(
                 "3DFX: Initialized {} @ {}x{}x{}bpp stride={}",
-                match self.family { GpuFamily::VoodooBanshee => "Voodoo Banshee", _ => "Voodoo3" },
-                mode.width, mode.height, mode.bpp, stride,
+                match self.family {
+                    GpuFamily::VoodooBanshee => "Voodoo Banshee",
+                    _ => "Voodoo3",
+                },
+                mode.width,
+                mode.height,
+                mode.bpp,
+                stride,
             );
         }
 
@@ -719,9 +828,15 @@ impl GpuDriver for VoodooBansheeDriver {
         Ok(())
     }
 
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { self.family }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        self.family
+    }
 
     fn present(&mut self) {
         if !self.lfb.is_null() {
@@ -729,7 +844,9 @@ impl GpuDriver for VoodooBansheeDriver {
                 // Copy backbuffer to LFB at offset 0
                 // Voodoo Banshee LFB start is at BAR1 base + 0
                 core::ptr::copy_nonoverlapping(
-                    self.backbuffer.as_ptr(), self.lfb, self.backbuffer.len(),
+                    self.backbuffer.as_ptr(),
+                    self.lfb,
+                    self.backbuffer.len(),
                 );
             }
         }
@@ -749,7 +866,9 @@ impl GpuDriver for VoodooBansheeDriver {
     }
 
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let off = y * self.mode.pitch + x * 4;
         if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
@@ -766,8 +885,7 @@ impl GpuDriver for VoodooBansheeDriver {
         }
     }
 
-    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize,
-            w: usize, h: usize) {
+    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize, w: usize, h: usize) {
         for y in 0..h {
             for x in 0..w {
                 let soff = (src_y + y) * self.mode.pitch + (src_x + x) * 4;
@@ -781,7 +899,9 @@ impl GpuDriver for VoodooBansheeDriver {
         }
     }
 
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // Hack: need LFB_ENABLED constant because VG_MODE is u16 but we need bit 14 for LFB
@@ -795,42 +915,42 @@ const VG_MODE_LFB_ENABLED: u16 = 0x4000;
 /// Covers: i830, i845, i865, i915, i945, G33, Q35, G45, Ironlake,
 ///   Sandy Bridge, Ivy Bridge, Haswell, Broadwell, Skylake, Kaby Lake, etc.
 // ============ Intel Display Engine Registers ============
-const INTEL_DISPLAY_BASE:  u32 = 0x70000;
+const INTEL_DISPLAY_BASE: u32 = 0x70000;
 // Pipe A registers
-const INTEL_PIPEACONF:     u32 = 0x70008;
-const INTEL_PIPEASTAT:     u32 = 0x70024;
-const INTEL_PIPEASRC:      u32 = 0x7001C;
+const INTEL_PIPEACONF: u32 = 0x70008;
+const INTEL_PIPEASTAT: u32 = 0x70024;
+const INTEL_PIPEASRC: u32 = 0x7001C;
 // Plane A registers
-const INTEL_PLANEACONF:    u32 = 0x70180;
-const INTEL_PLANEACTRL:    u32 = 0x70100;
-const INTEL_PLANEASTRIDE:  u32 = 0x70188;
-const INTEL_PLANEAPOS:     u32 = 0x7018C;
-const INTEL_PLANEASIZE:    u32 = 0x70190;
-const INTEL_PLANEASURF:    u32 = 0x7019C;
-const INTEL_DSPABASE:      u32 = 0x70184;
+const INTEL_PLANEACONF: u32 = 0x70180;
+const INTEL_PLANEACTRL: u32 = 0x70100;
+const INTEL_PLANEASTRIDE: u32 = 0x70188;
+const INTEL_PLANEAPOS: u32 = 0x7018C;
+const INTEL_PLANEASIZE: u32 = 0x70190;
+const INTEL_PLANEASURF: u32 = 0x7019C;
+const INTEL_DSPABASE: u32 = 0x70184;
 // VGA / legacy
-const INTEL_VGACNTRL:      u32 = 0x71400;
-const INTEL_FPADDR:        u32 = 0x71200;
-const INTEL_FPSTATE:       u32 = 0x71204;
+const INTEL_VGACNTRL: u32 = 0x71400;
+const INTEL_FPADDR: u32 = 0x71200;
+const INTEL_FPSTATE: u32 = 0x71204;
 // Display clock / PLL (Sandy Bridge+)
-const INTEL_CLK_CFG:       u32 = 0x42000;
+const INTEL_CLK_CFG: u32 = 0x42000;
 // GPU version / GT registers
-const INTEL_GT_ID:         u32 = 0x120000;
-const INTEL_ECO_BUSY:      u32 = 0x120030;
+const INTEL_GT_ID: u32 = 0x120000;
+const INTEL_ECO_BUSY: u32 = 0x120030;
 const INTEL_RENDER_STATUS: u32 = 0x120058;
 
 // Pipe config bits
-const PIPECONF_ENABLE:     u32 = 0x80000000;
-const PIPECONF_8BPC:       u32 = 0x00000000; // 8 bits per color
+const PIPECONF_ENABLE: u32 = 0x80000000;
+const PIPECONF_8BPC: u32 = 0x00000000; // 8 bits per color
 const PIPECONF_PROGRESSIVE: u32 = 0x00000000;
 const PIPECONF_INTERLACED: u32 = 0x00000002;
 
 // Plane config bits
-const PLANEACONF_ENABLE:   u32 = 0x80000000;
+const PLANEACONF_ENABLE: u32 = 0x80000000;
 const DSPCNTR_PLANE_ENABLE: u32 = 0x1000000; // Gen2-4 plane enable
-const DSPCNTR_32BPP:       u32 = 0x04000000; // 32 bpp (RGBA)
-const DSPCNTR_16BPP_565:   u32 = 0x02000000; // 16 bpp (RGB 565)
-const DSPASTRIDE_MASK:     u32 = 0x000003FF; // Stride in 64-byte units
+const DSPCNTR_32BPP: u32 = 0x04000000; // 32 bpp (RGBA)
+const DSPCNTR_16BPP_565: u32 = 0x02000000; // 16 bpp (RGB 565)
+const DSPASTRIDE_MASK: u32 = 0x000003FF; // Stride in 64-byte units
 
 pub struct IntelGfxDriver {
     mmio: MmioReg,
@@ -854,7 +974,11 @@ impl IntelGfxDriver {
             .merge(GpuCaps::FRAMEBUFFER);
         Self {
             mmio: MmioReg::new(mmio_base),
-            fb: if fb_base != 0 { fb_base as *mut u8 } else { core::ptr::null_mut() },
+            fb: if fb_base != 0 {
+                fb_base as *mut u8
+            } else {
+                core::ptr::null_mut()
+            },
             mode: GpuMode::default(),
             backbuffer: Vec::new(),
             caps,
@@ -895,7 +1019,11 @@ impl IntelGfxDriver {
 
         // Enable plane A with correct format
         let plane_ctrl = DSPCNTR_PLANE_ENABLE
-            | if bpp >= 32 { DSPCNTR_32BPP } else { DSPCNTR_16BPP_565 };
+            | if bpp >= 32 {
+                DSPCNTR_32BPP
+            } else {
+                DSPCNTR_16BPP_565
+            };
         self.mmio.write32_u(INTEL_PLANEACTRL, plane_ctrl);
 
         // Enable pipe A with progressive scan, 8bpc
@@ -909,34 +1037,54 @@ impl IntelGfxDriver {
 
         crate::serial_println!(
             "INTEL: Pipe A enabled {}x{} {}bpp stride={} surf={:#x}",
-            w, h, bpp, stride, surf_addr,
+            w,
+            h,
+            bpp,
+            stride,
+            surf_addr,
         );
     }
 
     fn detect_gen(&self, family: GpuFamily) -> u8 {
         match family {
             GpuFamily::Intel740 | GpuFamily::Intel810 | GpuFamily::Intel915 => 2,
-            GpuFamily::IntelGMA3000 | GpuFamily::IntelGMA3100 |
-            GpuFamily::IntelGMAX3100 | GpuFamily::IntelGMAX3500 => 3,
+            GpuFamily::IntelGMA3000
+            | GpuFamily::IntelGMA3100
+            | GpuFamily::IntelGMAX3100
+            | GpuFamily::IntelGMAX3500 => 3,
             GpuFamily::IntelHDGraphics => 4,
-            GpuFamily::IntelHDGraphics2000 | GpuFamily::IntelHDGraphics2500 |
-            GpuFamily::IntelHDGraphics3000 | GpuFamily::IntelHDGraphics4000 |
-            GpuFamily::IntelHDGraphics4200 | GpuFamily::IntelHDGraphics4400 |
-            GpuFamily::IntelHDGraphics4600 => 7,
-            GpuFamily::IntelHDGraphics5000 | GpuFamily::IntelHDGraphics5100 |
-            GpuFamily::IntelHDGraphics5200 | GpuFamily::IntelHDGraphics5300 |
-            GpuFamily::IntelHDGraphics5500 | GpuFamily::IntelHDGraphics6000 => 8,
-            GpuFamily::IntelHDGraphics6100 | GpuFamily::IntelHDGraphics615 |
-            GpuFamily::IntelHDGraphics620 | GpuFamily::IntelHDGraphics630 |
-            GpuFamily::IntelHDGraphics640 | GpuFamily::IntelHDGraphics650 |
-            GpuFamily::IntelHDGraphicsP630 => 9,
-            GpuFamily::IntelIrisPlus640 | GpuFamily::IntelIrisPlus645 |
-            GpuFamily::IntelIrisPlus650 | GpuFamily::IntelIrisPro580 => 9,
+            GpuFamily::IntelHDGraphics2000
+            | GpuFamily::IntelHDGraphics2500
+            | GpuFamily::IntelHDGraphics3000
+            | GpuFamily::IntelHDGraphics4000
+            | GpuFamily::IntelHDGraphics4200
+            | GpuFamily::IntelHDGraphics4400
+            | GpuFamily::IntelHDGraphics4600 => 7,
+            GpuFamily::IntelHDGraphics5000
+            | GpuFamily::IntelHDGraphics5100
+            | GpuFamily::IntelHDGraphics5200
+            | GpuFamily::IntelHDGraphics5300
+            | GpuFamily::IntelHDGraphics5500
+            | GpuFamily::IntelHDGraphics6000 => 8,
+            GpuFamily::IntelHDGraphics6100
+            | GpuFamily::IntelHDGraphics615
+            | GpuFamily::IntelHDGraphics620
+            | GpuFamily::IntelHDGraphics630
+            | GpuFamily::IntelHDGraphics640
+            | GpuFamily::IntelHDGraphics650
+            | GpuFamily::IntelHDGraphicsP630 => 9,
+            GpuFamily::IntelIrisPlus640
+            | GpuFamily::IntelIrisPlus645
+            | GpuFamily::IntelIrisPlus650
+            | GpuFamily::IntelIrisPro580 => 9,
             GpuFamily::IntelIrisXe | GpuFamily::IntelIrisXeMax => 12,
-            GpuFamily::IntelArcA310 | GpuFamily::IntelArcA380 |
-            GpuFamily::IntelArcA580 | GpuFamily::IntelArcA750 |
-            GpuFamily::IntelArcA770 | GpuFamily::IntelArcB580 |
-            GpuFamily::IntelArcB770 => 12,
+            GpuFamily::IntelArcA310
+            | GpuFamily::IntelArcA380
+            | GpuFamily::IntelArcA580
+            | GpuFamily::IntelArcA750
+            | GpuFamily::IntelArcA770
+            | GpuFamily::IntelArcB580
+            | GpuFamily::IntelArcB770 => 12,
             GpuFamily::IntelXeLLVM => 12,
             _ => 4,
         }
@@ -956,7 +1104,9 @@ impl GpuDriver for IntelGfxDriver {
                 let gt_id = self.mmio.read32_u(INTEL_GT_ID);
                 crate::serial_println!(
                     "INTEL: GT ID={:#010x} Gen{} family={:?}",
-                    gt_id, self.gen, self.family,
+                    gt_id,
+                    self.gen,
+                    self.family,
                 );
             }
 
@@ -965,8 +1115,11 @@ impl GpuDriver for IntelGfxDriver {
 
             crate::serial_println!(
                 "INTEL: Initialized Gen{} {} @ {}x{}x{}bpp",
-                self.gen, gpu_name(self.family),
-                mode.width, mode.height, mode.bpp,
+                self.gen,
+                gpu_name(self.family),
+                mode.width,
+                mode.height,
+                mode.bpp,
             );
         }
 
@@ -974,15 +1127,23 @@ impl GpuDriver for IntelGfxDriver {
         Ok(())
     }
 
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { self.family }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        self.family
+    }
 
     fn present(&mut self) {
         if !self.fb.is_null() {
             unsafe {
                 core::ptr::copy_nonoverlapping(
-                    self.backbuffer.as_ptr(), self.fb, self.backbuffer.len(),
+                    self.backbuffer.as_ptr(),
+                    self.fb,
+                    self.backbuffer.len(),
                 );
             }
         }
@@ -1002,7 +1163,9 @@ impl GpuDriver for IntelGfxDriver {
     }
 
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let off = y * self.mode.pitch + x * 4;
         if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
@@ -1019,8 +1182,7 @@ impl GpuDriver for IntelGfxDriver {
         }
     }
 
-    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize,
-            w: usize, h: usize) {
+    fn blit(&mut self, src_x: usize, src_y: usize, dst_x: usize, dst_y: usize, w: usize, h: usize) {
         for y in 0..h {
             for x in 0..w {
                 let soff = (src_y + y) * self.mode.pitch + (src_x + x) * 4;
@@ -1034,7 +1196,9 @@ impl GpuDriver for IntelGfxDriver {
         }
     }
 
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // ============================================================================
@@ -1070,12 +1234,19 @@ impl VmwareSvgaDriver {
     pub fn new(mmio_base: u64, fb_base: u64, family: GpuFamily) -> Self {
         Self {
             mmio_base,
-            fb: if fb_base != 0 { fb_base as *mut u8 } else { core::ptr::null_mut() },
+            fb: if fb_base != 0 {
+                fb_base as *mut u8
+            } else {
+                core::ptr::null_mut()
+            },
             mode: GpuMode::default(),
             backbuffer: Vec::new(),
-            caps: GpuCaps::ACCEL_2D.merge(GpuCaps::DOUBLE_BUFFER)
+            caps: GpuCaps::ACCEL_2D
+                .merge(GpuCaps::DOUBLE_BUFFER)
                 .merge(GpuCaps::FRAMEBUFFER),
-            family, vram_size: 0, enabled: false,
+            family,
+            vram_size: 0,
+            enabled: false,
         }
     }
     unsafe fn reg_wr(&self, reg: u32, val: u32) {
@@ -1087,40 +1258,65 @@ impl VmwareSvgaDriver {
         core::ptr::read_volatile(self.mmio_base as *mut u32)
     }
     unsafe fn wait_idle(&self) {
-        while self.reg_rd(SVGA_REG_BUSY) != 0 { core::hint::spin_loop(); }
+        while self.reg_rd(SVGA_REG_BUSY) != 0 {
+            core::hint::spin_loop();
+        }
     }
 }
 
 impl GpuDriver for VmwareSvgaDriver {
     fn init(&mut self, mode: &GpuMode) -> Result<(), &'static str> {
-        self.mode = *mode; let size = mode.width * mode.height * 4;
+        self.mode = *mode;
+        let size = mode.width * mode.height * 4;
         self.backbuffer = alloc::vec![0u8; size];
         unsafe {
             let id = self.reg_rd(SVGA_REG_ID);
             crate::serial_println!("VMWARE: SVGA ID={:#010x}", id);
-            if id == 0xFFFFFFFF { return Err("SVGA absent"); }
+            if id == 0xFFFFFFFF {
+                return Err("SVGA absent");
+            }
             self.reg_wr(SVGA_REG_GUEST_ID, 0);
-            self.reg_wr(SVGA_REG_ENABLE, 1); self.wait_idle();
+            self.reg_wr(SVGA_REG_ENABLE, 1);
+            self.wait_idle();
             self.vram_size = self.reg_rd(SVGA_REG_VRAM_SIZE) as usize;
             crate::serial_println!("VMWARE: VRAM={}KB", self.vram_size / 1024);
             self.reg_wr(SVGA_REG_WIDTH, mode.width as u32);
             self.reg_wr(SVGA_REG_HEIGHT, mode.height as u32);
             self.reg_wr(SVGA_REG_BITS_PER_PIXEL, mode.bpp as u32);
             self.wait_idle();
-            self.reg_wr(SVGA_REG_CONFIG_DONE, 1); self.wait_idle();
+            self.reg_wr(SVGA_REG_CONFIG_DONE, 1);
+            self.wait_idle();
             let fb_start = self.reg_rd(SVGA_REG_FB_START);
-            crate::serial_println!("VMWARE: {}x{}x{} fb={:#x}",
-                mode.width, mode.height, mode.bpp, fb_start);
+            crate::serial_println!(
+                "VMWARE: {}x{}x{} fb={:#x}",
+                mode.width,
+                mode.height,
+                mode.bpp,
+                fb_start
+            );
         }
-        self.enabled = true; Ok(())
+        self.enabled = true;
+        Ok(())
     }
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { self.family }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        self.family
+    }
     fn present(&mut self) {
-        if !self.fb.is_null() { unsafe {
-            core::ptr::copy_nonoverlapping(self.backbuffer.as_ptr(), self.fb, self.backbuffer.len());
-        }}
+        if !self.fb.is_null() {
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    self.backbuffer.as_ptr(),
+                    self.fb,
+                    self.backbuffer.len(),
+                );
+            }
+        }
     }
     fn clear(&mut self, color: Color) {
         for y in 0..self.mode.height {
@@ -1128,181 +1324,266 @@ impl GpuDriver for VmwareSvgaDriver {
                 let off = y * self.mode.pitch + x * 4;
                 if off + 3 < self.backbuffer.len() {
                     self.backbuffer[off] = color.b;
-                    self.backbuffer[off+1] = color.g;
-                    self.backbuffer[off+2] = color.r;
+                    self.backbuffer[off + 1] = color.g;
+                    self.backbuffer[off + 2] = color.r;
                 }
             }
         }
     }
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let off = y * self.mode.pitch + x * 4;
         if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
-            self.backbuffer[off+1] = color.g;
-            self.backbuffer[off+2] = color.r;
+            self.backbuffer[off + 1] = color.g;
+            self.backbuffer[off + 2] = color.r;
         }
     }
     fn fill_rect(&mut self, rect: Rect, color: Color) {
-        for y in rect.y..rect.y+rect.height {
-            for x in rect.x..rect.x+rect.width { self.put_pixel(x, y, color); }
+        for y in rect.y..rect.y + rect.height {
+            for x in rect.x..rect.x + rect.width {
+                self.put_pixel(x, y, color);
+            }
         }
     }
     fn blit(&mut self, sx: usize, sy: usize, dx: usize, dy: usize, w: usize, h: usize) {
-        for y in 0..h { for x in 0..w {
-            let so = (sy+y)*self.mode.pitch + (sx+x)*4;
-            let d = (dy+y)*self.mode.pitch + (dx+x)*4;
-            if so+3 < self.backbuffer.len() && d+3 < self.backbuffer.len() {
-                self.backbuffer[d] = self.backbuffer[so];
-                self.backbuffer[d+1] = self.backbuffer[so+1];
-                self.backbuffer[d+2] = self.backbuffer[so+2];
+        for y in 0..h {
+            for x in 0..w {
+                let so = (sy + y) * self.mode.pitch + (sx + x) * 4;
+                let d = (dy + y) * self.mode.pitch + (dx + x) * 4;
+                if so + 3 < self.backbuffer.len() && d + 3 < self.backbuffer.len() {
+                    self.backbuffer[d] = self.backbuffer[so];
+                    self.backbuffer[d + 1] = self.backbuffer[so + 1];
+                    self.backbuffer[d + 2] = self.backbuffer[so + 2];
+                }
             }
-        }}
+        }
     }
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // ============================================================================
 // CIRRUS LOGIC VGA DRIVER — QEMU -vga cirrus
 // ============================================================================
 pub struct CirrusVgaDriver {
-    fb: *mut u8, mode: GpuMode, backbuffer: Vec<u8>,
-    caps: GpuCaps, family: GpuFamily, enabled: bool,
+    fb: *mut u8,
+    mode: GpuMode,
+    backbuffer: Vec<u8>,
+    caps: GpuCaps,
+    family: GpuFamily,
+    enabled: bool,
 }
 unsafe impl Send for CirrusVgaDriver {}
 impl CirrusVgaDriver {
     pub fn new(fb: *mut u8, family: GpuFamily) -> Self {
         Self {
-            fb, mode: GpuMode::default(), backbuffer: Vec::new(),
+            fb,
+            mode: GpuMode::default(),
+            backbuffer: Vec::new(),
             caps: GpuCaps::FRAMEBUFFER.merge(GpuCaps::ACCEL_2D),
-            family, enabled: false,
+            family,
+            enabled: false,
         }
     }
 }
 impl GpuDriver for CirrusVgaDriver {
     fn init(&mut self, mode: &GpuMode) -> Result<(), &'static str> {
-        self.mode = *mode; let size = mode.width * mode.height * 4;
+        self.mode = *mode;
+        let size = mode.width * mode.height * 4;
         self.backbuffer = alloc::vec![0u8; size];
-        crate::serial_println!("CIRRUS: Init {} @ {}x{} fb={:#x}",
-            crate::gpu::gpu_name(self.family), mode.width, mode.height, self.fb as u64);
-        self.enabled = true; Ok(())
+        crate::serial_println!(
+            "CIRRUS: Init {} @ {}x{} fb={:#x}",
+            crate::gpu::gpu_name(self.family),
+            mode.width,
+            mode.height,
+            self.fb as u64
+        );
+        self.enabled = true;
+        Ok(())
     }
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { self.family }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        self.family
+    }
     fn present(&mut self) {
-        if !self.fb.is_null() { unsafe {
-            core::ptr::copy_nonoverlapping(self.backbuffer.as_ptr(), self.fb, self.backbuffer.len());
-        }}
+        if !self.fb.is_null() {
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    self.backbuffer.as_ptr(),
+                    self.fb,
+                    self.backbuffer.len(),
+                );
+            }
+        }
     }
     fn clear(&mut self, color: Color) {
-        for y in 0..self.mode.height { for x in 0..self.mode.width {
-            let off = y * self.mode.pitch + x * 4;
-            if off+3 < self.backbuffer.len() {
-                self.backbuffer[off] = color.b;
-                self.backbuffer[off+1] = color.g;
-                self.backbuffer[off+2] = color.r;
+        for y in 0..self.mode.height {
+            for x in 0..self.mode.width {
+                let off = y * self.mode.pitch + x * 4;
+                if off + 3 < self.backbuffer.len() {
+                    self.backbuffer[off] = color.b;
+                    self.backbuffer[off + 1] = color.g;
+                    self.backbuffer[off + 2] = color.r;
+                }
             }
-        }}
+        }
     }
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let off = y * self.mode.pitch + x * 4;
-        if off+3 < self.backbuffer.len() {
+        if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
-            self.backbuffer[off+1] = color.g;
-            self.backbuffer[off+2] = color.r;
+            self.backbuffer[off + 1] = color.g;
+            self.backbuffer[off + 2] = color.r;
         }
     }
     fn fill_rect(&mut self, rect: Rect, color: Color) {
-        for y in rect.y..rect.y+rect.height { for x in rect.x..rect.x+rect.width {
-            self.put_pixel(x, y, color);
-        }}
+        for y in rect.y..rect.y + rect.height {
+            for x in rect.x..rect.x + rect.width {
+                self.put_pixel(x, y, color);
+            }
+        }
     }
     fn blit(&mut self, sx: usize, sy: usize, dx: usize, dy: usize, w: usize, h: usize) {
-        for y in 0..h { for x in 0..w {
-            let so = (sy+y)*self.mode.pitch + (sx+x)*4;
-            let d = (dy+y)*self.mode.pitch + (dx+x)*4;
-            if so+3 < self.backbuffer.len() && d+3 < self.backbuffer.len() {
-                self.backbuffer[d] = self.backbuffer[so];
-                self.backbuffer[d+1] = self.backbuffer[so+1];
-                self.backbuffer[d+2] = self.backbuffer[so+2];
+        for y in 0..h {
+            for x in 0..w {
+                let so = (sy + y) * self.mode.pitch + (sx + x) * 4;
+                let d = (dy + y) * self.mode.pitch + (dx + x) * 4;
+                if so + 3 < self.backbuffer.len() && d + 3 < self.backbuffer.len() {
+                    self.backbuffer[d] = self.backbuffer[so];
+                    self.backbuffer[d + 1] = self.backbuffer[so + 1];
+                    self.backbuffer[d + 2] = self.backbuffer[so + 2];
+                }
             }
-        }}
+        }
     }
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // ============================================================================
 // VIRTIO GPU DRIVER — QEMU -device virtio-gpu-pci
 // ============================================================================
 pub struct VirtioGpuDriver {
-    fb: *mut u8, mode: GpuMode, backbuffer: Vec<u8>,
-    caps: GpuCaps, family: GpuFamily, enabled: bool,
+    fb: *mut u8,
+    mode: GpuMode,
+    backbuffer: Vec<u8>,
+    caps: GpuCaps,
+    family: GpuFamily,
+    enabled: bool,
 }
 unsafe impl Send for VirtioGpuDriver {}
 impl VirtioGpuDriver {
     pub fn new(fb_base: u64, family: GpuFamily) -> Self {
         Self {
-            fb: if fb_base != 0 { fb_base as *mut u8 } else { core::ptr::null_mut() },
-            mode: GpuMode::default(), backbuffer: Vec::new(),
-            caps: GpuCaps::ACCEL_2D.merge(GpuCaps::DOUBLE_BUFFER).merge(GpuCaps::FRAMEBUFFER),
-            family, enabled: false,
+            fb: if fb_base != 0 {
+                fb_base as *mut u8
+            } else {
+                core::ptr::null_mut()
+            },
+            mode: GpuMode::default(),
+            backbuffer: Vec::new(),
+            caps: GpuCaps::ACCEL_2D
+                .merge(GpuCaps::DOUBLE_BUFFER)
+                .merge(GpuCaps::FRAMEBUFFER),
+            family,
+            enabled: false,
         }
     }
 }
 impl GpuDriver for VirtioGpuDriver {
     fn init(&mut self, mode: &GpuMode) -> Result<(), &'static str> {
-        self.mode = *mode; let size = mode.width * mode.height * 4;
+        self.mode = *mode;
+        let size = mode.width * mode.height * 4;
         self.backbuffer = alloc::vec![0u8; size];
-        crate::serial_println!("VIRTIO-GPU: {} @ {}x{}x{}bpp",
-            crate::gpu::gpu_name(self.family), mode.width, mode.height, mode.bpp);
-        self.enabled = true; Ok(())
+        crate::serial_println!(
+            "VIRTIO-GPU: {} @ {}x{}x{}bpp",
+            crate::gpu::gpu_name(self.family),
+            mode.width,
+            mode.height,
+            mode.bpp
+        );
+        self.enabled = true;
+        Ok(())
     }
-    fn current_mode(&self) -> GpuMode { self.mode }
-    fn capabilities(&self) -> GpuCaps { self.caps }
-    fn family(&self) -> GpuFamily { self.family }
+    fn current_mode(&self) -> GpuMode {
+        self.mode
+    }
+    fn capabilities(&self) -> GpuCaps {
+        self.caps
+    }
+    fn family(&self) -> GpuFamily {
+        self.family
+    }
     fn present(&mut self) {
-        if !self.fb.is_null() { unsafe {
-            core::ptr::copy_nonoverlapping(self.backbuffer.as_ptr(), self.fb, self.backbuffer.len());
-        }}
+        if !self.fb.is_null() {
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    self.backbuffer.as_ptr(),
+                    self.fb,
+                    self.backbuffer.len(),
+                );
+            }
+        }
     }
     fn clear(&mut self, color: Color) {
-        for y in 0..self.mode.height { for x in 0..self.mode.width {
-            let off = y * self.mode.pitch + x * 4;
-            if off+3 < self.backbuffer.len() {
-                self.backbuffer[off] = color.b;
-                self.backbuffer[off+1] = color.g;
-                self.backbuffer[off+2] = color.r;
+        for y in 0..self.mode.height {
+            for x in 0..self.mode.width {
+                let off = y * self.mode.pitch + x * 4;
+                if off + 3 < self.backbuffer.len() {
+                    self.backbuffer[off] = color.b;
+                    self.backbuffer[off + 1] = color.g;
+                    self.backbuffer[off + 2] = color.r;
+                }
             }
-        }}
+        }
     }
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if x >= self.mode.width || y >= self.mode.height { return; }
+        if x >= self.mode.width || y >= self.mode.height {
+            return;
+        }
         let off = y * self.mode.pitch + x * 4;
-        if off+3 < self.backbuffer.len() {
+        if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;
-            self.backbuffer[off+1] = color.g;
-            self.backbuffer[off+2] = color.r;
+            self.backbuffer[off + 1] = color.g;
+            self.backbuffer[off + 2] = color.r;
         }
     }
     fn fill_rect(&mut self, rect: Rect, color: Color) {
-        for y in rect.y..rect.y+rect.height { for x in rect.x..rect.x+rect.width {
-            self.put_pixel(x, y, color);
-        }}
+        for y in rect.y..rect.y + rect.height {
+            for x in rect.x..rect.x + rect.width {
+                self.put_pixel(x, y, color);
+            }
+        }
     }
     fn blit(&mut self, sx: usize, sy: usize, dx: usize, dy: usize, w: usize, h: usize) {
-        for y in 0..h { for x in 0..w {
-            let so = (sy+y)*self.mode.pitch + (sx+x)*4;
-            let d = (dy+y)*self.mode.pitch + (dx+x)*4;
-            if so+3 < self.backbuffer.len() && d+3 < self.backbuffer.len() {
-                self.backbuffer[d] = self.backbuffer[so];
-                self.backbuffer[d+1] = self.backbuffer[so+1];
-                self.backbuffer[d+2] = self.backbuffer[so+2];
+        for y in 0..h {
+            for x in 0..w {
+                let so = (sy + y) * self.mode.pitch + (sx + x) * 4;
+                let d = (dy + y) * self.mode.pitch + (dx + x) * 4;
+                if so + 3 < self.backbuffer.len() && d + 3 < self.backbuffer.len() {
+                    self.backbuffer[d] = self.backbuffer[so];
+                    self.backbuffer[d + 1] = self.backbuffer[so + 1];
+                    self.backbuffer[d + 2] = self.backbuffer[so + 2];
+                }
             }
-        }}
+        }
     }
-    fn raw_framebuffer(&mut self) -> &mut [u8] { &mut self.backbuffer }
+    fn raw_framebuffer(&mut self) -> &mut [u8] {
+        &mut self.backbuffer
+    }
 }
 
 // ============================================================================
@@ -1323,8 +1604,12 @@ pub enum ConcreteGpuDriver {
 
 impl ConcreteGpuDriver {
     /// Detect and initialize the best driver for the given GPU device
-    pub fn detect_and_bind(device: &GpuDevice, fb: *mut u8,
-                           desired_w: usize, desired_h: usize) -> Self {
+    pub fn detect_and_bind(
+        device: &GpuDevice,
+        fb: *mut u8,
+        desired_w: usize,
+        desired_h: usize,
+    ) -> Self {
         let mode = GpuMode {
             width: desired_w,
             height: desired_h,
@@ -1341,7 +1626,10 @@ impl ConcreteGpuDriver {
                 let mut drv = BochsVbeDriver::new(fb);
                 match drv.init(&mode) {
                     Ok(()) => {
-                        crate::serial_println!("GPU: Bochs VBE driver bound to device {}", device.name);
+                        crate::serial_println!(
+                            "GPU: Bochs VBE driver bound to device {}",
+                            device.name
+                        );
                         Self::BochsVbe(drv)
                     }
                     Err(e) => {
@@ -1358,8 +1646,13 @@ impl ConcreteGpuDriver {
                     let mut drv = NvidiaMmioDriver::new(mmio_base, fb_base, device.family);
                     match drv.init(&mode) {
                         Ok(()) => {
-                            crate::serial_println!("GPU: Nvidia MMIO driver bound to [{}:{}.{}] {}",
-                                device.bus, device.slot, device.func, device.name);
+                            crate::serial_println!(
+                                "GPU: Nvidia MMIO driver bound to [{}:{}.{}] {}",
+                                device.bus,
+                                device.slot,
+                                device.func,
+                                device.name
+                            );
                             Self::Nvidia(drv)
                         }
                         Err(e) => {
@@ -1379,8 +1672,13 @@ impl ConcreteGpuDriver {
                     let mut drv = AtiMmioDriver::new(mmio_base, fb_base, device.family);
                     match drv.init(&mode) {
                         Ok(()) => {
-                            crate::serial_println!("GPU: ATI/AMD MMIO driver bound to [{}:{}.{}] {}",
-                                device.bus, device.slot, device.func, device.name);
+                            crate::serial_println!(
+                                "GPU: ATI/AMD MMIO driver bound to [{}:{}.{}] {}",
+                                device.bus,
+                                device.slot,
+                                device.func,
+                                device.name
+                            );
                             Self::Ati(drv)
                         }
                         Err(e) => {
@@ -1400,8 +1698,13 @@ impl ConcreteGpuDriver {
                     let mut drv = VoodooBansheeDriver::new(mmio_base, fb_base, device.family);
                     match drv.init(&mode) {
                         Ok(()) => {
-                            crate::serial_println!("GPU: 3dfx Voodoo driver bound to [{}:{}.{}] {}",
-                                device.bus, device.slot, device.func, device.name);
+                            crate::serial_println!(
+                                "GPU: 3dfx Voodoo driver bound to [{}:{}.{}] {}",
+                                device.bus,
+                                device.slot,
+                                device.func,
+                                device.name
+                            );
                             Self::Voodoo(drv)
                         }
                         Err(e) => {
@@ -1421,8 +1724,13 @@ impl ConcreteGpuDriver {
                     let mut drv = IntelGfxDriver::new(mmio_base, fb_base, device.family);
                     match drv.init(&mode) {
                         Ok(()) => {
-                            crate::serial_println!("GPU: Intel driver bound to [{}:{}.{}] {}",
-                                device.bus, device.slot, device.func, device.name);
+                            crate::serial_println!(
+                                "GPU: Intel driver bound to [{}:{}.{}] {}",
+                                device.bus,
+                                device.slot,
+                                device.func,
+                                device.name
+                            );
                             Self::Intel(drv)
                         }
                         Err(e) => {
@@ -1442,8 +1750,13 @@ impl ConcreteGpuDriver {
                     let mut drv = VmwareSvgaDriver::new(mmio_base, fb_base, device.family);
                     match drv.init(&mode) {
                         Ok(()) => {
-                            crate::serial_println!("GPU: VMware SVGA bound to [{}:{}.{}] {}",
-                                device.bus, device.slot, device.func, device.name);
+                            crate::serial_println!(
+                                "GPU: VMware SVGA bound to [{}:{}.{}] {}",
+                                device.bus,
+                                device.slot,
+                                device.func,
+                                device.name
+                            );
                             Self::Vmware(drv)
                         }
                         Err(e) => {
@@ -1461,8 +1774,13 @@ impl ConcreteGpuDriver {
                 let mut drv = CirrusVgaDriver::new(fb, device.family);
                 match drv.init(&mode) {
                     Ok(()) => {
-                        crate::serial_println!("GPU: Cirrus Logic bound to [{}:{}.{}] {}",
-                            device.bus, device.slot, device.func, device.name);
+                        crate::serial_println!(
+                            "GPU: Cirrus Logic bound to [{}:{}.{}] {}",
+                            device.bus,
+                            device.slot,
+                            device.func,
+                            device.name
+                        );
                         Self::Cirrus(drv)
                     }
                     Err(e) => {
@@ -1478,8 +1796,13 @@ impl ConcreteGpuDriver {
                 let mut drv = VirtioGpuDriver::new(fb_base, device.family);
                 match drv.init(&mode) {
                     Ok(()) => {
-                        crate::serial_println!("GPU: VirtIO bound to [{}:{}.{}] {}",
-                            device.bus, device.slot, device.func, device.name);
+                        crate::serial_println!(
+                            "GPU: VirtIO bound to [{}:{}.{}] {}",
+                            device.bus,
+                            device.slot,
+                            device.func,
+                            device.name
+                        );
                         Self::Virtio(drv)
                     }
                     Err(e) => {
@@ -1522,10 +1845,14 @@ fn is_vmware_family(family: GpuFamily) -> bool {
 }
 
 fn is_cirrus_family(family: GpuFamily) -> bool {
-    matches!(family,
-        GpuFamily::CirrusLogic5430 | GpuFamily::CirrusLogic5446 |
-        GpuFamily::CirrusLogic5464 | GpuFamily::CirrusLogic5465 |
-        GpuFamily::CirrusLogic67200 | GpuFamily::CirrusLogic7548
+    matches!(
+        family,
+        GpuFamily::CirrusLogic5430
+            | GpuFamily::CirrusLogic5446
+            | GpuFamily::CirrusLogic5464
+            | GpuFamily::CirrusLogic5465
+            | GpuFamily::CirrusLogic67200
+            | GpuFamily::CirrusLogic7548
     )
 }
 
@@ -1534,124 +1861,311 @@ fn is_virtio_family(family: GpuFamily) -> bool {
 }
 
 fn is_3dfx_family(family: GpuFamily) -> bool {
-    matches!(family,
-        GpuFamily::Voodoo1 | GpuFamily::Voodoo2 | GpuFamily::VoodooRush |
-        GpuFamily::VoodooBanshee | GpuFamily::Voodoo3 |
-        GpuFamily::Voodoo4 | GpuFamily::Voodoo5
+    matches!(
+        family,
+        GpuFamily::Voodoo1
+            | GpuFamily::Voodoo2
+            | GpuFamily::VoodooRush
+            | GpuFamily::VoodooBanshee
+            | GpuFamily::Voodoo3
+            | GpuFamily::Voodoo4
+            | GpuFamily::Voodoo5
     )
 }
 
 fn is_intel_family(family: GpuFamily) -> bool {
-    matches!(family,
-        GpuFamily::Intel740 | GpuFamily::Intel810 | GpuFamily::Intel915 |
-        GpuFamily::IntelGMA3000 | GpuFamily::IntelGMA3100 |
-        GpuFamily::IntelGMAX3100 | GpuFamily::IntelGMAX3500 |
-        GpuFamily::IntelHDGraphics | GpuFamily::IntelHDGraphics2000 |
-        GpuFamily::IntelHDGraphics2500 | GpuFamily::IntelHDGraphics3000 |
-        GpuFamily::IntelHDGraphics4000 | GpuFamily::IntelHDGraphics4200 |
-        GpuFamily::IntelHDGraphics4400 | GpuFamily::IntelHDGraphics4600 |
-        GpuFamily::IntelHDGraphics5000 | GpuFamily::IntelHDGraphics5100 |
-        GpuFamily::IntelHDGraphics5200 | GpuFamily::IntelHDGraphics5300 |
-        GpuFamily::IntelHDGraphics5500 | GpuFamily::IntelHDGraphics6000 |
-        GpuFamily::IntelHDGraphics6100 | GpuFamily::IntelHDGraphics615 |
-        GpuFamily::IntelHDGraphics620 | GpuFamily::IntelHDGraphics630 |
-        GpuFamily::IntelHDGraphics640 | GpuFamily::IntelHDGraphics650 |
-        GpuFamily::IntelHDGraphicsP630 |
-        GpuFamily::IntelIrisPlus640 | GpuFamily::IntelIrisPlus645 |
-        GpuFamily::IntelIrisPlus650 | GpuFamily::IntelIrisPro580 |
-        GpuFamily::IntelIrisXe | GpuFamily::IntelIrisXeMax |
-        GpuFamily::IntelArcA310 | GpuFamily::IntelArcA380 |
-        GpuFamily::IntelArcA580 | GpuFamily::IntelArcA750 |
-        GpuFamily::IntelArcA770 | GpuFamily::IntelArcB580 |
-        GpuFamily::IntelArcB770 | GpuFamily::IntelXeLLVM
+    matches!(
+        family,
+        GpuFamily::Intel740
+            | GpuFamily::Intel810
+            | GpuFamily::Intel915
+            | GpuFamily::IntelGMA3000
+            | GpuFamily::IntelGMA3100
+            | GpuFamily::IntelGMAX3100
+            | GpuFamily::IntelGMAX3500
+            | GpuFamily::IntelHDGraphics
+            | GpuFamily::IntelHDGraphics2000
+            | GpuFamily::IntelHDGraphics2500
+            | GpuFamily::IntelHDGraphics3000
+            | GpuFamily::IntelHDGraphics4000
+            | GpuFamily::IntelHDGraphics4200
+            | GpuFamily::IntelHDGraphics4400
+            | GpuFamily::IntelHDGraphics4600
+            | GpuFamily::IntelHDGraphics5000
+            | GpuFamily::IntelHDGraphics5100
+            | GpuFamily::IntelHDGraphics5200
+            | GpuFamily::IntelHDGraphics5300
+            | GpuFamily::IntelHDGraphics5500
+            | GpuFamily::IntelHDGraphics6000
+            | GpuFamily::IntelHDGraphics6100
+            | GpuFamily::IntelHDGraphics615
+            | GpuFamily::IntelHDGraphics620
+            | GpuFamily::IntelHDGraphics630
+            | GpuFamily::IntelHDGraphics640
+            | GpuFamily::IntelHDGraphics650
+            | GpuFamily::IntelHDGraphicsP630
+            | GpuFamily::IntelIrisPlus640
+            | GpuFamily::IntelIrisPlus645
+            | GpuFamily::IntelIrisPlus650
+            | GpuFamily::IntelIrisPro580
+            | GpuFamily::IntelIrisXe
+            | GpuFamily::IntelIrisXeMax
+            | GpuFamily::IntelArcA310
+            | GpuFamily::IntelArcA380
+            | GpuFamily::IntelArcA580
+            | GpuFamily::IntelArcA750
+            | GpuFamily::IntelArcA770
+            | GpuFamily::IntelArcB580
+            | GpuFamily::IntelArcB770
+            | GpuFamily::IntelXeLLVM
     )
 }
 
 fn is_nvidia_family(family: GpuFamily) -> bool {
-    matches!(family,
-        GpuFamily::Nv1 | GpuFamily::Nv2 | GpuFamily::Nv3 | GpuFamily::Nv4 | GpuFamily::Nv5 |
-        GpuFamily::Riva128 | GpuFamily::Riva128ZX | GpuFamily::RivaTNT | GpuFamily::RivaTNT2 |
-        GpuFamily::GeForce256 | GpuFamily::GeForceDDR | GpuFamily::GeForce2 |
-        GpuFamily::GeForce2MX | GpuFamily::GeForce2GTS | GpuFamily::GeForce2Ultra |
-        GpuFamily::GeForce2Go | GpuFamily::GeForce3 | GpuFamily::GeForce3Ti |
-        GpuFamily::GeForce4 | GpuFamily::GeForce4MX | GpuFamily::GeForce4Ti |
-        GpuFamily::GeForceFX | GpuFamily::GeForceFX5200 | GpuFamily::GeForceFX5600 |
-        GpuFamily::GeForceFX5700 | GpuFamily::GeForceFX5800 | GpuFamily::GeForceFX5900 |
-        GpuFamily::GeForceFX5950 | GpuFamily::GeForce6 | GpuFamily::GeForce6200 |
-        GpuFamily::GeForce6600 | GpuFamily::GeForce6800 | GpuFamily::GeForce7 |
-        GpuFamily::GeForce7300 | GpuFamily::GeForce7600 | GpuFamily::GeForce7800 |
-        GpuFamily::GeForce7900 | GpuFamily::GeForce7950 | GpuFamily::GeForce8 |
-        GpuFamily::GeForce8300 | GpuFamily::GeForce8400 | GpuFamily::GeForce8500 |
-        GpuFamily::GeForce8600 | GpuFamily::GeForce8800 | GpuFamily::GeForce9 |
-        GpuFamily::GeForce9600 | GpuFamily::GeForce9800 | GpuFamily::GeForceGTX200 |
-        GpuFamily::GTX260 | GpuFamily::GTX280 | GpuFamily::GTX285 | GpuFamily::GTX295 |
-        GpuFamily::GeForceGTX400 | GpuFamily::GTX460 | GpuFamily::GTX465 |
-        GpuFamily::GTX470 | GpuFamily::GTX480 | GpuFamily::GeForceGTX500 |
-        GpuFamily::GTX550 | GpuFamily::GTX560 | GpuFamily::GTX570 |
-        GpuFamily::GTX580 | GpuFamily::GTX590 | GpuFamily::GeForceGTX600 |
-        GpuFamily::GTX650 | GpuFamily::GTX660 | GpuFamily::GTX670 |
-        GpuFamily::GTX680 | GpuFamily::GTX690 | GpuFamily::GeForceGTX700 |
-        GpuFamily::GTX760 | GpuFamily::GTX770 | GpuFamily::GTX780 |
-        GpuFamily::GTX780Ti | GpuFamily::GTXTitan | GpuFamily::GeForceGTX900 |
-        GpuFamily::GTX960 | GpuFamily::GTX970 | GpuFamily::GTX980 |
-        GpuFamily::GTX980Ti | GpuFamily::GTXTitanX | GpuFamily::GeForceGTX10 |
-        GpuFamily::GTX1050 | GpuFamily::GTX1060 | GpuFamily::GTX1070 |
-        GpuFamily::GTX1080 | GpuFamily::GTX1080Ti | GpuFamily::GTXTitanXP |
-        GpuFamily::GeForceGTX16 | GpuFamily::GTX1650 | GpuFamily::GTX1660 |
-        GpuFamily::GTX1660Super | GpuFamily::GTX1660Ti | GpuFamily::GeForceRTX20 |
-        GpuFamily::RTX2060 | GpuFamily::RTX2070 | GpuFamily::RTX2080 |
-        GpuFamily::RTX2080Ti | GpuFamily::TitanRTX | GpuFamily::GeForceRTX30 |
-        GpuFamily::RTX3060 | GpuFamily::RTX3070 | GpuFamily::RTX3080 |
-        GpuFamily::RTX3090 | GpuFamily::RTX3090Ti | GpuFamily::GeForceRTX40 |
-        GpuFamily::RTX4060 | GpuFamily::RTX4070 | GpuFamily::RTX4080 |
-        GpuFamily::RTX4090 | GpuFamily::GeForceRTX50 | GpuFamily::RTX5060 |
-        GpuFamily::RTX5070 | GpuFamily::RTX5080 | GpuFamily::RTX5090 |
-        GpuFamily::NvidiaQuadro | GpuFamily::NvidiaTesla
+    matches!(
+        family,
+        GpuFamily::Nv1
+            | GpuFamily::Nv2
+            | GpuFamily::Nv3
+            | GpuFamily::Nv4
+            | GpuFamily::Nv5
+            | GpuFamily::Riva128
+            | GpuFamily::Riva128ZX
+            | GpuFamily::RivaTNT
+            | GpuFamily::RivaTNT2
+            | GpuFamily::GeForce256
+            | GpuFamily::GeForceDDR
+            | GpuFamily::GeForce2
+            | GpuFamily::GeForce2MX
+            | GpuFamily::GeForce2GTS
+            | GpuFamily::GeForce2Ultra
+            | GpuFamily::GeForce2Go
+            | GpuFamily::GeForce3
+            | GpuFamily::GeForce3Ti
+            | GpuFamily::GeForce4
+            | GpuFamily::GeForce4MX
+            | GpuFamily::GeForce4Ti
+            | GpuFamily::GeForceFX
+            | GpuFamily::GeForceFX5200
+            | GpuFamily::GeForceFX5600
+            | GpuFamily::GeForceFX5700
+            | GpuFamily::GeForceFX5800
+            | GpuFamily::GeForceFX5900
+            | GpuFamily::GeForceFX5950
+            | GpuFamily::GeForce6
+            | GpuFamily::GeForce6200
+            | GpuFamily::GeForce6600
+            | GpuFamily::GeForce6800
+            | GpuFamily::GeForce7
+            | GpuFamily::GeForce7300
+            | GpuFamily::GeForce7600
+            | GpuFamily::GeForce7800
+            | GpuFamily::GeForce7900
+            | GpuFamily::GeForce7950
+            | GpuFamily::GeForce8
+            | GpuFamily::GeForce8300
+            | GpuFamily::GeForce8400
+            | GpuFamily::GeForce8500
+            | GpuFamily::GeForce8600
+            | GpuFamily::GeForce8800
+            | GpuFamily::GeForce9
+            | GpuFamily::GeForce9600
+            | GpuFamily::GeForce9800
+            | GpuFamily::GeForceGTX200
+            | GpuFamily::GTX260
+            | GpuFamily::GTX280
+            | GpuFamily::GTX285
+            | GpuFamily::GTX295
+            | GpuFamily::GeForceGTX400
+            | GpuFamily::GTX460
+            | GpuFamily::GTX465
+            | GpuFamily::GTX470
+            | GpuFamily::GTX480
+            | GpuFamily::GeForceGTX500
+            | GpuFamily::GTX550
+            | GpuFamily::GTX560
+            | GpuFamily::GTX570
+            | GpuFamily::GTX580
+            | GpuFamily::GTX590
+            | GpuFamily::GeForceGTX600
+            | GpuFamily::GTX650
+            | GpuFamily::GTX660
+            | GpuFamily::GTX670
+            | GpuFamily::GTX680
+            | GpuFamily::GTX690
+            | GpuFamily::GeForceGTX700
+            | GpuFamily::GTX760
+            | GpuFamily::GTX770
+            | GpuFamily::GTX780
+            | GpuFamily::GTX780Ti
+            | GpuFamily::GTXTitan
+            | GpuFamily::GeForceGTX900
+            | GpuFamily::GTX960
+            | GpuFamily::GTX970
+            | GpuFamily::GTX980
+            | GpuFamily::GTX980Ti
+            | GpuFamily::GTXTitanX
+            | GpuFamily::GeForceGTX10
+            | GpuFamily::GTX1050
+            | GpuFamily::GTX1060
+            | GpuFamily::GTX1070
+            | GpuFamily::GTX1080
+            | GpuFamily::GTX1080Ti
+            | GpuFamily::GTXTitanXP
+            | GpuFamily::GeForceGTX16
+            | GpuFamily::GTX1650
+            | GpuFamily::GTX1660
+            | GpuFamily::GTX1660Super
+            | GpuFamily::GTX1660Ti
+            | GpuFamily::GeForceRTX20
+            | GpuFamily::RTX2060
+            | GpuFamily::RTX2070
+            | GpuFamily::RTX2080
+            | GpuFamily::RTX2080Ti
+            | GpuFamily::TitanRTX
+            | GpuFamily::GeForceRTX30
+            | GpuFamily::RTX3060
+            | GpuFamily::RTX3070
+            | GpuFamily::RTX3080
+            | GpuFamily::RTX3090
+            | GpuFamily::RTX3090Ti
+            | GpuFamily::GeForceRTX40
+            | GpuFamily::RTX4060
+            | GpuFamily::RTX4070
+            | GpuFamily::RTX4080
+            | GpuFamily::RTX4090
+            | GpuFamily::GeForceRTX50
+            | GpuFamily::RTX5060
+            | GpuFamily::RTX5070
+            | GpuFamily::RTX5080
+            | GpuFamily::RTX5090
+            | GpuFamily::NvidiaQuadro
+            | GpuFamily::NvidiaTesla
     )
 }
 
 fn is_ati_family(family: GpuFamily) -> bool {
-    matches!(family,
-        GpuFamily::RagePro | GpuFamily::RageXL | GpuFamily::RageFury |
-        GpuFamily::Rage128 | GpuFamily::Rage128VR | GpuFamily::Rage128GL |
-        GpuFamily::Rage128Pro | GpuFamily::Radeon7000 | GpuFamily::Radeon7200 |
-        GpuFamily::Radeon7500 | GpuFamily::Radeon8500 | GpuFamily::Radeon8500LE |
-        GpuFamily::Radeon9000 | GpuFamily::Radeon9100 | GpuFamily::Radeon9200 |
-        GpuFamily::Radeon9500 | GpuFamily::Radeon9550 | GpuFamily::Radeon9600 |
-        GpuFamily::Radeon9700 | GpuFamily::Radeon9700Pro | GpuFamily::Radeon9800 |
-        GpuFamily::Radeon9800Pro | GpuFamily::RadeonX300 | GpuFamily::RadeonX600 |
-        GpuFamily::RadeonX700 | GpuFamily::RadeonX800 | GpuFamily::RadeonX850 |
-        GpuFamily::RadeonX1300 | GpuFamily::RadeonX1600 | GpuFamily::RadeonX1800 |
-        GpuFamily::RadeonX1900 | GpuFamily::RadeonX1950 | GpuFamily::RadeonHD2400 |
-        GpuFamily::RadeonHD2600 | GpuFamily::RadeonHD2900 | GpuFamily::RadeonHD3450 |
-        GpuFamily::RadeonHD3650 | GpuFamily::RadeonHD3850 | GpuFamily::RadeonHD3870 |
-        GpuFamily::RadeonHD4350 | GpuFamily::RadeonHD4550 | GpuFamily::RadeonHD4650 |
-        GpuFamily::RadeonHD4670 | GpuFamily::RadeonHD4770 | GpuFamily::RadeonHD4830 |
-        GpuFamily::RadeonHD4850 | GpuFamily::RadeonHD4870 | GpuFamily::RadeonHD4870X2 |
-        GpuFamily::RadeonHD5450 | GpuFamily::RadeonHD5570 | GpuFamily::RadeonHD5670 |
-        GpuFamily::RadeonHD5750 | GpuFamily::RadeonHD5770 | GpuFamily::RadeonHD5830 |
-        GpuFamily::RadeonHD5850 | GpuFamily::RadeonHD5870 | GpuFamily::RadeonHD5970 |
-        GpuFamily::RadeonHD6450 | GpuFamily::RadeonHD6570 | GpuFamily::RadeonHD6670 |
-        GpuFamily::RadeonHD6750 | GpuFamily::RadeonHD6770 | GpuFamily::RadeonHD6790 |
-        GpuFamily::RadeonHD6850 | GpuFamily::RadeonHD6870 | GpuFamily::RadeonHD6950 |
-        GpuFamily::RadeonHD6970 | GpuFamily::RadeonHD6990 | GpuFamily::RadeonHD7750 |
-        GpuFamily::RadeonHD7770 | GpuFamily::RadeonHD7850 | GpuFamily::RadeonHD7870 |
-        GpuFamily::RadeonHD7950 | GpuFamily::RadeonHD7970 | GpuFamily::RadeonHD7990 |
-        GpuFamily::RadeonR7240 | GpuFamily::RadeonR7250 | GpuFamily::RadeonR7260 |
-        GpuFamily::RadeonR7270 | GpuFamily::RadeonR7280 | GpuFamily::RadeonR9280 |
-        GpuFamily::RadeonR9290 | GpuFamily::RadeonR9290X | GpuFamily::RadeonR9390 |
-        GpuFamily::RadeonR9390X | GpuFamily::RadeonR7460 | GpuFamily::RadeonR7470 |
-        GpuFamily::RadeonR7480 | GpuFamily::RadeonR7570 | GpuFamily::RadeonR7580 |
-        GpuFamily::RadeonR7590 | GpuFamily::RadeonRX460 | GpuFamily::RadeonRX470 |
-        GpuFamily::RadeonRX480 | GpuFamily::RadeonRX550 | GpuFamily::RadeonRX560 |
-        GpuFamily::RadeonRX570 | GpuFamily::RadeonRX580 | GpuFamily::RadeonRX590 |
-        GpuFamily::RadeonRX5500 | GpuFamily::RadeonRX5600 | GpuFamily::RadeonRX5700 |
-        GpuFamily::RadeonRX6400 | GpuFamily::RadeonRX6500XT | GpuFamily::RadeonRX6600 |
-        GpuFamily::RadeonRX6700XT | GpuFamily::RadeonRX6800 | GpuFamily::RadeonRX6800XT |
-        GpuFamily::RadeonRX6900XT | GpuFamily::RadeonRX7600 | GpuFamily::RadeonRX7700XT |
-        GpuFamily::RadeonRX7800XT | GpuFamily::RadeonRX7900GRE | GpuFamily::RadeonRX7900XT |
-        GpuFamily::RadeonRX7900XTX | GpuFamily::RadeonRX9070 | GpuFamily::RadeonRX9070XT |
-        GpuFamily::AMDFirePro | GpuFamily::AMDInstinct
+    matches!(
+        family,
+        GpuFamily::RagePro
+            | GpuFamily::RageXL
+            | GpuFamily::RageFury
+            | GpuFamily::Rage128
+            | GpuFamily::Rage128VR
+            | GpuFamily::Rage128GL
+            | GpuFamily::Rage128Pro
+            | GpuFamily::Radeon7000
+            | GpuFamily::Radeon7200
+            | GpuFamily::Radeon7500
+            | GpuFamily::Radeon8500
+            | GpuFamily::Radeon8500LE
+            | GpuFamily::Radeon9000
+            | GpuFamily::Radeon9100
+            | GpuFamily::Radeon9200
+            | GpuFamily::Radeon9500
+            | GpuFamily::Radeon9550
+            | GpuFamily::Radeon9600
+            | GpuFamily::Radeon9700
+            | GpuFamily::Radeon9700Pro
+            | GpuFamily::Radeon9800
+            | GpuFamily::Radeon9800Pro
+            | GpuFamily::RadeonX300
+            | GpuFamily::RadeonX600
+            | GpuFamily::RadeonX700
+            | GpuFamily::RadeonX800
+            | GpuFamily::RadeonX850
+            | GpuFamily::RadeonX1300
+            | GpuFamily::RadeonX1600
+            | GpuFamily::RadeonX1800
+            | GpuFamily::RadeonX1900
+            | GpuFamily::RadeonX1950
+            | GpuFamily::RadeonHD2400
+            | GpuFamily::RadeonHD2600
+            | GpuFamily::RadeonHD2900
+            | GpuFamily::RadeonHD3450
+            | GpuFamily::RadeonHD3650
+            | GpuFamily::RadeonHD3850
+            | GpuFamily::RadeonHD3870
+            | GpuFamily::RadeonHD4350
+            | GpuFamily::RadeonHD4550
+            | GpuFamily::RadeonHD4650
+            | GpuFamily::RadeonHD4670
+            | GpuFamily::RadeonHD4770
+            | GpuFamily::RadeonHD4830
+            | GpuFamily::RadeonHD4850
+            | GpuFamily::RadeonHD4870
+            | GpuFamily::RadeonHD4870X2
+            | GpuFamily::RadeonHD5450
+            | GpuFamily::RadeonHD5570
+            | GpuFamily::RadeonHD5670
+            | GpuFamily::RadeonHD5750
+            | GpuFamily::RadeonHD5770
+            | GpuFamily::RadeonHD5830
+            | GpuFamily::RadeonHD5850
+            | GpuFamily::RadeonHD5870
+            | GpuFamily::RadeonHD5970
+            | GpuFamily::RadeonHD6450
+            | GpuFamily::RadeonHD6570
+            | GpuFamily::RadeonHD6670
+            | GpuFamily::RadeonHD6750
+            | GpuFamily::RadeonHD6770
+            | GpuFamily::RadeonHD6790
+            | GpuFamily::RadeonHD6850
+            | GpuFamily::RadeonHD6870
+            | GpuFamily::RadeonHD6950
+            | GpuFamily::RadeonHD6970
+            | GpuFamily::RadeonHD6990
+            | GpuFamily::RadeonHD7750
+            | GpuFamily::RadeonHD7770
+            | GpuFamily::RadeonHD7850
+            | GpuFamily::RadeonHD7870
+            | GpuFamily::RadeonHD7950
+            | GpuFamily::RadeonHD7970
+            | GpuFamily::RadeonHD7990
+            | GpuFamily::RadeonR7240
+            | GpuFamily::RadeonR7250
+            | GpuFamily::RadeonR7260
+            | GpuFamily::RadeonR7270
+            | GpuFamily::RadeonR7280
+            | GpuFamily::RadeonR9280
+            | GpuFamily::RadeonR9290
+            | GpuFamily::RadeonR9290X
+            | GpuFamily::RadeonR9390
+            | GpuFamily::RadeonR9390X
+            | GpuFamily::RadeonR7460
+            | GpuFamily::RadeonR7470
+            | GpuFamily::RadeonR7480
+            | GpuFamily::RadeonR7570
+            | GpuFamily::RadeonR7580
+            | GpuFamily::RadeonR7590
+            | GpuFamily::RadeonRX460
+            | GpuFamily::RadeonRX470
+            | GpuFamily::RadeonRX480
+            | GpuFamily::RadeonRX550
+            | GpuFamily::RadeonRX560
+            | GpuFamily::RadeonRX570
+            | GpuFamily::RadeonRX580
+            | GpuFamily::RadeonRX590
+            | GpuFamily::RadeonRX5500
+            | GpuFamily::RadeonRX5600
+            | GpuFamily::RadeonRX5700
+            | GpuFamily::RadeonRX6400
+            | GpuFamily::RadeonRX6500XT
+            | GpuFamily::RadeonRX6600
+            | GpuFamily::RadeonRX6700XT
+            | GpuFamily::RadeonRX6800
+            | GpuFamily::RadeonRX6800XT
+            | GpuFamily::RadeonRX6900XT
+            | GpuFamily::RadeonRX7600
+            | GpuFamily::RadeonRX7700XT
+            | GpuFamily::RadeonRX7800XT
+            | GpuFamily::RadeonRX7900GRE
+            | GpuFamily::RadeonRX7900XT
+            | GpuFamily::RadeonRX7900XTX
+            | GpuFamily::RadeonRX9070
+            | GpuFamily::RadeonRX9070XT
+            | GpuFamily::AMDFirePro
+            | GpuFamily::AMDInstinct
     )
 }
 

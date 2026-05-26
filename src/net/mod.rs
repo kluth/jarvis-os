@@ -10,7 +10,10 @@ pub fn init() {
 
     // Check if any network device was discovered
     let _devices = device_manager::MANAGER.lock().devices.len();
-    let has_net = device_manager::MANAGER.lock().devices.iter()
+    let has_net = device_manager::MANAGER
+        .lock()
+        .devices
+        .iter()
         .any(|d| d.class == device_manager::DeviceClass::Network);
 
     if has_net {

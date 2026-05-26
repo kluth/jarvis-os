@@ -1,4 +1,4 @@
-use crate::device_manager::{self, Device, DeviceClass, MmioRegion, IrqType, DeviceId};
+use crate::device_manager::{self, Device, DeviceClass, DeviceId, IrqType, MmioRegion};
 
 pub fn init() {
     crate::serial_println!("Ethernet: Initialized VirtIO driver.");
@@ -13,7 +13,9 @@ pub fn init() {
         },
         name: "VirtIO Interface 0",
         class: DeviceClass::Network,
-        bus: 0, slot: 0, function: 0,
+        bus: 0,
+        slot: 0,
+        function: 0,
         bars: [MmioRegion::empty(); 6],
         irq: 0,
         irq_type: IrqType::None,

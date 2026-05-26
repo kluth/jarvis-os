@@ -8,8 +8,8 @@
 //! ============================================================================
 
 use super::effects::{apply_bloom, apply_vignette};
-use super::{BlendMode, Renderer, Vertex, ShaderType};
 use super::ui::build_jarvis_ui;
+use super::{BlendMode, Renderer, ShaderType, Vertex};
 use alloc::vec::Vec;
 
 pub struct GuiCompositor {
@@ -50,7 +50,10 @@ impl GuiCompositor {
         for i in 0..segs {
             let t0 = (i as f32 / segs as f32) * core::f32::consts::TAU;
             let t1 = ((i + 1) as f32 / segs as f32) * core::f32::consts::TAU;
-            for &(r, z, cr, cg, cb) in &[(hex_r, -0.02, 0.0, 0.9, 1.0), (hex_r - hex_t, -0.02, 0.0, 0.5, 0.8)] {
+            for &(r, z, cr, cg, cb) in &[
+                (hex_r, -0.02, 0.0, 0.9, 1.0),
+                (hex_r - hex_t, -0.02, 0.0, 0.5, 0.8),
+            ] {
                 let (rx0, rz0) = rot(libm::cosf(t0) * r, libm::sinf(t0) * r);
                 let (rx1, rz1) = rot(libm::cosf(t1) * r, libm::sinf(t1) * r);
                 outer.push(Vertex::new(rx0, z, rz0).with_color(cr, cg, cb));
@@ -83,26 +86,56 @@ impl GuiCompositor {
 
     pub fn render_frame(&mut self) -> &[u32] {
         self.angle += 0.02;
-        if self.angle > core::f32::consts::TAU * 2.0 { self.angle -= core::f32::consts::TAU * 2.0; }
+        if self.angle > core::f32::consts::TAU * 2.0 {
+            self.angle -= core::f32::consts::TAU * 2.0;
+        }
 
         // === PASS 1: 3D Hex Core (perspective camera) ===
         self.renderer.clear(0xFF08080E, f32::MAX);
-        self.renderer.set_perspective(45.0, self.width as f32 / self.height as f32, 0.1, 10.0);
+        self.renderer
+            .set_perspective(45.0, self.width as f32 / self.height as f32, 0.1, 10.0);
         self.renderer.set_view(
             super::Vec3::new(0.0, 0.3, 2.5),
             super::Vec3::new(0.0, 0.0, 0.0),
             super::Vec3::new(0.0, 1.0, 0.0),
         );
         let (o, i, h) = self.build_core_mesh(self.angle);
-        for tri in o.chunks(3) { if tri.len() == 3 {
-            self.renderer.draw_triangle(&tri[0], &tri[1], &tri[2], None, BlendMode::Alpha, ShaderType::Glow);
-        }}
-        for tri in i.chunks(3) { if tri.len() == 3 {
-            self.renderer.draw_triangle(&tri[0], &tri[1], &tri[2], None, BlendMode::Alpha, ShaderType::Glow);
-        }}
-        for tri in h.chunks(3) { if tri.len() == 3 {
-            self.renderer.draw_triangle(&tri[0], &tri[1], &tri[2], None, BlendMode::Add, ShaderType::Glow);
-        }}
+        for tri in o.chunks(3) {
+            if tri.len() == 3 {
+                self.renderer.draw_triangle(
+                    &tri[0],
+                    &tri[1],
+                    &tri[2],
+                    None,
+                    BlendMode::Alpha,
+                    ShaderType::Glow,
+                );
+            }
+        }
+        for tri in i.chunks(3) {
+            if tri.len() == 3 {
+                self.renderer.draw_triangle(
+                    &tri[0],
+                    &tri[1],
+                    &tri[2],
+                    None,
+                    BlendMode::Alpha,
+                    ShaderType::Glow,
+                );
+            }
+        }
+        for tri in h.chunks(3) {
+            if tri.len() == 3 {
+                self.renderer.draw_triangle(
+                    &tri[0],
+                    &tri[1],
+                    &tri[2],
+                    None,
+                    BlendMode::Add,
+                    ShaderType::Glow,
+                );
+            }
+        }
         // Grab scene with richer colors before tone mapping darkens everything
         self.scene_bg.copy_from_slice(&self.renderer.framebuffer);
 
@@ -139,7 +172,13 @@ impl GuiCompositor {
         }
 
         // === PASS 4: Post-processing (mild bloom, no tone-map darkening) ===
-        apply_bloom(&mut self.renderer.framebuffer, self.width, self.height, 0.06, 0.7);
+        apply_bloom(
+            &mut self.renderer.framebuffer,
+            self.width,
+            self.height,
+            0.06,
+            0.7,
+        );
         // Replace ACES tone mapping with a simple brightness boost for the dark theme
         for pixel in self.renderer.framebuffer.iter_mut() {
             let r = ((*pixel >> 16) & 0xFF);
@@ -161,11 +200,13 @@ impl GuiCompositor {
         let n = (self.width * self.height).min(dest.len() / 3);
         for i in 0..n {
             let c = self.output[i];
-            dest[i * 3] = (c & 0xFF) as u8;         // B
-            dest[i * 3 + 1] = ((c >> 8) & 0xFF) as u8;  // G
+            dest[i * 3] = (c & 0xFF) as u8; // B
+            dest[i * 3 + 1] = ((c >> 8) & 0xFF) as u8; // G
             dest[i * 3 + 2] = ((c >> 16) & 0xFF) as u8; // R
         }
     }
 
-    pub fn renderer_mut(&mut self) -> &mut Renderer { &mut self.renderer }
+    pub fn renderer_mut(&mut self) -> &mut Renderer {
+        &mut self.renderer
+    }
 }

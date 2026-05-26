@@ -4,8 +4,8 @@
 //! Implements CORE-006: Lock-free structures using Atomic CAS.
 //! ============================================================================
 
-use core::sync::atomic::{AtomicPtr, Ordering};
 use alloc::boxed::Box;
+use core::sync::atomic::{AtomicPtr, Ordering};
 
 /// A lock-free stack (Treiber stack) using Atomic CAS.
 pub struct LockFreeStack<T> {
@@ -41,7 +41,11 @@ impl<T> LockFreeStack<T> {
             unsafe {
                 (*node).next = head;
             }
-            if self.head.compare_exchange(head, node, Ordering::Release, Ordering::Relaxed).is_ok() {
+            if self
+                .head
+                .compare_exchange(head, node, Ordering::Release, Ordering::Relaxed)
+                .is_ok()
+            {
                 break;
             }
         }
@@ -55,7 +59,11 @@ impl<T> LockFreeStack<T> {
             }
 
             let next = unsafe { (*head).next };
-            if self.head.compare_exchange(head, next, Ordering::Release, Ordering::Relaxed).is_ok() {
+            if self
+                .head
+                .compare_exchange(head, next, Ordering::Release, Ordering::Relaxed)
+                .is_ok()
+            {
                 let node = unsafe { Box::from_raw(head) };
                 return Some(node.data);
             }

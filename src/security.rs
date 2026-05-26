@@ -38,10 +38,7 @@ impl SecurityModule {
         let cycle = self.fuzz_counter.fetch_add(1, Ordering::SeqCst);
 
         if cycle.is_multiple_of(5) {
-            println!(
-                "Security: Running boundary integrity check #{}...",
-                cycle
-            );
+            println!("Security: Running boundary integrity check #{}...", cycle);
             self.perform_integrity_check();
         }
     }
@@ -53,7 +50,7 @@ impl SecurityModule {
         crate::entropy::fill_entropy(&mut nonce);
 
         let mut cipher = ChaCha20::new(&key.into(), &nonce.into());
-        
+
         // Use the module's own memory pattern for the check
         let mut buffer = [0u8; 8];
         let self_ptr = self as *const _ as *const u8;
@@ -73,12 +70,12 @@ impl SecurityModule {
         if node_id == 0 || node_id == 1 {
             return true;
         }
-        
+
         // Resource-specific gates
         match resource_id {
-            0x100 => true, // Public telemetry
+            0x100 => true,  // Public telemetry
             0x200 => false, // Kernel memory (denied)
-            _ => false
+            _ => false,
         }
     }
 }

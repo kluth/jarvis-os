@@ -48,12 +48,10 @@ impl DeviceClass {
             0x03 => DeviceClass::Display,
             0x04 => DeviceClass::Audio,
             0x06 => DeviceClass::Bridge,
-            0x0C => {
-                match subclass {
-                    0x03 => DeviceClass::Usb,
-                    _ => DeviceClass::System,
-                }
-            }
+            0x0C => match subclass {
+                0x03 => DeviceClass::Usb,
+                _ => DeviceClass::System,
+            },
             _ => DeviceClass::System,
         }
     }
@@ -89,7 +87,13 @@ pub struct DeviceId {
 
 impl DeviceId {
     pub const fn unknown() -> Self {
-        Self { vendor: 0, device: 0, subsystem_vendor: 0, subsystem_device: 0, revision: 0 }
+        Self {
+            vendor: 0,
+            device: 0,
+            subsystem_vendor: 0,
+            subsystem_device: 0,
+            revision: 0,
+        }
     }
 }
 
@@ -102,12 +106,17 @@ pub struct MmioRegion {
     pub base: u64,
     pub len: usize,
     pub prefetchable: bool,
-    pub is_mmio: bool,  // false = I/O port
+    pub is_mmio: bool, // false = I/O port
 }
 
 impl MmioRegion {
     pub const fn empty() -> Self {
-        Self { base: 0, len: 0, prefetchable: false, is_mmio: true }
+        Self {
+            base: 0,
+            len: 0,
+            prefetchable: false,
+            is_mmio: true,
+        }
     }
 }
 
@@ -162,19 +171,26 @@ pub enum IrqType {
 
 impl Device {
     pub fn new(
-        vendor: u16, device: u16, class: DeviceClass,
-        bus: u8, slot: u8, function: u8,
+        vendor: u16,
+        device: u16,
+        class: DeviceClass,
+        bus: u8,
+        slot: u8,
+        function: u8,
     ) -> Self {
         Self {
             id: DeviceId {
-                vendor, device,
+                vendor,
+                device,
                 subsystem_vendor: 0,
                 subsystem_device: 0,
                 revision: 0,
             },
             name: "Unknown Device",
             class,
-            bus, slot, function,
+            bus,
+            slot,
+            function,
             bars: [MmioRegion::empty(); 6],
             irq: 0,
             irq_type: IrqType::None,
@@ -229,13 +245,19 @@ pub trait Driver: Send {
     fn shutdown(&mut self, device: &mut Device) -> Result<(), &'static str>;
 
     /// Transition the device to a new power state
-    fn set_power_state(&mut self, device: &mut Device, state: PowerState) -> Result<(), &'static str> {
+    fn set_power_state(
+        &mut self,
+        device: &mut Device,
+        state: PowerState,
+    ) -> Result<(), &'static str> {
         device.power_state = state;
         Ok(())
     }
 
     /// Handle an IRQ from this device (returns true if handled)
-    fn handle_irq(&mut self, _device: &mut Device) -> bool { false }
+    fn handle_irq(&mut self, _device: &mut Device) -> bool {
+        false
+    }
 }
 
 // ============================================================================
@@ -244,7 +266,7 @@ pub trait Driver: Send {
 
 pub struct DriverEntry {
     pub driver: &'static mut dyn Driver,
-    pub bound_device: Option<usize>,  // device index
+    pub bound_device: Option<usize>, // device index
     pub initialized: bool,
 }
 
@@ -272,8 +294,12 @@ impl DeviceManager {
         let idx = self.devices.len();
         crate::serial_println!(
             "DEV: [{}:{}.{}] {} ({:#06x}:{:#06x}) class={}",
-            device.bus, device.slot, device.function,
-            device.name, device.id.vendor, device.id.device,
+            device.bus,
+            device.slot,
+            device.function,
+            device.name,
+            device.id.vendor,
+            device.id.device,
             device.class.name(),
         );
         self.devices.push(device);
@@ -294,13 +320,18 @@ impl DeviceManager {
 
     /// Probe all drivers against all unbound devices
     pub fn probe_all(&mut self) {
-        crate::serial_println!("DEV: Probing {} device(s) against {} driver(s)...",
-            self.devices.len(), self.drivers.len());
+        crate::serial_println!(
+            "DEV: Probing {} device(s) against {} driver(s)...",
+            self.devices.len(),
+            self.drivers.len()
+        );
 
         for dev_idx in 0..self.devices.len() {
             // Skip already-bound devices
             let already_bound = self.drivers.iter().any(|d| d.bound_device == Some(dev_idx));
-            if already_bound { continue; }
+            if already_bound {
+                continue;
+            }
 
             let (vendor, device, class) = {
                 let d = &self.devices[dev_idx];
@@ -331,7 +362,9 @@ impl DeviceManager {
     /// Initialize all bound drivers
     pub fn init_all(&mut self) {
         for i in 0..self.drivers.len() {
-            if self.drivers[i].initialized { continue; }
+            if self.drivers[i].initialized {
+                continue;
+            }
             if let Some(dev_idx) = self.drivers[i].bound_device {
                 let result = {
                     let driver = &mut *self.drivers[i].driver;
@@ -372,7 +405,10 @@ impl DeviceManager {
 
     /// Find all devices of a given class (mutable)
     pub fn find_by_class_mut(&mut self, class: DeviceClass) -> Vec<&mut Device> {
-        self.devices.iter_mut().filter(|d| d.class == class).collect()
+        self.devices
+            .iter_mut()
+            .filter(|d| d.class == class)
+            .collect()
     }
 
     /// Find the first bound driver for a device class
@@ -397,9 +433,12 @@ impl DeviceManager {
             id: DeviceId::unknown(),
             name: "ACPI Power Controller",
             class: DeviceClass::Power,
-            bus: 0, slot: 0, function: 0,
+            bus: 0,
+            slot: 0,
+            function: 0,
             bars: [MmioRegion::empty(); 6],
-            irq: 0, irq_type: IrqType::None,
+            irq: 0,
+            irq_type: IrqType::None,
             enabled: true,
             power_state: PowerState::S0,
             driver_name: None,
@@ -412,12 +451,24 @@ impl DeviceManager {
                 id: DeviceId::unknown(),
                 name: "High Precision Event Timer",
                 class: DeviceClass::System,
-                bus: 0, slot: 0, function: 0,
+                bus: 0,
+                slot: 0,
+                function: 0,
                 bars: [
-                    MmioRegion { base: 0xFED00000, len: 1024, prefetchable: false, is_mmio: true },
-                    MmioRegion::empty(), MmioRegion::empty(), MmioRegion::empty(), MmioRegion::empty(), MmioRegion::empty()
+                    MmioRegion {
+                        base: 0xFED00000,
+                        len: 1024,
+                        prefetchable: false,
+                        is_mmio: true,
+                    },
+                    MmioRegion::empty(),
+                    MmioRegion::empty(),
+                    MmioRegion::empty(),
+                    MmioRegion::empty(),
+                    MmioRegion::empty(),
                 ],
-                irq: 0, irq_type: IrqType::None,
+                irq: 0,
+                irq_type: IrqType::None,
                 enabled: true,
                 power_state: PowerState::S0,
                 driver_name: None,
@@ -432,11 +483,14 @@ impl DeviceManager {
         for i in 0..self.drivers.len() {
             if self.drivers[i].initialized {
                 if let Some(dev_idx) = self.drivers[i].bound_device {
-                    let result = self.drivers[i].driver.set_power_state(&mut self.devices[dev_idx], state);
+                    let result = self.drivers[i]
+                        .driver
+                        .set_power_state(&mut self.devices[dev_idx], state);
                     if let Err(e) = result {
                         crate::serial_println!(
                             "DEV: Power state transition failed for '{}': {}",
-                            self.drivers[i].driver.name(), e
+                            self.drivers[i].driver.name(),
+                            e
                         );
                     }
                 }
