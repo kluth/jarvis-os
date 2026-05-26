@@ -18,7 +18,7 @@ test = false
 harness = false
 
 [dependencies]
-bootloader_api = { version = "0.11.15", default-features = false }
+bootloader_api = { version = "=0.11.15", default-features = false }
 spinning_top = "=0.3.0"
 lazy_static = { version = "=1.4.0", features = ["spin_no_std"] }
 font8x8 = { version = "=0.3.1", default-features = false, features = ["unicode"], optional = true }
@@ -30,12 +30,12 @@ conquer-once = { version = "=0.4.0", default-features = false }
 futures-util = { version = "=0.3.32", default-features = false, features = ["alloc"] }
 pc-keyboard = "=0.7.0"
 pic8259 = "=0.10.4"
-x25519-dalek = { version = "2.0.0", default-features = false, features = ["static_secrets"] }
-chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc"] }
-chacha20 = { version = "0.9.1", default-features = false }
-rand_core = "0.6.4"
-rand_chacha = { version = "0.3.1", default-features = false }
-libm = "0.2.8"
+x25519-dalek = { version = "=2.0.0", default-features = false, features = ["static_secrets"] }
+chacha20poly1305 = { version = "=0.10.1", default-features = false, features = ["alloc"] }
+chacha20 = { version = "=0.9.1", default-features = false }
+rand_core = "=0.6.4"
+rand_chacha = { version = "=0.3.1", default-features = false }
+libm = "=0.2.8"
 
 [features]
 default = ["gui", "audio", "network", "ai", "storage", "telemetry"]

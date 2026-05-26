@@ -1,0 +1,52 @@
+name: 🌉 MCP Bridge (Node.js) Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'mcp-bridge/**'
+      - '.github/workflows/mcp-bridge.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'mcp-bridge/**'
+      - '.github/workflows/mcp-bridge.yml'
+
+jobs:
+  validate-bridge:
+    name: Build & Lint Bridge
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'mcp-bridge/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: mcp-bridge
+        run: npm ci
+
+      - name: Type Check (TypeScript)
+        working-directory: mcp-bridge
+        run: |
+          # If tsc is available in devDependencies, run it. 
+          # Otherwise, we might need to add it or just skip for now if it's a prototype.
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          else
+            echo "No tsconfig.json found, skipping type check."
+          fi
+
+      - name: Build (if needed)
+        working-directory: mcp-bridge
+        run: |
+          if npm run | grep -q "build"; then
+            npm run build
+          else
+            echo "No build script found."
+          fi

@@ -28,7 +28,8 @@ module HAL_Input {
             // Disable both PS/2 ports while configuring.
             port write(0x64, 0xAD);
             port write(0x64, 0xA7);
-            // Flush output buffer (verifier-stubbed read).
+            // Flush output buffer (real read).
+            let _junk = port read(0x60);
             // Set configuration: enable IRQ1, disable IRQ12, no translation.
             port write(0x64, 0x60);
             port write(0x60, 0x01);

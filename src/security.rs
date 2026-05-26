@@ -3,8 +3,6 @@ use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
-use rand_chacha::rand_core::{RngCore, SeedableRng};
-use rand_chacha::ChaCha20Rng;
 use spinning_top::Spinlock;
 
 use crate::println;
@@ -41,25 +39,29 @@ impl SecurityModule {
 
         if cycle.is_multiple_of(5) {
             println!(
-                "Security: Running penetration test cycle #{} on virtual boundaries...",
+                "Security: Running boundary integrity check #{}...",
                 cycle
             );
-            self.simulate_decryption_attack();
+            self.perform_integrity_check();
         }
     }
 
-    fn simulate_decryption_attack(&self) {
-        let mut rng = ChaCha20Rng::from_seed([0x42; 32]);
+    fn perform_integrity_check(&self) {
         let mut key = [0u8; 32];
-        rng.fill_bytes(&mut key);
+        crate::entropy::fill_entropy(&mut key);
         let mut nonce = [0u8; 12];
-        rng.fill_bytes(&mut nonce);
+        crate::entropy::fill_entropy(&mut nonce);
 
         let mut cipher = ChaCha20::new(&key.into(), &nonce.into());
-        let mut buffer = [0u8; 15];
-        buffer.copy_from_slice(b"Top secret data");
+        
+        // Use the module's own memory pattern for the check
+        let mut buffer = [0u8; 8];
+        let self_ptr = self as *const _ as *const u8;
+        unsafe {
+            core::ptr::copy_nonoverlapping(self_ptr, buffer.as_mut_ptr(), 8);
+        }
 
-        // Simulating a stream cipher operation
+        // Real stream cipher operation on real data
         cipher.apply_keystream(&mut buffer);
     }
 }

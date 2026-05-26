@@ -46,28 +46,8 @@ impl MeshNode {
     /// Creates a new mesh node with a cryptographically secure identity.
     pub fn new(node_id: u64) -> Self {
         let mut seed = [0u8; 32];
+        crate::entropy::fill_entropy(&mut seed);
 
-        // 1. Check for Hardware Entropy (RDRAND) support via CPUID
-        let has_rdrand = {
-            let result = core::arch::x86_64::__cpuid(0x1);
-            (result.ecx & (1 << 30)) != 0
-        };
-
-        // 2. Populate seed using best available entropy
-        for chunk in seed.chunks_mut(8) {
-            let mut val: u64 = 0;
-            unsafe {
-                if has_rdrand && core::arch::x86_64::_rdrand64_step(&mut val) != 0 {
-                    // Success! Hardware entropy obtained.
-                } else {
-                    // Fallback to high-resolution timestamp mixed with node_id
-                    val = core::arch::x86_64::_rdtsc() ^ node_id;
-                    // Add some extra mixing for the fallback
-                    val = val.wrapping_mul(0x517cc1b727220a95).rotate_left(31);
-                }
-            }
-            chunk.copy_from_slice(&val.to_le_bytes());
-        }
 
         let mut rng = ChaCha20Rng::from_seed(seed);
         let mut secret_bytes = [0u8; 32];

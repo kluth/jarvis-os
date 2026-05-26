@@ -13,6 +13,7 @@ pub mod allocator;
 pub mod apic;
 pub mod audio;
 pub mod device_manager;
+pub mod entropy;
 pub mod gdt;
 pub mod i2c;
 #[cfg(feature = "gui")]
