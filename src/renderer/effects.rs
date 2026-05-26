@@ -89,7 +89,7 @@ impl BloomPass {
     }
 
     /// Apply bloom (glow) effect: extract brights → blur → composite
-    pub fn apply(&mut self, buffer: &mut [u32], threshold: f32, strength: f32, radius: usize) {
+    pub fn apply(&mut self, buffer: &mut [u32], threshold: f32, strength: f32, _radius: usize) {
         let size = self.width * self.height;
 
         // 1. Extract bright pixels

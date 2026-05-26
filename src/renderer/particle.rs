@@ -258,7 +258,7 @@ impl ParticleEmitter {
     /// Render all particles into the renderer as billboard quads
     pub fn render(&self, renderer: &mut Renderer) {
         for particle in &self.particles {
-            let t = particle.t();
+            let _t = particle.t();
             let color = particle.color();
             let size = particle.size();
             let alpha = particle.alpha();

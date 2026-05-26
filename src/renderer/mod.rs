@@ -23,7 +23,6 @@ pub mod compositor;
 pub mod ui;
 
 use crate::vga_buffer::Color;
-use core::cmp;
 
 // ============================================================================
 // 3D MATH PRIMITIVES

@@ -9,7 +9,6 @@
 //! ============================================================================
 
 use crate::vga_buffer::{Color, Rect};
-use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 pub mod mmio;

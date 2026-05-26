@@ -11,9 +11,8 @@
 //! All composited with ACES tone mapping, bloom, vignette — "Unreal quality."
 //! ============================================================================
 
-use super::{BlendMode, DrawCall, DrawMode, Scene, ShaderType, Texture, Vertex, Vec3};
+use super::{BlendMode, DrawCall, DrawMode, Scene, ShaderType, Vertex};
 use alloc::vec::Vec;
-use alloc::sync::Arc;
 use core::f32::consts::PI;
 
 // ============================================================================
@@ -266,7 +265,7 @@ impl PbrUiRenderer {
                  thickness: f32, track_mat: &UiMaterial, fill_mat: &UiMaterial) {
         let segments: u32 = 48;
         let track_arc = PI * 1.5; // 270 degrees (bottom-open)
-        let fill_arc = track_arc * value;
+        let _fill_arc = track_arc * value;
         let start_angle = -PI * 0.75; // Start at bottom-left
 
         // Track arc (full background)
@@ -453,8 +452,8 @@ pub fn build_jarvis_ui(time_sec: f32) -> Scene {
     let mut elements: Vec<UiElement> = Vec::new();
 
     // Normalize screen coordinates (-1..1)
-    let w = 2.0;
-    let h = 2.0;
+    let _w = 2.0;
+    let _h = 2.0;
 
     // Main background panel (full screen, very subtle)
     elements.push(UiElement::Panel {

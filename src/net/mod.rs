@@ -8,7 +8,7 @@ pub fn init() {
     println!("Net: Initializing networking stack...");
 
     // Check if any network device was discovered
-    let devices = device_manager::MANAGER.lock().devices.len();
+    let _devices = device_manager::MANAGER.lock().devices.len();
     let has_net = device_manager::MANAGER.lock().devices.iter()
         .any(|d| d.class == device_manager::DeviceClass::Network);
 

@@ -11,7 +11,6 @@
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spinning_top::Spinlock;
-use core::fmt;
 
 // ============================================================================
 // DEVICE CLASSIFICATION
@@ -208,7 +207,7 @@ pub trait Driver: Send {
     fn shutdown(&mut self, device: &mut Device) -> Result<(), &'static str>;
 
     /// Handle an IRQ from this device (returns true if handled)
-    fn handle_irq(&mut self, device: &mut Device) -> bool { false }
+    fn handle_irq(&mut self, _device: &mut Device) -> bool { false }
 }
 
 // ============================================================================

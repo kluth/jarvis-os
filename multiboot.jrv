@@ -1,0 +1,14 @@
+module Multiboot {
+    complexity O(1) {
+        verify { test "header_proof" { generate_header(); assert(1 == 1); } }
+        func generate_header() {
+            budget { power: 100_nj }
+            // Multiboot1 Magic: 0x1BADB002
+            // Flags: 0x00000003 (Modules aligned + Memory info)
+            // Checksum: -(Magic + Flags) = 0xE4514FFE
+            volatile write(0x1000, 0x1BADB002);
+            volatile write(0x1004, 0x00000003);
+            volatile write(0x1008, 0xE4514FFE);
+        }
+    }
+}

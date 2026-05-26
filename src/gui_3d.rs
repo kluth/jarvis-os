@@ -302,7 +302,7 @@ fn fill_triangle(writer: &mut FramebufferWriter, v0: Point2D, v1: Point2D, v2: P
     // Fill the lower half (p1 -> p2)
     for y in p1.y..=p2.y {
         let dy1 = y - p1.y;
-        let dy2 = y - p1.y;
+        let _dy2 = y - p1.y;
         let segment_height = p2.y - p1.y;
 
         let x1 = interpolate_x(p0.x, p2.x, y - p0.y, total_height);

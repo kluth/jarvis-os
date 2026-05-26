@@ -9,7 +9,7 @@
 //!   - Full device enumeration with BAR decoding (I/O, MMIO32, MMIO64)
 //! ============================================================================
 
-use crate::device_manager::{self, Device, DeviceClass, MmioRegion, IrqType};
+use crate::device_manager::{Device, DeviceClass, MmioRegion, IrqType};
 use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
@@ -315,7 +315,7 @@ impl PciFunctionInfo {
 }
 
 /// Check if a vendor/device pair indicates a valid device
-fn is_valid_device(vendor: u16, device: u16) -> bool {
+fn is_valid_device(vendor: u16, _device: u16) -> bool {
     vendor != 0xFFFF && vendor != 0x0000
 }
 

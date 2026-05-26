@@ -7,8 +7,8 @@
 //!   3. Full post-processing: bloom, ACES tone mapping, vignette
 //! ============================================================================
 
-use super::effects::{apply_bloom, apply_vignette, tone_map_buffer_aces};
-use super::{BlendMode, Renderer, Scene, Vertex, ShaderType};
+use super::effects::{apply_bloom, apply_vignette};
+use super::{BlendMode, Renderer, Vertex, ShaderType};
 use super::ui::build_jarvis_ui;
 use alloc::vec::Vec;
 

@@ -13,7 +13,6 @@ use crate::gpu::{GpuCaps, GpuDevice, GpuDriver, GpuFamily, GpuMode};
 use crate::gpu::mmio::MmioReg;
 use crate::vga_buffer::{Color, Rect};
 use alloc::vec::Vec;
-use core::ptr::{read_volatile, write_volatile};
 
 // ============================================================================
 // SUPPORT: PCI Config Read for driver initialization

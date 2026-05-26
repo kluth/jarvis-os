@@ -11,6 +11,7 @@ pub mod acpi;
 pub mod ai;
 pub mod allocator;
 pub mod apic;
+pub mod audio;
 pub mod device_manager;
 pub mod gdt;
 pub mod i2c;

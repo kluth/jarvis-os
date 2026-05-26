@@ -902,7 +902,7 @@ impl EdidInfo {
         let raw = u16::from_be_bytes([data[EDID_MFR_ID], data[EDID_MFR_ID + 1]]);
         let c1 = ((raw >> 10) & 0x1F) as u8 + b'A' - 1;
         let c2 = ((raw >> 5) & 0x1F) as u8 + b'A' - 1;
-        let c3 = (raw & 0x1F) as u8 + b'A' - 1;
+        let _c3 = (raw & 0x1F) as u8 + b'A' - 1;
         [c1, c2]
     }
 }
@@ -968,7 +968,7 @@ fn parse_detailed_timing(data: &[u8; 128], offset: usize) -> Option<DetailedTimi
     let h_sync_pulse_lo = data[offset + 9] as u16;
     let vsync_off_hi = ((data[offset + 10] >> 4) & 0x0F) as u16;
     let vsync_pulse_hi = (data[offset + 10] & 0x0F) as u16;
-    let v_sync_off_lo = data[offset + 11] as u8;
+    let _v_sync_off_lo = data[offset + 11] as u8;
 
     let h_sync_off = (h_sync_off_lo & 0x03FF) | ((vsync_off_hi & 0x03) << 8);
     let h_sync_pulse = (h_sync_pulse_lo & 0x03FF) | ((vsync_pulse_hi & 0x03) << 8);
@@ -1137,7 +1137,7 @@ pub fn parse_edid(data: &[u8; 128]) -> EdidInfo {
                 info.preferred_timing = Some(timing.clone());
             }
             info.detailed_timings.push(timing);
-        } else if let Some((desc, tag)) = parse_monitor_descriptor(data, off) {
+        } else if let Some((desc, _tag)) = parse_monitor_descriptor(data, off) {
             match desc {
                 MonitorDesc::Name(name) => info.monitor_name = Some(name),
                 MonitorDesc::Serial(ser) => info.monitor_serial = Some(ser),
@@ -1247,7 +1247,7 @@ pub fn scan_and_report(bus_id: usize) {
 /// Quick self-test for I2C subsystem
 pub fn test_i2c() {
     serial_println!("I2C: Running self-test...");
-    let mut mgr = I2C_MANAGER.lock();
+    let mgr = I2C_MANAGER.lock();
 
     // Test GPIO bitbang by checking if bus is responsive
     if let Some(bus) = mgr.bus(0) {

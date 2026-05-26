@@ -59,7 +59,7 @@ impl DeferredPipeline {
     /// Write a pixel's G-buffer data
     pub fn write_gbuffer(&mut self, x: usize, y: usize,
                          albedo: u32, normal: Vec3, depth: f32,
-                         metallic: f32, roughness: f32, ao: f32,
+                         metallic: f32, roughness: f32, _ao: f32,
                          emissive: u32) {
         let idx = y * self.width + x;
         if idx >= self.gbuffer.len() { return; }
@@ -130,13 +130,13 @@ impl DeferredPipeline {
         for y in 0..self.height {
             for x in 0..self.width {
                 let idx = y * self.width + x;
-                let (albedo, normal, _depth, metallic, roughness, ao, emissive) = self.read_gbuffer(idx);
+                let (albedo, normal, _depth, metallic, roughness, ao, _emissive) = self.read_gbuffer(idx);
 
                 // Simple NdotL diffuse + specular
                 let n_dot_l = normal.dot(light_dir).max(0.0);
                 if n_dot_l <= 0.001 { continue; }
 
-                let n_dot_v = if idx > 0 { 
+                let _n_dot_v = if idx > 0 { 
                     // Approximate view as (0, 0, 1) in screen space
                     1.0
                 } else { 1.0 };
@@ -191,7 +191,7 @@ impl DeferredPipeline {
         for y in 0..self.height {
             for x in 0..self.width {
                 let idx = y * self.width + x;
-                let (_albedo, normal, depth, metallic, roughness, ao, _emissive) = self.read_gbuffer(idx);
+                let (_albedo, normal, depth, metallic, _roughness, ao, _emissive) = self.read_gbuffer(idx);
 
                 // Skip far pixels
                 if depth > 0.99 { continue; }

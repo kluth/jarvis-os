@@ -507,7 +507,7 @@ static mut ACPI_DATA: AcpiData = AcpiData::new();
 
 /// Get the parsed ACPI data
 pub fn get_data() -> &'static AcpiData {
-    unsafe { &ACPI_DATA }
+    unsafe { &*core::ptr::addr_of!(ACPI_DATA) }
 }
 
 /// Get the physical memory offset
@@ -577,17 +577,19 @@ pub fn init(rsdp_addr_opt: Option<u64>, phys_mem_offset: u64) {
             // Determine if RSDP is v1 (RSDT) or v2 (XSDT)
             if addr > 0xFFFFFFFF {
                 // 64-bit address means XSDT was used
-                ACPI_DATA.revision = 2;
-                ACPI_DATA.xsdt_address = addr;
-                parse_xsdt(addr, phys_mem_offset, &mut ACPI_DATA);
+                let data_ptr = core::ptr::addr_of_mut!(ACPI_DATA);
+                (*data_ptr).revision = 2;
+                (*data_ptr).xsdt_address = addr;
+                parse_xsdt(addr, phys_mem_offset, &mut *data_ptr);
             } else {
-                ACPI_DATA.rsdt_address = addr as u32;
-                parse_rsdt(addr, phys_mem_offset, &mut ACPI_DATA);
+                let data_ptr = core::ptr::addr_of_mut!(ACPI_DATA);
+                (*data_ptr).rsdt_address = addr as u32;
+                parse_rsdt(addr, phys_mem_offset, &mut *data_ptr);
             }
         }
 
         // Register ACPI devices with Device Manager
-        let data = unsafe { &ACPI_DATA };
+        let data = unsafe { &*core::ptr::addr_of!(ACPI_DATA) };
 
         device_manager::register_device(device_manager::Device {
             id: device_manager::DeviceId::unknown(),

@@ -61,13 +61,17 @@ impl AudioStream {
     pub unsafe fn start(&mut self) {
         let stride = self._channels as u32 * 2; // 16-bit samples
         let stream_offset = 0x80 * (self.stream_id as usize);
-        let sd_base = self.hda_base.as_ptr::<u8>().add(stream_offset);
+        let sd_base = self.hda_base.as_mut_ptr::<u8>().add(stream_offset);
 
         // 1. Reset the stream via SRST
         let ctl_ptr = sd_base.add(SD_CTL).cast::<u32>();
         ctl_ptr.write_volatile(SD_CTL_SRST);
-        // Wait for SRST to self-clear (reset complete)
-        while ctl_ptr.read_volatile() & SD_CTL_SRST != 0 {}
+        // Wait for SRST to self-clear (reset complete) with timeout
+        let mut timeout = 100_000;
+        while ctl_ptr.read_volatile() & SD_CTL_SRST != 0 && timeout > 0 {
+            timeout -= 1;
+            core::hint::spin_loop();
+        }
 
         // 2. Set up Buffer Descriptor List (BDL) — single entry pointing to our DMA buffer
         let bdl_phys = self.buffer.phys_addr();
@@ -116,13 +120,17 @@ impl AudioStream {
     /// The caller must ensure the HDA base address is still valid.
     pub unsafe fn stop(&mut self) {
         let stream_offset = 0x80 * (self.stream_id as usize);
-        let sd_base = self.hda_base.as_ptr::<u8>().add(stream_offset);
+        let sd_base = self.hda_base.as_mut_ptr::<u8>().add(stream_offset);
         let ctl_ptr = sd_base.add(SD_CTL).cast::<u32>();
 
         // Clear RUN bit to stop the stream
         ctl_ptr.write_volatile(ctl_ptr.read_volatile() & !SD_CTL_RUN);
 
-        // Wait for stream to actually stop
-        while ctl_ptr.read_volatile() & SD_CTL_RUN != 0 {}
+        // Wait for stream to actually stop with timeout
+        let mut timeout = 100_000;
+        while ctl_ptr.read_volatile() & SD_CTL_RUN != 0 && timeout > 0 {
+            timeout -= 1;
+            core::hint::spin_loop();
+        }
     }
 }
