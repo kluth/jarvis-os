@@ -41,7 +41,7 @@ impl TtsEngine for SoftwareTts {
 
         for (idx, ch) in text.bytes().enumerate() {
             // Base frequency from character value (200-1200 Hz range)
-            let base_freq = 200.0 + libm::fmodf(ch as f32, 1.0) * 4.0;
+            let base_freq = 200.0 + (ch as f32) * 5.0;
             // Frequency modulation for natural variation
             let freq = base_freq + (idx as f32 * 1.5) % 100.0;
 
