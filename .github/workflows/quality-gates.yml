@@ -76,10 +76,13 @@ jobs:
         run: |
           echo "### 📋 ADR Coverage" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          mkdir -p docs/adrs
           ADRS=$(ls docs/adrs/*.md 2>/dev/null | wc -l)
           echo "**Architecture Decision Records:** $ADRS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          for adr in docs/adrs/*.md 2>/dev/null; do
-            TITLE=$(head -1 "$adr" 2>/dev/null | sed 's/^# //' || echo "$(basename "$adr")")
-            echo "- $(basename "$adr"): $TITLE" >> $GITHUB_STEP_SUMMARY
+          for adr in docs/adrs/*.md; do
+            if [ -f "$adr" ]; then
+              TITLE=$(head -1 "$adr" 2>/dev/null | sed 's/^# //' || echo "$(basename "$adr")")
+              echo "- $(basename "$adr"): $TITLE" >> $GITHUB_STEP_SUMMARY
+            fi
           done
