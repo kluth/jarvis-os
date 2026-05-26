@@ -600,9 +600,22 @@ pub fn init(rsdp_addr_opt: Option<u64>, phys_mem_offset: u64) {
     crate::serial_println!("ACPI: Initializing...");
 
     // Try to find RSDP from the provided address, or scan memory
-    let tables_addr = if let Some(addr) = rsdp_addr_opt {
-        crate::serial_println!("ACPI: RSDP provided at {:#010x}", addr);
-        Some(addr)
+    let tables_addr = if let Some(rsdp_phys) = rsdp_addr_opt {
+        crate::serial_println!("ACPI: RSDP provided at {:#010x}", rsdp_phys);
+        unsafe {
+            let rsdp: &RsdpDescriptor = ptr_at(rsdp_phys, phys_mem_offset);
+            if !rsdp.valid() {
+                crate::serial_println!("ACPI Error: Provided RSDP is INVALID");
+                None
+            } else if rsdp.revision >= 2 {
+                let v2: &RsdpDescriptorV2 = ptr_at(rsdp_phys, phys_mem_offset);
+                crate::serial_println!("ACPI: Found XSDT (v2) at {:#018x}", v2.xsdt_address);
+                Some(v2.xsdt_address)
+            } else {
+                crate::serial_println!("ACPI: Found RSDT (v1) at {:#010x}", rsdp.rsdt_address);
+                Some(rsdp.rsdt_address as u64)
+            }
+        }
     } else {
         crate::serial_println!("ACPI: Scanning for RSDP...");
         unsafe { scan_for_rsdp() }
