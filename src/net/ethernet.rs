@@ -18,6 +18,7 @@ pub fn init() {
         irq: 0,
         irq_type: IrqType::None,
         enabled: true,
+        power_state: device_manager::PowerState::S0,
         driver_name: None,
         custom_data: None,
     });

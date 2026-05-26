@@ -112,6 +112,26 @@ impl MmioRegion {
 }
 
 // ============================================================================
+// POWER MANAGEMENT
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PowerState {
+    /// Fully Operational
+    S0,
+    /// Sleeping (CPU Context Maintained)
+    S1,
+    /// Sleeping (CPU Context Lost)
+    S2,
+    /// Suspend to RAM
+    S3,
+    /// Suspend to Disk (Hibernate)
+    S4,
+    /// Soft Off
+    S5,
+}
+
+// ============================================================================
 // DEVICE — represents a discovered hardware device
 // ============================================================================
 
@@ -127,6 +147,7 @@ pub struct Device {
     pub irq: u8,
     pub irq_type: IrqType,
     pub enabled: bool,
+    pub power_state: PowerState,
     pub driver_name: Option<&'static str>,
     pub custom_data: Option<alloc::vec::Vec<u8>>,
 }
@@ -158,6 +179,7 @@ impl Device {
             irq: 0,
             irq_type: IrqType::None,
             enabled: false,
+            power_state: PowerState::S0,
             driver_name: None,
             custom_data: None,
         }
@@ -205,6 +227,12 @@ pub trait Driver: Send {
 
     /// Shut down the device (power-off / disable)
     fn shutdown(&mut self, device: &mut Device) -> Result<(), &'static str>;
+
+    /// Transition the device to a new power state
+    fn set_power_state(&mut self, device: &mut Device, state: PowerState) -> Result<(), &'static str> {
+        device.power_state = state;
+        Ok(())
+    }
 
     /// Handle an IRQ from this device (returns true if handled)
     fn handle_irq(&mut self, _device: &mut Device) -> bool { false }
@@ -353,9 +381,62 @@ impl DeviceManager {
         None
     }
 
-    // Remove get_driver_mut - needs proper lifetime handling
-    // Re-add when Phase 1 driver implementations are needed.
-    // pub fn get_driver_mut(...) -> ...
+    /// Discover and register platform-specific devices from ACPI/DTB
+    pub fn discover_platform_devices(&mut self) {
+        crate::serial_println!("DEV: Scanning platform devices (ACPI)...");
+        let acpi_data = crate::acpi::get_data();
+
+        // 1. ACPI Power Controller
+        self.register(Device {
+            id: DeviceId::unknown(),
+            name: "ACPI Power Controller",
+            class: DeviceClass::Power,
+            bus: 0, slot: 0, function: 0,
+            bars: [MmioRegion::empty(); 6],
+            irq: 0, irq_type: IrqType::None,
+            enabled: true,
+            power_state: PowerState::S0,
+            driver_name: None,
+            custom_data: None,
+        });
+
+        // 2. HPET (if present)
+        if acpi_data.hpet_present {
+            self.register(Device {
+                id: DeviceId::unknown(),
+                name: "High Precision Event Timer",
+                class: DeviceClass::System,
+                bus: 0, slot: 0, function: 0,
+                bars: [
+                    MmioRegion { base: 0xFED00000, len: 1024, prefetchable: false, is_mmio: true },
+                    MmioRegion::empty(), MmioRegion::empty(), MmioRegion::empty(), MmioRegion::empty(), MmioRegion::empty()
+                ],
+                irq: 0, irq_type: IrqType::None,
+                enabled: true,
+                power_state: PowerState::S0,
+                driver_name: None,
+                custom_data: None,
+            });
+        }
+    }
+
+    /// Transition all bound drivers to a new power state
+    pub fn set_global_power_state(&mut self, state: PowerState) {
+        crate::serial_println!("DEV: Global Power Transition -> {:?}", state);
+        for i in 0..self.drivers.len() {
+            if self.drivers[i].initialized {
+                if let Some(dev_idx) = self.drivers[i].bound_device {
+                    let result = self.drivers[i].driver.set_power_state(&mut self.devices[dev_idx], state);
+                    if let Err(e) = result {
+                        crate::serial_println!(
+                            "DEV: Power state transition failed for '{}': {}",
+                            self.drivers[i].driver.name(), e
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ============================================================================

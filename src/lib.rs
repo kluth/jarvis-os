@@ -12,6 +12,7 @@ pub mod ai;
 pub mod allocator;
 pub mod apic;
 pub mod audio;
+pub mod cros_ec;
 pub mod device_manager;
 pub mod entropy;
 pub mod gdt;

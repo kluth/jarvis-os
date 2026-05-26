@@ -87,15 +87,10 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     jarvis_kernel::acpi::init(rsdp_addr, phys_mem_offset.as_u64());
     serial_println!("Status: ACPI initialized.");
 
-    // 6. Initialize PCI subsystem (scans all buses, registers devices with DeviceManager)
-    serial_println!("Scanning PCI bus...");
+    // 7. Discover and register all hardware
     jarvis_kernel::pci::init();
-
-    // 7. Initialize I2C subsystem (for DDC/EDID, sensor, audio, EC communication)
+    jarvis_kernel::device_manager::MANAGER.lock().discover_platform_devices();
     jarvis_kernel::i2c::init();
-    serial_println!("Status: I2C subsystem initialized.");
-
-    // 8. Probe and initialize all drivers
     jarvis_kernel::device_manager::probe_all();
     jarvis_kernel::device_manager::init_all();
 

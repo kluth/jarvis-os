@@ -488,40 +488,53 @@ const CMD_BYTE_DATA: u8 = 0x08; // Write/Read Byte
 const CMD_WORD_DATA: u8 = 0x0C; // Write/Read Word
 const CMD_BLOCK_DATA: u8 = 0x14; // Write/Read Block
 
-fn smbus_read8(reg: u16) -> u8 {
-    unsafe { x86_64::instructions::port::Port::new(PIIX4_SMB_BASE + reg).read() }
+pub struct Piix4Smbus {
+    base_port: u16,
 }
-
-fn smbus_write8(reg: u16, val: u8) {
-    unsafe { x86_64::instructions::port::Port::new(PIIX4_SMB_BASE + reg).write(val) }
-}
-
-pub fn piix4_smbus_present() -> bool {
-    // Check if the PIIX4 SMBus I/O space is responsive
-    // Read status register — should return something reasonable
-    // If no device, reading 0xCF8/0xCFC region returns 0xFF
-    let sts = smbus_read8(PIIX4_SMB_HST_STS);
-    // A valid SMBus controller won't return 0xFF on status read
-    sts != 0xFF && sts != 0x00
-}
-
-pub struct Piix4Smbus;
 
 impl Piix4Smbus {
     pub fn try_new() -> Option<Self> {
-        if piix4_smbus_present() {
-            // Reset the controller
-            smbus_write8(PIIX4_SMB_HST_STS, 0xFE); // Clear all status bits
-            Some(Self)
-        } else {
-            None
+        // Try to detect PIIX4 SMBus via PCI (8086:7113 is PIIX4 PM/SMBus)
+        // Usually at 00:01.3 or 00:07.3 depending on QEMU version
+        for slot in 1..32 {
+            let vendor = crate::pci::pci_read_config(0, slot, 3, 0);
+            let device = crate::pci::pci_read_config(0, slot, 3, 2);
+            
+            if vendor == 0x8086 && (device & 0xFFFF) == 0x7113 {
+                // Found PIIX4 Power Management / SMBus controller
+                // SMBus base is in BAR 4
+                let bar4 = crate::pci::pci_read_config(0, slot, 3, 0x20);
+                let base_port = (bar4 & 0xFFF0) as u16;
+                
+                if base_port != 0 {
+                    serial_println!("I2C: PIIX4 SMBus detected at port {:#06x}", base_port);
+                    // Ensure SMBus host is enabled (bit 0 of HOSTC 0xD2)
+                    let mut hostc = crate::pci::pci_read_word(0, slot, 3, 0xD2);
+                    hostc |= 0x0001;
+                    crate::pci::pci_write_word(0, slot, 3, 0xD2, hostc);
+
+                    // Reset the controller
+                    unsafe { x86_64::instructions::port::Port::new(base_port + PIIX4_SMB_HST_STS).write(0xFEu8); }
+                    
+                    return Some(Self { base_port });
+                }
+            }
         }
+        None
+    }
+
+    fn smbus_read8(&self, reg: u16) -> u8 {
+        unsafe { x86_64::instructions::port::Port::new(self.base_port + reg).read() }
+    }
+
+    fn smbus_write8(&self, reg: u16, val: u8) {
+        unsafe { x86_64::instructions::port::Port::new(self.base_port + reg).write(val) }
     }
 
     fn wait_idle(&self) -> I2cResult<()> {
         // Wait for controller to be ready (not busy / no interrupt pending)
         for _ in 0..10000 {
-            let sts = smbus_read8(PIIX4_SMB_HST_STS);
+            let sts = self.smbus_read8(PIIX4_SMB_HST_STS);
             if sts & STS_INUSE_STS == 0 {
                 return Ok(());
             }
@@ -532,9 +545,9 @@ impl Piix4Smbus {
 
     fn poll_done(&self) -> I2cResult<()> {
         for _ in 0..10000 {
-            let sts = smbus_read8(PIIX4_SMB_HST_STS);
+            let sts = self.smbus_read8(PIIX4_SMB_HST_STS);
             if sts & STS_INTERRUPT != 0 {
-                smbus_write8(PIIX4_SMB_HST_STS, STS_INTERRUPT | STS_FAILED | STS_BUS_ERR | STS_DEV_ERR | STS_BYTE_DONE);
+                self.smbus_write8(PIIX4_SMB_HST_STS, STS_INTERRUPT | STS_FAILED | STS_BUS_ERR | STS_DEV_ERR | STS_BYTE_DONE);
                 // Check for errors
                 if sts & STS_DEV_ERR != 0 {
                     return Err(I2cError::DeviceNotReady);
@@ -554,9 +567,9 @@ impl Piix4Smbus {
 
     fn exec_cmd(&self, addr: u8, cmd: u8, prot: u8) -> I2cResult<()> {
         self.wait_idle()?;
-        smbus_write8(PIIX4_SMB_HST_ADD, addr << 1);
-        smbus_write8(PIIX4_SMB_HST_CMD, cmd);
-        smbus_write8(PIIX4_SMB_HST_CNT, prot | CNT_START);
+        self.smbus_write8(PIIX4_SMB_HST_ADD, addr << 1);
+        self.smbus_write8(PIIX4_SMB_HST_CMD, cmd);
+        self.smbus_write8(PIIX4_SMB_HST_CNT, prot | CNT_START);
         self.poll_done()
     }
 }
@@ -577,16 +590,16 @@ impl I2cMaster for Piix4Smbus {
                 1 => {
                     // Receive Byte protocol
                     self.exec_cmd(addr, 0x00, CMD_BYTE)?;
-                    read_buf[0] = smbus_read8(PIIX4_SMB_HST_DAT0);
+                    read_buf[0] = self.smbus_read8(PIIX4_SMB_HST_DAT0);
                     Ok(1)
                 }
                 n if n <= 32 => {
                     // Block Read
                     self.exec_cmd(addr, 0x00, CMD_BLOCK_DATA)?;
-                    let count = smbus_read8(PIIX4_SMB_HST_DAT0) as usize;
+                    let count = self.smbus_read8(PIIX4_SMB_HST_DAT0) as usize;
                     let n = count.min(read_buf.len());
                     for i in 0..n {
-                        read_buf[i] = smbus_read8(PIIX4_SMB_HST_BLKDAT + i as u16);
+                        read_buf[i] = self.smbus_read8(PIIX4_SMB_HST_BLKDAT + i as u16);
                     }
                     Ok(n)
                 }
@@ -599,22 +612,22 @@ impl I2cMaster for Piix4Smbus {
             return match write_buf.len() {
                 1 => {
                     // Send Byte protocol
-                    smbus_write8(PIIX4_SMB_HST_DAT0, write_buf[0]);
+                    self.smbus_write8(PIIX4_SMB_HST_DAT0, write_buf[0]);
                     self.exec_cmd(addr, 0x00, CMD_BYTE)?;
                     Ok(1)
                 }
                 2 => {
                     // Write Word
-                    smbus_write8(PIIX4_SMB_HST_DAT0, write_buf[0]);
-                    smbus_write8(PIIX4_SMB_HST_DAT1, write_buf[1]);
+                    self.smbus_write8(PIIX4_SMB_HST_DAT0, write_buf[0]);
+                    self.smbus_write8(PIIX4_SMB_HST_DAT1, write_buf[1]);
                     self.exec_cmd(addr, 0x00, CMD_WORD_DATA)?;
                     Ok(2)
                 }
                 n if n <= 32 => {
                     // Block Write
-                    smbus_write8(PIIX4_SMB_HST_DAT0, n as u8);
+                    self.smbus_write8(PIIX4_SMB_HST_DAT0, n as u8);
                     for i in 0..n {
-                        smbus_write8(PIIX4_SMB_HST_BLKDAT + i as u16, write_buf[i]);
+                        self.smbus_write8(PIIX4_SMB_HST_BLKDAT + i as u16, write_buf[i]);
                     }
                     self.exec_cmd(addr, 0x00, CMD_BLOCK_DATA)?;
                     Ok(n)
@@ -625,26 +638,26 @@ impl I2cMaster for Piix4Smbus {
 
         // Write + Read (Write Byte then Read Byte)
         if write_buf.len() >= 1 && !read_buf.is_empty() {
-            smbus_write8(PIIX4_SMB_HST_CMD, write_buf[0]); // Command = register offset
+            self.smbus_write8(PIIX4_SMB_HST_CMD, write_buf[0]); // Command = register offset
             // Read the value
             match read_buf.len() {
                 1 => {
                     self.exec_cmd(addr, write_buf[0], CMD_BYTE_DATA)?;
-                    read_buf[0] = smbus_read8(PIIX4_SMB_HST_DAT0);
+                    read_buf[0] = self.smbus_read8(PIIX4_SMB_HST_DAT0);
                     Ok(1)
                 }
                 2 => {
                     self.exec_cmd(addr, write_buf[0], CMD_WORD_DATA)?;
-                    read_buf[0] = smbus_read8(PIIX4_SMB_HST_DAT0);
-                    read_buf[1] = smbus_read8(PIIX4_SMB_HST_DAT1);
+                    read_buf[0] = self.smbus_read8(PIIX4_SMB_HST_DAT0);
+                    read_buf[1] = self.smbus_read8(PIIX4_SMB_HST_DAT1);
                     Ok(2)
                 }
                 n if n <= 32 => {
                     self.exec_cmd(addr, write_buf[0], CMD_BLOCK_DATA)?;
-                    let count = smbus_read8(PIIX4_SMB_HST_DAT0) as usize;
+                    let count = self.smbus_read8(PIIX4_SMB_HST_DAT0) as usize;
                     let n = count.min(read_buf.len());
                     for i in 0..n {
-                        read_buf[i] = smbus_read8(PIIX4_SMB_HST_BLKDAT + i as u16);
+                        read_buf[i] = self.smbus_read8(PIIX4_SMB_HST_BLKDAT + i as u16);
                     }
                     Ok(n)
                 }
@@ -674,7 +687,9 @@ impl I2cMaster for Piix4Smbus {
 /// ICH9 SMBus base is typically at PCI BAR 4 of device 0:0x1F.3
 const ICH9_SMB_BASE: u16 = 0xE00;  // Default if PCI BAR gives different
 
-pub struct Ich9Smbus;
+pub struct Ich9Smbus {
+    base_port: u16,
+}
 
 impl Ich9Smbus {
     pub fn try_new() -> Option<Self> {
@@ -686,11 +701,16 @@ impl Ich9Smbus {
             && (device & 0xFFFF) <= 0x293C;
 
         if is_ich9 {
-            serial_println!("I2C: ICH9 SMBus detected (8086:{:04x})", device & 0xFFFF);
-            Some(Self)
-        } else {
-            None
+            // SMBus base is in BAR 4
+            let bar4 = crate::pci::pci_read_config(0, 0x1F, 3, 0x20);
+            let base_port = (bar4 & 0xFFF0) as u16;
+
+            if base_port != 0 {
+                serial_println!("I2C: ICH9 SMBus detected at port {:#06x}", base_port);
+                return Some(Self { base_port });
+            }
         }
+        None
     }
 }
 
@@ -709,9 +729,9 @@ impl I2cMaster for Ich9Smbus {
         if !write_buf.is_empty() && read_buf.is_empty() && write_buf.len() <= 32 {
             // Block write
             unsafe {
-                x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x04).write(addr << 1);
-                x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x03).write(write_buf[0]);
-                x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x02).write(0x14u8 | 0x40u8);
+                x86_64::instructions::port::Port::new(self.base_port + 0x04).write(addr << 1);
+                x86_64::instructions::port::Port::new(self.base_port + 0x03).write(write_buf[0]);
+                x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x14u8 | 0x40u8);
             }
             for _ in 0..1000 { core::hint::spin_loop(); }
             return Ok(write_buf.len());
@@ -720,12 +740,12 @@ impl I2cMaster for Ich9Smbus {
         if write_buf.is_empty() && !read_buf.is_empty() && read_buf.len() <= 32 {
             // Block read
             unsafe {
-                x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x04).write((addr << 1) | 1);
-                x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x02).write(0x14u8 | 0x40u8);
+                x86_64::instructions::port::Port::new(self.base_port + 0x04).write((addr << 1) | 1);
+                x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x14u8 | 0x40u8);
             }
             for _ in 0..1000 { core::hint::spin_loop(); }
             for i in 0..read_buf.len() {
-                read_buf[i] = unsafe { x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x07 + i as u16).read() };
+                read_buf[i] = unsafe { x86_64::instructions::port::Port::new(self.base_port + 0x07 + i as u16).read() };
             }
             return Ok(read_buf.len());
         }
@@ -737,11 +757,11 @@ impl I2cMaster for Ich9Smbus {
 
     fn probe(&mut self, addr: u8) -> bool {
         unsafe {
-            x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x04).write(addr << 1);
-            x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x02).write(0x40u8); // QUICK + START
+            x86_64::instructions::port::Port::new(self.base_port + 0x04).write(addr << 1);
+            x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x40u8); // QUICK + START
         }
         for _ in 0..2000 {
-            let sts: u8 = unsafe { x86_64::instructions::port::Port::new(ICH9_SMB_BASE + 0x00).read() };
+            let sts: u8 = unsafe { x86_64::instructions::port::Port::new(self.base_port + 0x00).read() };
             if sts & 0x80 != 0 {
                 return (sts & 0x10) == 0; // FAILED bit
             }

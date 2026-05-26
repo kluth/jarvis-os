@@ -225,6 +225,10 @@ pub struct AcpiData {
     pub dsdt_address: u64,
     pub dsdt_length: u32,
     pub dsdt_present: bool,
+
+    // HPET
+    pub hpet_address: u64,
+    pub hpet_present: bool,
 }
 
 impl AcpiData {
@@ -249,6 +253,8 @@ impl AcpiData {
             dsdt_address: 0,
             dsdt_length: 0,
             dsdt_present: false,
+            hpet_address: 0,
+            hpet_present: false,
         }
     }
 }
@@ -369,6 +375,13 @@ unsafe fn parse_sdt_table(table_phys: u64, phys_mem_offset: u64, data: &mut Acpi
         "APIC" => parse_madt(table_phys, phys_mem_offset, data),
         "MCFG" => parse_mcfg(table_phys, phys_mem_offset, data),
         "FACP" => parse_fadt(table_phys, phys_mem_offset, data),
+        "HPET" => {
+            // HPET table base address is at offset 44 (8 bytes, Generic Address Structure)
+            let addr_ptr = (phys_mem_offset + table_phys + 44) as *const u64;
+            data.hpet_address = *addr_ptr;
+            data.hpet_present = true;
+            crate::serial_println!("ACPI: Found HPET table at {:#018x}", data.hpet_address);
+        }
         _ => {
             // Ignore unknown tables
         }
@@ -588,36 +601,7 @@ pub fn init(rsdp_addr_opt: Option<u64>, phys_mem_offset: u64) {
             }
         }
 
-        // Register ACPI devices with Device Manager
-        let data = unsafe { &*core::ptr::addr_of!(ACPI_DATA) };
-
-        device_manager::register_device(device_manager::Device {
-            id: device_manager::DeviceId::unknown(),
-            name: "ACPI Power Controller",
-            class: device_manager::DeviceClass::System,
-            bus: 0, slot: 0, function: 0,
-            bars: [device_manager::MmioRegion::empty(); 6],
-            irq: 0,
-            irq_type: device_manager::IrqType::None,
-            enabled: true,
-            driver_name: None,
-            custom_data: None,
-        });
-
-        if data.io_apic_count > 0 {
-            device_manager::register_device(device_manager::Device {
-                id: device_manager::DeviceId::unknown(),
-                name: "IO APIC",
-                class: device_manager::DeviceClass::System,
-                bus: 0, slot: 0, function: 0,
-                bars: [device_manager::MmioRegion::empty(); 6],
-                irq: 0,
-                irq_type: device_manager::IrqType::None,
-                enabled: true,
-                driver_name: None,
-                custom_data: None,
-            });
-        }
+        let data = get_data();
 
         if data.ecam_present {
             crate::serial_println!("ACPI: PCIe ECAM available at {:#018x}", data.ecam_base);

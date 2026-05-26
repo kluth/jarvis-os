@@ -1,0 +1,7 @@
+module Test {
+    complexity O(1) {
+        func main() -> I32 {
+            yield(1)
+        }
+    }
+}

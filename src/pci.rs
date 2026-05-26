@@ -401,31 +401,39 @@ pub fn scan_all_buses() -> Vec<PciFunctionInfo> {
     // Determine if we can use legacy CF8 or need ECAM
     let is_legacy = !use_ecam();
 
-    // Scan bus 0 first (always present)
-    scan_bus(0, is_legacy, &mut functions);
+    // Use a worklist to scan buses recursively (handles nested bridges)
+    let mut buses_to_scan = Vec::new();
+    buses_to_scan.push(0);
 
-    // Collect secondary buses from PCI-PCI bridges
-    let mut secondary_buses: Vec<u8> = Vec::new();
-    for f in &functions {
-        if f.is_pci_pci_bridge && f.secondary_bus != 0 {
-            secondary_buses.push(f.secondary_bus);
+    let mut scanned_buses = [false; 256];
+    scanned_buses[0] = true;
+
+    while let Some(bus) = buses_to_scan.pop() {
+        let mut bus_functions = Vec::new();
+        scan_bus(bus, is_legacy, &mut bus_functions);
+        
+        for f in &bus_functions {
+            if f.is_pci_pci_bridge && f.secondary_bus != 0 {
+                let sec_bus = f.secondary_bus;
+                if !scanned_buses[sec_bus as usize] {
+                    buses_to_scan.push(sec_bus);
+                    scanned_buses[sec_bus as usize] = true;
+                }
+            }
         }
+        functions.extend(bus_functions);
     }
 
-    // Scan discovered secondary buses
-    for bus in secondary_buses {
-        scan_bus(bus, is_legacy, &mut functions);
-    }
-
-    // If ECAM is available, scan all buses up to end_bus
+    // If ECAM is available, scan any remaining buses up to end_bus (fills gaps)
     let ecam_end_bus = {
         let data = crate::acpi::get_data();
         if data.ecam_present { Some(data.ecam_end_bus) } else { None }
     };
     if let Some(end_bus) = ecam_end_bus {
-        for bus in 1..=end_bus {
-            if !functions.iter().any(|f| f.bus == bus) {
+        for bus in 0..=end_bus {
+            if !scanned_buses[bus as usize] {
                 scan_bus(bus, is_legacy, &mut functions);
+                scanned_buses[bus as usize] = true;
             }
         }
     }
@@ -446,6 +454,7 @@ pub fn pci_function_to_device(info: &PciFunctionInfo) -> Device {
         (0x01, 0x08) => "NVMe Controller",
         // Network
         (0x02, 0x00) => "Ethernet Controller",
+        (0x02, 0x01) => "Token Ring Controller",
         (0x02, 0x80) => "Network Controller",
         // Display
         (0x03, 0x00) => "VGA/Display Controller",
@@ -455,23 +464,39 @@ pub fn pci_function_to_device(info: &PciFunctionInfo) -> Device {
         (0x04, 0x00) => "Multimedia Video",
         (0x04, 0x01) => "Multimedia Audio",
         (0x04, 0x03) => "High Definition Audio",
-        // Bridges
+        // Bridge
         (0x06, 0x00) => "Host Bridge",
         (0x06, 0x01) => "ISA Bridge",
         (0x06, 0x04) => "PCI-PCI Bridge",
         (0x06, 0x80) => "Bridge",
-        // USB controllers use prog_if for exact type
+        // Communication
+        (0x07, 0x00) => "Serial Controller",
+        (0x07, 0x01) => "Parallel Controller",
+        // Base System Peripherals
+        (0x08, 0x00) => "Interrupt Controller",
+        (0x08, 0x01) => "DMA Controller",
+        (0x08, 0x02) => "Timer",
+        (0x08, 0x03) => "RTC Controller",
+        // Input
+        (0x09, 0x00) => "Keyboard Controller",
+        (0x09, 0x01) => "Digitizer",
+        (0x09, 0x02) => "Mouse Controller",
+        // Serial Bus
         (0x0C, 0x03) => {
             match info.prog_if {
                 0x00 => "USB UHCI Controller",
                 0x10 => "USB OHCI Controller",
                 0x20 => "USB EHCI Controller",
                 0x30 => "USB xHCI Controller",
+                0x80 => "USB Controller",
+                0xFE => "USB Device",
                 _ => "USB Controller",
             }
         }
-        // SMBus
         (0x0C, 0x05) => "SMBus Controller",
+        // Encryption
+        (0x0D, 0x00) => "Network/Computing Encryption",
+        (0x0D, 0x10) => "Entertainment Encryption",
         // Generic
         _ => "PCI Device",
     };
@@ -500,6 +525,41 @@ pub fn pci_function_to_device(info: &PciFunctionInfo) -> Device {
     }
 
     device
+}
+
+/// Configures MSI for a device
+pub fn configure_msi(bus: u8, slot: u8, func: u8, vector: u8, cpu_id: u8) -> Result<(), &'static str> {
+    // Find MSI capability offset
+    let mut cap_ptr = pci_read_word(bus, slot, func, 0x34) & 0xFF;
+    let mut msi_off = 0;
+    
+    while cap_ptr != 0 {
+        let cap_id = pci_read_word(bus, slot, func, cap_ptr as u16) & 0xFF;
+        if cap_id == 0x05 { // MSI
+            msi_off = cap_ptr;
+            break;
+        }
+        cap_ptr = (pci_read_word(bus, slot, func, cap_ptr as u16) >> 8) & 0xFF;
+    }
+
+    if msi_off == 0 {
+        return Err("MSI capability not found");
+    }
+
+    // Configure MSI
+    // Message Address: 0xFEE00000 | (cpu_id << 12)
+    let addr = 0xFEE00000 | ((cpu_id as u32) << 12);
+    pci_write_config(bus, slot, func, (msi_off + 4) as u16, addr);
+
+    // Message Data: vector
+    pci_write_config(bus, slot, func, (msi_off + 8) as u16, vector as u32);
+
+    // Enable MSI: set bit 16 of Message Control
+    let mut ctrl = pci_read_word(bus, slot, func, (msi_off + 2) as u16);
+    ctrl |= 0x0001;
+    pci_write_word(bus, slot, func, (msi_off + 2) as u16, ctrl);
+
+    Ok(())
 }
 
 // ============================================================================
