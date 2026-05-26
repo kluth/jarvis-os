@@ -1034,6 +1034,12 @@ pub struct GpuManager {
     pub current_mode: GpuMode,
 }
 
+impl Default for GpuManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GpuManager {
     pub fn new() -> Self {
         Self {
@@ -1069,11 +1075,10 @@ impl GpuManager {
                             gpu.framebuffer_base = Some(base as u64);
                         }
                         let bar2 = read_pci_config(bus, slot, func, 6);
-                        if bar2 != 0 && bar2 & 0x1 == 0 {
-                            if gpu.framebuffer_base.is_none() {
+                        if bar2 != 0 && bar2 & 0x1 == 0
+                            && gpu.framebuffer_base.is_none() {
                                 gpu.framebuffer_base = Some((bar2 & 0xFFFFFFF0) as u64);
                             }
-                        }
                         gpu.revision = (class_rev & 0xFF) as u8;
 
                         crate::serial_println!(
@@ -1106,7 +1111,7 @@ impl GpuManager {
         } else {
             24 // fallback
         };
-        let bpp_div = (bpp as usize + 7) / 8;
+        let bpp_div = (bpp as usize).div_ceil(8);
 
         self.current_mode = GpuMode {
             width: desired_width,

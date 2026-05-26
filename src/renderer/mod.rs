@@ -136,7 +136,7 @@ impl Texture {
                 let hex = (libm::sinf(fx * 0.866 + fy * 0.5) * libm::cosf(fx * 0.866 - fy * 0.5)).abs();
                 let val = if hex < 0.3 { 180u8 } else { 30u8 };
                 let alpha = if hex < 0.3 { 120u8 } else { 0u8 };
-                data[y * w + x] = (alpha as u32) << 24 | (0u32) << 16 | (val as u32) << 8 | (val as u32);
+                data[y * w + x] = ((alpha as u32) << 24) | (val as u32) << 8 | (val as u32);
             }
         }
         Self { width: w, height: h, data }
@@ -717,6 +717,12 @@ pub struct Scene {
     pub draw_calls: alloc::vec::Vec<DrawCall>,
     pub clear_color: u32,
     pub time_seconds: f32,
+}
+
+impl Default for Scene {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Scene {

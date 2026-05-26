@@ -9,7 +9,7 @@ use core::panic::PanicInfo;
 use jarvis_kernel::task::executor::Executor;
 use jarvis_kernel::task::Task;
 use jarvis_kernel::{gui, memory, net, serial_println, serial_println_raw, telemetry};
-use x86_64::{PhysAddr, VirtAddr};
+use x86_64::VirtAddr;
 
 pub const BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();

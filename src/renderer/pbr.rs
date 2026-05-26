@@ -26,6 +26,12 @@ pub struct PbrMaterial {
     pub opacity: f32,
 }
 
+impl Default for PbrMaterial {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PbrMaterial {
     pub fn new() -> Self {
         Self {
@@ -120,6 +126,12 @@ impl Light {
 pub struct SphericalHarmonics {
     /// 9 coefficients for 3 bands (L00..L22), each is Vec3 (RGB)
     pub c: [Vec3; 9],
+}
+
+impl Default for SphericalHarmonics {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SphericalHarmonics {

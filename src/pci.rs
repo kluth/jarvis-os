@@ -534,12 +534,12 @@ pub fn configure_msi(bus: u8, slot: u8, func: u8, vector: u8, cpu_id: u8) -> Res
     let mut msi_off = 0;
     
     while cap_ptr != 0 {
-        let cap_id = pci_read_word(bus, slot, func, cap_ptr as u16) & 0xFF;
+        let cap_id = pci_read_word(bus, slot, func, cap_ptr) & 0xFF;
         if cap_id == 0x05 { // MSI
             msi_off = cap_ptr;
             break;
         }
-        cap_ptr = (pci_read_word(bus, slot, func, cap_ptr as u16) >> 8) & 0xFF;
+        cap_ptr = (pci_read_word(bus, slot, func, cap_ptr) >> 8) & 0xFF;
     }
 
     if msi_off == 0 {
@@ -549,15 +549,15 @@ pub fn configure_msi(bus: u8, slot: u8, func: u8, vector: u8, cpu_id: u8) -> Res
     // Configure MSI
     // Message Address: 0xFEE00000 | (cpu_id << 12)
     let addr = 0xFEE00000 | ((cpu_id as u32) << 12);
-    pci_write_config(bus, slot, func, (msi_off + 4) as u16, addr);
+    pci_write_config(bus, slot, func, ((msi_off + 4)), addr);
 
     // Message Data: vector
-    pci_write_config(bus, slot, func, (msi_off + 8) as u16, vector as u32);
+    pci_write_config(bus, slot, func, ((msi_off + 8)), vector as u32);
 
     // Enable MSI: set bit 16 of Message Control
-    let mut ctrl = pci_read_word(bus, slot, func, (msi_off + 2) as u16);
+    let mut ctrl = pci_read_word(bus, slot, func, ((msi_off + 2)));
     ctrl |= 0x0001;
-    pci_write_word(bus, slot, func, (msi_off + 2) as u16, ctrl);
+    pci_write_word(bus, slot, func, ((msi_off + 2)), ctrl);
 
     Ok(())
 }

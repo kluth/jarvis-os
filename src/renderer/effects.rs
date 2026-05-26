@@ -261,7 +261,7 @@ pub fn apply_chromatic_aberration(buffer: &mut [u32], w: usize, h: usize, streng
             let r = (r_c >> 16) & 0xFF;
             let g = (g_c >> 8) & 0xFF;
             let b = b_c & 0xFF;
-            buffer[idx] = 0xFF000000 | (r << 16) | ((g as u32) << 8) | b as u32;
+            buffer[idx] = 0xFF000000 | (r << 16) | (g << 8) | b;
         }
     }
 }

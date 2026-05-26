@@ -59,7 +59,7 @@ pub async fn sensor_task() {
     
     if sensor.init().is_ok() {
         loop {
-            if let Ok((x, y, z)) = sensor.read_accel() {
+            if let Ok((x, y, _z)) = sensor.read_accel() {
                 // For now, just log if there's significant movement
                 if x.abs() > 1000 || y.abs() > 1000 {
                     // serial_println!("SENSOR: Accel -> X: {}, Y: {}, Z: {}", x, y, z);

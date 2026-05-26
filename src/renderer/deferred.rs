@@ -68,9 +68,9 @@ impl DeferredPipeline {
         self.gbuffer[idx][GBUF_ALBEDO] = albedo;
 
         // Normal: encode as A=metallic, RGB=normal*128+128
-        let nx = ((normal.x * 127.0 + 128.0) as u8).min(255);
-        let ny = ((normal.y * 127.0 + 128.0) as u8).min(255);
-        let nz = ((normal.z * 127.0 + 128.0) as u8).min(255);
+        let nx = ((normal.x * 127.0 + 128.0) as u8);
+        let ny = ((normal.y * 127.0 + 128.0) as u8);
+        let nz = ((normal.z * 127.0 + 128.0) as u8);
         let m = (metallic * 255.0) as u8;
         self.gbuffer[idx][GBUF_NORMAL] = (m as u32) << 24
             | (nx as u32) << 16 | (ny as u32) << 8 | nz as u32;
@@ -107,8 +107,8 @@ impl DeferredPipeline {
 
         // Decode depth
         let roughness = ((depth_packed >> 24) & 0xFF) as f32 / 255.0;
-        let depth_bits = (((depth_packed >> 16) & 0xFF) as u32) << 16
-            | (((depth_packed >> 8) & 0xFF) as u32) << 8
+        let depth_bits = (((depth_packed >> 16) & 0xFF)) << 16
+            | (((depth_packed >> 8) & 0xFF)) << 8
             | (depth_packed & 0xFF);
         let depth = depth_bits as f32 / MAX_DEPTH_F;
 
@@ -249,8 +249,8 @@ impl DeferredPipeline {
                 let ao = ((self.gbuffer[idx][GBUF_EMISSIVE] >> 24) & 0xFF) as f32 / 255.0;
 
                 // Skip sky/far pixels
-                let depth_bits = (((depth_packed >> 16) & 0xFF) as u32) << 16
-                    | (((depth_packed >> 8) & 0xFF) as u32) << 8
+                let depth_bits = (((depth_packed >> 16) & 0xFF)) << 16
+                    | (((depth_packed >> 8) & 0xFF)) << 8
                     | (depth_packed & 0xFF);
                 let depth = depth_bits as f32 / MAX_DEPTH_F;
                 if depth > 0.99 { continue; }
@@ -314,8 +314,8 @@ pub fn compute_ssao(width: usize, height: usize, gbuffer: &[[u32; 4]],
         for x in 2..width - 2 {
             let idx = y * width + x;
             let depth_packed = gbuffer[idx][2];
-            let center_depth = ((((depth_packed >> 16) & 0xFF) as u32) << 16
-                | (((depth_packed >> 8) & 0xFF) as u32) << 8
+            let center_depth = ((((depth_packed >> 16) & 0xFF)) << 16
+                | (((depth_packed >> 8) & 0xFF)) << 8
                 | (depth_packed & 0xFF)) as f32 / MAX_DEPTH_F;
 
             if center_depth > 0.99 { continue; }
@@ -329,8 +329,8 @@ pub fn compute_ssao(width: usize, height: usize, gbuffer: &[[u32; 4]],
                 let sidx = sy * width + sx;
 
                 let sdepth_packed = gbuffer[sidx][2];
-                let sample_depth = ((((sdepth_packed >> 16) & 0xFF) as u32) << 16
-                    | (((sdepth_packed >> 8) & 0xFF) as u32) << 8
+                let sample_depth = ((((sdepth_packed >> 16) & 0xFF)) << 16
+                    | (((sdepth_packed >> 8) & 0xFF)) << 8
                     | (sdepth_packed & 0xFF)) as f32 / MAX_DEPTH_F;
 
                 let depth_delta = center_depth - sample_depth;

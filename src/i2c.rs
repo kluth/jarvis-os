@@ -174,6 +174,12 @@ pub struct I2cManager {
     buses: Vec<I2cController>,
 }
 
+impl Default for I2cManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl I2cManager {
     pub const fn new() -> Self {
         Self { buses: Vec::new() }
@@ -637,7 +643,7 @@ impl I2cMaster for Piix4Smbus {
         }
 
         // Write + Read (Write Byte then Read Byte)
-        if write_buf.len() >= 1 && !read_buf.is_empty() {
+        if !write_buf.is_empty() && !read_buf.is_empty() {
             self.smbus_write8(PIIX4_SMB_HST_CMD, write_buf[0]); // Command = register offset
             // Read the value
             match read_buf.len() {
@@ -761,7 +767,7 @@ impl I2cMaster for Ich9Smbus {
             x86_64::instructions::port::Port::new(self.base_port + 0x02).write(0x40u8); // QUICK + START
         }
         for _ in 0..2000 {
-            let sts: u8 = unsafe { x86_64::instructions::port::Port::new(self.base_port + 0x00).read() };
+            let sts: u8 = unsafe { x86_64::instructions::port::Port::new(self.base_port).read() };
             if sts & 0x80 != 0 {
                 return (sts & 0x10) == 0; // FAILED bit
             }
@@ -894,6 +900,12 @@ pub struct EdidInfo {
     pub preferred_timing: Option<DetailedTiming>,
 }
 
+impl Default for EdidInfo {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EdidInfo {
     pub fn new() -> Self {
         Self {
@@ -988,13 +1000,13 @@ fn parse_detailed_timing(data: &[u8; 128], offset: usize) -> Option<DetailedTimi
     let h_sync_pulse_lo = data[offset + 9] as u16;
     let vsync_off_hi = ((data[offset + 10] >> 4) & 0x0F) as u16;
     let vsync_pulse_hi = (data[offset + 10] & 0x0F) as u16;
-    let _v_sync_off_lo = data[offset + 11] as u8;
+    let _v_sync_off_lo = data[offset + 11];
 
     let h_sync_off = (h_sync_off_lo & 0x03FF) | ((vsync_off_hi & 0x03) << 8);
     let h_sync_pulse = (h_sync_pulse_lo & 0x03FF) | ((vsync_pulse_hi & 0x03) << 8);
 
-    let v_sync_off = ((data[offset + 11] >> 4) & 0x0F) | ((data[offset + 10] & 0x0C) as u8);
-    let v_sync_pulse = (data[offset + 11] & 0x0F) | (((data[offset + 10] >> 2) & 0x0C) as u8);
+    let v_sync_off = ((data[offset + 11] >> 4) & 0x0F) | (data[offset + 10] & 0x0C);
+    let v_sync_pulse = (data[offset + 11] & 0x0F) | ((data[offset + 10] >> 2) & 0x0C);
 
     let h_size_lo = data[offset + 12] as u16;
     let v_size_lo = data[offset + 13] as u16;

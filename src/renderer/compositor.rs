@@ -142,9 +142,9 @@ impl GuiCompositor {
         apply_bloom(&mut self.renderer.framebuffer, self.width, self.height, 0.06, 0.7);
         // Replace ACES tone mapping with a simple brightness boost for the dark theme
         for pixel in self.renderer.framebuffer.iter_mut() {
-            let r = ((*pixel >> 16) & 0xFF) as u32;
-            let g = ((*pixel >> 8) & 0xFF) as u32;
-            let b = (*pixel & 0xFF) as u32;
+            let r = ((*pixel >> 16) & 0xFF);
+            let g = ((*pixel >> 8) & 0xFF);
+            let b = (*pixel & 0xFF);
             // Boost dark colors for visibility: 1.5x brighten
             let nr = (r * 3 / 2).min(255);
             let ng = (g * 3 / 2).min(255);

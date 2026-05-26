@@ -284,7 +284,7 @@ fn update(angle: f32, tick: u64) {
         writer.fill_rect(Rect { x: bx, y: by, width: fw, height: 8 }, ac);
 
         // === 2. CENTER CORE ===
-        let ccx = ((w as isize / 2) - 30) as isize;
+        let ccx = ((w as isize / 2) - 30);
         let ccy: isize = 360; let cr: isize = 130;
         let cb = 2 * cr + 80;
 

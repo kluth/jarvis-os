@@ -10,7 +10,6 @@
 //!   - DSDT / SSDT — AML namespace (device discovery foundation)
 //! ============================================================================
 
-use crate::device_manager;
 use core::mem;
 
 // ============================================================================
@@ -231,6 +230,12 @@ pub struct AcpiData {
     pub hpet_present: bool,
 }
 
+impl Default for AcpiData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AcpiData {
     pub const fn new() -> Self {
         Self {
@@ -422,15 +427,14 @@ unsafe fn parse_madt(madt_phys: u64, phys_mem_offset: u64, data: &mut AcpiData) 
                     );
                 }
             }
-            MADT_TYPE_LOCAL_APIC_ADDR_OVERRIDE => {
+            MADT_TYPE_LOCAL_APIC_ADDR_OVERRIDE
                 // Override the local APIC address
-                if entry_header.record_length as u64 >= 12 {
+                if entry_header.record_length as u64 >= 12 => {
                     let override_addr = entry_phys + mem::size_of::<MadtEntryHeader>() as u64;
                     let new_addr = *(ptr_at::<u64>(override_addr, phys_mem_offset));
                     data.local_apic_address = new_addr as u32;
                     crate::serial_println!("ACPI: LAPIC address override -> {:#010x}", new_addr);
                 }
-            }
             _ => {}
         }
 
@@ -554,7 +558,7 @@ pub fn acpi_reset() {
     if data.fadt_present && data.reset_port != 0 {
         unsafe {
             // Write reset value to reset port (I/O or MMIO)
-            let address = data.reset_port as u16;
+            let address = data.reset_port;
             let value = data.reset_value;
             if (data.reset_port as u32) < 0x10000 {
                 // I/O port

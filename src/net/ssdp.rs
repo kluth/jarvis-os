@@ -58,7 +58,7 @@ pub async fn discovery_task() {
                              ST: upnp:rootdevice\r\n\
                              USN: uuid:f40c2981-7329-40b7-a6f6-f6c9441cb0d0::upnp:rootdevice\r\n\r\n";
         
-        if let Some(service) = parse_ssdp_response(mock_response) {
+        if let Some(_service) = parse_ssdp_response(mock_response) {
             // println!("Net: Discovered SSDP Service: {} at {}", service.st, service.location);
         }
         

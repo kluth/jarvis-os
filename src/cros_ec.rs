@@ -8,7 +8,7 @@
 //!   - Thermal/Fan control
 //! ============================================================================
 
-use crate::i2c::{I2cResult, I2cError};
+use crate::i2c::I2cResult;
 use crate::serial_println;
 
 pub const EC_I2C_ADDR: u8 = 0x1E;

@@ -17,6 +17,12 @@ struct Node<T> {
     next: *mut Node<T>,
 }
 
+impl<T> Default for LockFreeStack<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> LockFreeStack<T> {
     pub const fn new() -> Self {
         Self {

@@ -105,6 +105,12 @@ pub struct EmitterConfig {
     pub max_particles: usize,
 }
 
+impl Default for EmitterConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EmitterConfig {
     pub fn new() -> Self {
         Self {

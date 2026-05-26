@@ -253,6 +253,12 @@ pub struct DeviceManager {
     pub drivers: Vec<DriverEntry>,
 }
 
+impl Default for DeviceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeviceManager {
     pub fn new() -> Self {
         Self {

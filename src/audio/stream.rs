@@ -59,7 +59,7 @@ impl AudioStream {
     /// the DMA buffer is physically contiguous and correctly aligned,
     /// and that no other stream is using the same stream_id.
     pub unsafe fn start(&mut self) {
-        let stride = self._channels as u32 * 2; // 16-bit samples
+        let _stride = self._channels as u32 * 2; // 16-bit samples
         let stream_offset = 0x80 * (self.stream_id as usize);
         let sd_base = self.hda_base.as_mut_ptr::<u8>().add(stream_offset);
 

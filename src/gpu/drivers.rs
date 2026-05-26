@@ -56,7 +56,7 @@ pub fn vbe_read_phys_addr() -> u32 {
     let bar0 = crate::pci::pci_read_config(0, 1, 0, 0x10);
     if bar0 != 0 && bar0 != u32::MAX {
         let addr = bar0 & 0xFFFFFFF0; // strip BAR flags
-        if addr >= 0xE0000000 && addr <= 0xFE000000 {
+        if (0xE0000000..=0xFE000000).contains(&addr) {
             return addr;
         }
     }
@@ -64,7 +64,7 @@ pub fn vbe_read_phys_addr() -> u32 {
     let bar0 = crate::pci::pci_read_config(0, 2, 0, 0x10);
     if bar0 != 0 && bar0 != u32::MAX {
         let addr = bar0 & 0xFFFFFFF0;
-        if addr >= 0xE0000000 && addr <= 0xFE000000 {
+        if (0xE0000000..=0xFE000000).contains(&addr) {
             return addr;
         }
     }
@@ -161,7 +161,7 @@ impl GpuDriver for BochsVbeDriver {
         }
 
         let vram = Self::detect_vram();
-        let bpp_div = (mode.bpp as usize + 7) / 8;
+        let bpp_div = (mode.bpp as usize).div_ceil(8);
         let size = mode.width * mode.height * bpp_div;
 
         self.mode = *mode;
@@ -188,10 +188,10 @@ impl GpuDriver for BochsVbeDriver {
     }
 
     fn clear(&mut self, color: Color) {
-        let bpp_div = (self.mode.bpp as usize + 7) / 8;
+        let bpp_div = (self.mode.bpp as usize).div_ceil(8);
         for y in 0..self.mode.height {
             for x in 0..self.mode.width {
-                let off = (y * self.mode.pitch + x * bpp_div) as usize;
+                let off = (y * self.mode.pitch + x * bpp_div);
                 if off + 3 < self.backbuffer.len() {
                     self.backbuffer[off] = color.b;
                     self.backbuffer[off + 1] = color.g;
@@ -203,7 +203,7 @@ impl GpuDriver for BochsVbeDriver {
 
     fn put_pixel(&mut self, x: usize, y: usize, color: Color) {
         if x >= self.mode.width || y >= self.mode.height { return; }
-        let bpp_div = (self.mode.bpp as usize + 7) / 8;
+        let bpp_div = (self.mode.bpp as usize).div_ceil(8);
         let off = y * self.mode.pitch + x * bpp_div;
         if off + 3 < self.backbuffer.len() {
             self.backbuffer[off] = color.b;

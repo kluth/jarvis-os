@@ -13,7 +13,7 @@ pub fn get_entropy_64() -> u64 {
 
     unsafe {
         if has_rdrand && _rdrand64_step(&mut val) != 0 {
-            return val;
+            val
         } else {
             // Fallback: high-resolution timestamp mixed with stack pointer and address
             let tsc = _rdtsc();
@@ -27,7 +27,7 @@ pub fn get_entropy_64() -> u64 {
             mix = mix.wrapping_mul(0xc4ceb9fe1a85ec53);
             mix ^= mix >> 33;
             
-            return mix;
+            mix
         }
     }
 }
