@@ -380,6 +380,7 @@ unsafe fn parse_sdt_table(table_phys: u64, phys_mem_offset: u64, data: &mut Acpi
     let header: &AcpiSdtHeader = ptr_at(table_phys, phys_mem_offset);
 
     let sig = core::str::from_utf8_unchecked(&header.signature);
+    crate::serial_println!("ACPI: Parsing table {}", sig);
     match sig {
         "APIC" => parse_madt(table_phys, phys_mem_offset, data),
         "MCFG" => parse_mcfg(table_phys, phys_mem_offset, data),
@@ -387,7 +388,7 @@ unsafe fn parse_sdt_table(table_phys: u64, phys_mem_offset: u64, data: &mut Acpi
         "HPET" => {
             // HPET table base address is at offset 44 (8 bytes, Generic Address Structure)
             let addr_ptr = (phys_mem_offset + table_phys + 44) as *const u64;
-            data.hpet_address = *addr_ptr;
+            data.hpet_address = unsafe { core::ptr::read_unaligned(addr_ptr) };
             data.hpet_present = true;
             crate::serial_println!("ACPI: Found HPET table at {:#018x}", data.hpet_address);
         }
